@@ -3,13 +3,17 @@
  * Ext.application(). This is the ideal place to handle application launch and initialization
  * details.
  */
-Ext.define('Pact.Application', {
+Ext.define('Packt.Application', {
     extend: 'Ext.app.Application',
     
-    name: 'Pact',
+    name: 'Packt',
 
     stores: [
         // TODO: add global / shared stores here
+    ],
+
+    views: [
+        'login.Login'
     ],
     
     launch: function () {
@@ -25,7 +29,7 @@ Ext.define('Pact.Application', {
     			remove: true,
     			listeners: {
     				afteranimate: function(el, startTime, eOpts) {
-    					console.log('launch');
+    					Ext.widget('login-dialog');
     				}
     			}
     		})

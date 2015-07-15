@@ -35,23 +35,23 @@
       "parameters": {
         "appControllers": "",
         "appModels": "",
-        "appName": "Pact",
+        "appName": "Packt",
         "appStores": "",
         "appViews": "",
         "controllerFileName": "Main",
         "controllerName": "Main",
-        "controllerNamespace": "Pact.controller",
+        "controllerNamespace": "Packt.controller",
         "frameworkName": "ext",
         "frameworkPath": "ext",
-        "modelNamespace": "Pact.model",
-        "name": "Pact",
+        "modelNamespace": "Packt.model",
+        "name": "Packt",
         "packagesRelPath": "ext/packages",
         "senchadir": ".sencha",
         "themeName": "default",
         "uniqueId": "95f9a9a5-7f96-4779-9f15-dfa1a28f7e42",
         "viewFileName": "Main",
         "viewName": "Main",
-        "viewNamespace": "Pact.view"
+        "viewNamespace": "Packt.view"
       }
     },
     ".sencha/app/development.properties": {
@@ -60,23 +60,23 @@
       "parameters": {
         "appControllers": "",
         "appModels": "",
-        "appName": "Pact",
+        "appName": "Packt",
         "appStores": "",
         "appViews": "",
         "controllerFileName": "Main",
         "controllerName": "Main",
-        "controllerNamespace": "Pact.controller",
+        "controllerNamespace": "Packt.controller",
         "frameworkName": "ext",
         "frameworkPath": "ext",
-        "modelNamespace": "Pact.model",
-        "name": "Pact",
+        "modelNamespace": "Packt.model",
+        "name": "Packt",
         "packagesRelPath": "ext/packages",
         "senchadir": ".sencha",
         "themeName": "default",
         "uniqueId": "95f9a9a5-7f96-4779-9f15-dfa1a28f7e42",
         "viewFileName": "Main",
         "viewName": "Main",
-        "viewNamespace": "Pact.view"
+        "viewNamespace": "Packt.view"
       }
     },
     ".sencha/app/native.properties": {
@@ -85,23 +85,23 @@
       "parameters": {
         "appControllers": "",
         "appModels": "",
-        "appName": "Pact",
+        "appName": "Packt",
         "appStores": "",
         "appViews": "",
         "controllerFileName": "Main",
         "controllerName": "Main",
-        "controllerNamespace": "Pact.controller",
+        "controllerNamespace": "Packt.controller",
         "frameworkName": "ext",
         "frameworkPath": "ext",
-        "modelNamespace": "Pact.model",
-        "name": "Pact",
+        "modelNamespace": "Packt.model",
+        "name": "Packt",
         "packagesRelPath": "ext/packages",
         "senchadir": ".sencha",
         "themeName": "default",
         "uniqueId": "95f9a9a5-7f96-4779-9f15-dfa1a28f7e42",
         "viewFileName": "Main",
         "viewName": "Main",
-        "viewNamespace": "Pact.view"
+        "viewNamespace": "Packt.view"
       }
     },
     ".sencha/app/package.properties": {
@@ -110,23 +110,23 @@
       "parameters": {
         "appControllers": "",
         "appModels": "",
-        "appName": "Pact",
+        "appName": "Packt",
         "appStores": "",
         "appViews": "",
         "controllerFileName": "Main",
         "controllerName": "Main",
-        "controllerNamespace": "Pact.controller",
+        "controllerNamespace": "Packt.controller",
         "frameworkName": "ext",
         "frameworkPath": "ext",
-        "modelNamespace": "Pact.model",
-        "name": "Pact",
+        "modelNamespace": "Packt.model",
+        "name": "Packt",
         "packagesRelPath": "ext/packages",
         "senchadir": ".sencha",
         "themeName": "default",
         "uniqueId": "95f9a9a5-7f96-4779-9f15-dfa1a28f7e42",
         "viewFileName": "Main",
         "viewName": "Main",
-        "viewNamespace": "Pact.view"
+        "viewNamespace": "Packt.view"
       }
     },
     ".sencha/app/production.properties": {
@@ -135,23 +135,23 @@
       "parameters": {
         "appControllers": "",
         "appModels": "",
-        "appName": "Pact",
+        "appName": "Packt",
         "appStores": "",
         "appViews": "",
         "controllerFileName": "Main",
         "controllerName": "Main",
-        "controllerNamespace": "Pact.controller",
+        "controllerNamespace": "Packt.controller",
         "frameworkName": "ext",
         "frameworkPath": "ext",
-        "modelNamespace": "Pact.model",
-        "name": "Pact",
+        "modelNamespace": "Packt.model",
+        "name": "Packt",
         "packagesRelPath": "ext/packages",
         "senchadir": ".sencha",
         "themeName": "default",
         "uniqueId": "95f9a9a5-7f96-4779-9f15-dfa1a28f7e42",
         "viewFileName": "Main",
         "viewName": "Main",
-        "viewNamespace": "Pact.view"
+        "viewNamespace": "Packt.view"
       }
     },
     ".sencha/app/sencha.cfg": {
@@ -160,23 +160,23 @@
       "parameters": {
         "appControllers": "",
         "appModels": "",
-        "appName": "Pact",
+        "appName": "Packt",
         "appStores": "",
         "appViews": "",
         "controllerFileName": "Main",
         "controllerName": "Main",
-        "controllerNamespace": "Pact.controller",
+        "controllerNamespace": "Packt.controller",
         "frameworkName": "ext",
         "frameworkPath": "ext",
-        "modelNamespace": "Pact.model",
-        "name": "Pact",
+        "modelNamespace": "Packt.model",
+        "name": "Packt",
         "packagesRelPath": "ext/packages",
         "senchadir": ".sencha",
         "themeName": "default",
         "uniqueId": "95f9a9a5-7f96-4779-9f15-dfa1a28f7e42",
         "viewFileName": "Main",
         "viewName": "Main",
-        "viewNamespace": "Pact.view"
+        "viewNamespace": "Packt.view"
       }
     },
     ".sencha/app/testing.properties": {
@@ -185,23 +185,23 @@
       "parameters": {
         "appControllers": "",
         "appModels": "",
-        "appName": "Pact",
+        "appName": "Packt",
         "appStores": "",
         "appViews": "",
         "controllerFileName": "Main",
         "controllerName": "Main",
-        "controllerNamespace": "Pact.controller",
+        "controllerNamespace": "Packt.controller",
         "frameworkName": "ext",
         "frameworkPath": "ext",
-        "modelNamespace": "Pact.model",
-        "name": "Pact",
+        "modelNamespace": "Packt.model",
+        "name": "Packt",
         "packagesRelPath": "ext/packages",
         "senchadir": ".sencha",
         "themeName": "default",
         "uniqueId": "95f9a9a5-7f96-4779-9f15-dfa1a28f7e42",
         "viewFileName": "Main",
         "viewName": "Main",
-        "viewNamespace": "Pact.view"
+        "viewNamespace": "Packt.view"
       }
     },
     "index.html": {
@@ -210,23 +210,23 @@
       "parameters": {
         "appControllers": "",
         "appModels": "",
-        "appName": "Pact",
+        "appName": "Packt",
         "appStores": "",
         "appViews": "",
         "controllerFileName": "Main",
         "controllerName": "Main",
-        "controllerNamespace": "Pact.controller",
+        "controllerNamespace": "Packt.controller",
         "frameworkName": "ext",
         "frameworkPath": "ext",
-        "modelNamespace": "Pact.model",
-        "name": "Pact",
+        "modelNamespace": "Packt.model",
+        "name": "Packt",
         "packagesRelPath": "ext/packages",
         "senchadir": ".sencha",
         "themeName": "default",
         "uniqueId": "95f9a9a5-7f96-4779-9f15-dfa1a28f7e42",
         "viewFileName": "Main",
         "viewName": "Main",
-        "viewNamespace": "Pact.view"
+        "viewNamespace": "Packt.view"
       }
     },
     "sass/config.rb": {
@@ -235,23 +235,23 @@
       "parameters": {
         "appControllers": "",
         "appModels": "",
-        "appName": "Pact",
+        "appName": "Packt",
         "appStores": "",
         "appViews": "",
         "controllerFileName": "Main",
         "controllerName": "Main",
-        "controllerNamespace": "Pact.controller",
+        "controllerNamespace": "Packt.controller",
         "frameworkName": "ext",
         "frameworkPath": "ext",
-        "modelNamespace": "Pact.model",
-        "name": "Pact",
+        "modelNamespace": "Packt.model",
+        "name": "Packt",
         "packagesRelPath": "ext/packages",
         "senchadir": ".sencha",
         "themeName": "default",
         "uniqueId": "95f9a9a5-7f96-4779-9f15-dfa1a28f7e42",
         "viewFileName": "Main",
         "viewName": "Main",
-        "viewNamespace": "Pact.view"
+        "viewNamespace": "Packt.view"
       }
     }
   }

@@ -2,7 +2,7 @@
     /**
      * The application's namespace.
      */
-    "name": "Pact",
+    "name": "Packt",
     
     /**
      * The version of the application.
@@ -53,13 +53,13 @@
     "sass": {
         /**
          * The root namespace to use when mapping *.scss files to classes in the
-         * sass/src and sass/var directories. For example, "Pact.view.Foo" would
-         * map to "sass/src/view/Foo.scss". If we changed this to "Pact.view" then
+         * sass/src and sass/var directories. For example, "Packt.view.Foo" would
+         * map to "sass/src/view/Foo.scss". If we changed this to "Packt.view" then
          * it would map to "sass/src/Foo.scss". To style classes outside the app's
          * root namespace, change this to "". Doing so would change the mapping of
-         * "Pact.view.Foo" to "sass/src/Pact/view/Foo.scss".
+         * "Packt.view.Foo" to "sass/src/Packt/view/Foo.scss".
          */
-        "namespace": "Pact"
+        "namespace": "Packt"
     },
 
     /**
@@ -110,6 +110,10 @@
         {
             "path": "app.js",
             "bundle": true
+        },
+        {
+            "path": "app/CustomVTypes.js",
+            "includeInBundle": true
         }
     ],
 

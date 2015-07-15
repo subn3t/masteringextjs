@@ -16,19 +16,19 @@ mixins, etc.).
 
 This folder contains Sass files defining CSS rules corresponding to classes
 included in the application's JavaScript code build. By default, files in this 
-folder are mapped to the application's root namespace, 'Pact'. This is set in
+folder are mapped to the application's root namespace, 'Packt'. This is set in
 `"app.json"`:
 
     "sass": {
-        "namespace": "Pact"
+        "namespace": "Packt"
     }
 
 ### ./sass/var
 
 This folder contains Sass files defining Sass variables corresponding to classes
 included in the application's JavaScript code build. By default, files in this 
-folder are mapped to the application's root namespace, 'Pact' in the same way
-as `"Pact/sass/src"`.
+folder are mapped to the application's root namespace, 'Packt' in the same way
+as `"Packt/sass/src"`.
 
 ## Slicing
 

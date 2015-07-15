@@ -5,11 +5,11 @@
  *
  * TODO - Replace this content of this view to suite the needs of your application.
  */
-Ext.define('Pact.view.main.Main', {
+Ext.define('Packt.view.main.Main', {
     extend: 'Ext.container.Container',
     requires: [
-        'Pact.view.main.MainController',
-        'Pact.view.main.MainModel'
+        'Packt.view.main.MainController',
+        'Packt.view.main.MainModel'
     ],
 
     xtype: 'app-main',

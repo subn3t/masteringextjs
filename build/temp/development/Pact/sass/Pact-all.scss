@@ -1,4 +1,4 @@
-$image-search-path: 'c:/xampp/htdocs/masteringextjs/build/development/Pact/resources';
+$image-search-path: '/www/masteringextjs/build/development/Packt/resources';
 $theme-name:  'ext-theme-neptune' !default;
 $include-ext-abstractcomponent: true;
 $include-ext-abstractcontainer: true;
@@ -908,6 +908,7 @@ $include-extthemeneptune-picker-month: true;
 $include-extthemeneptune-resizer-splitter: true;
 $include-extthemeneptune-toolbar-paging: true;
 $include-extthemeneptune-toolbar-toolbar: true;
+$include-packt-view-login-login: true;
 $include-pact-application: true;
 $include-pact-view-main-main: true;
 $include-pact-view-main-maincontroller: true;
@@ -918,7 +919,7 @@ $include-pact-view-main-mainmodel: true;
 @import '../../../../../ext/packages/ext-theme-neutral/sass/etc/all';
 /* including package ext-theme-neptune */
 @import '../../../../../ext/packages/ext-theme-neptune/sass/etc/all';
-/* including package Pact */
+/* including package Packt */
 @import '../../../../../sass/etc/all';
 /* including package ext-theme-neptune */
 @import '../../../../../ext/packages/ext-theme-neptune/sass/var/Component';
