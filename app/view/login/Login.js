@@ -1,4 +1,8 @@
 Ext.define('Packt.view.login.Login', {
+	requires: [
+		'Packt.view.login.LoginController'
+	],
+	controller: 'login',
 	extend: 'Ext.window.Window',
 	xtype: 'login-dialog',
 	autoShow: true,
@@ -15,6 +19,7 @@ Ext.define('Packt.view.login.Login', {
 	resizable: false,
 	items: [{
 		xtype: 'form',
+		reference: 'form',
 		bodyPadding: 15,
 		defaults: {
 			xtype: 'textfield',
@@ -28,13 +33,22 @@ Ext.define('Packt.view.login.Login', {
 		items: [{
 			name: 'user',
 			fieldLabel: 'User',
-			maxLength: 25
+			maxLength: 25,
+			listeners: {
+				specialKey: 'onTextFieldSpecialKey'
+			}
 		}, {
+			id: 'password',
 			inputType: 'password',
 			name: 'password',
 			fieldLabel: 'Password',
 			vtype: 'customPass',
-			msgTarget: 'side'
+			msgTarget: 'side',
+			enableKeyEvents: true,
+			listeners: {
+				specialKey: 'onTextFieldSpecialKey',
+				keypress: 'onTextFieldKeyPress'
+			}
 		}],
 		dockedItems: [{
 			xtype: 'toolbar',
@@ -44,12 +58,14 @@ Ext.define('Packt.view.login.Login', {
 			}, {
 				xtype: 'button',
 				iconCls: 'fa fa-times fa-lg',
-				text: 'Cancel'
+				text: 'Cancel',
+				listeners: { click: 'onButtonClickCancel' }
 			}, {
 				xtype: 'button',
 				formBind: true,
 				iconCls: 'fa fa-sign-in fa-lg',
-				text: 'Submit'
+				text: 'Submit',
+				listeners: { click: 'onButtonClickSubmit' }
 			}]
 		}]
 	}]

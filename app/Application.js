@@ -15,6 +15,8 @@ Ext.define('Packt.Application', {
     views: [
         'login.Login'
     ],
+
+    enableQuickTips: true,
     
     launch: function () {
     	var me = this;
