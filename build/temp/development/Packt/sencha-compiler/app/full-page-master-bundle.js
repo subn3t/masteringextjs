@@ -1,3 +1,3 @@
 // @tag full-page
-// @require c:\xampp\htdocs\masteringextjs\app.js
-// @require c:\xampp\htdocs\masteringextjs\app\CustomVTypes.js
+// @require /www/masteringextjs/app.js
+// @require /www/masteringextjs/app/CustomVTypes.js
