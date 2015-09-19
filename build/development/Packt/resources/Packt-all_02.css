@@ -1,3 +1,20 @@
+/* line 414, ../../../../ext/packages/ext-theme-base/sass/etc/mixins/frame.scss */
+.x-btn-group-default-framed-tl,
+.x-btn-group-default-framed-bl,
+.x-btn-group-default-framed-tr,
+.x-btn-group-default-framed-br,
+.x-btn-group-default-framed-tc,
+.x-btn-group-default-framed-bc,
+.x-btn-group-default-framed-ml,
+.x-btn-group-default-framed-mr {
+  background-image: url(images/btn-group/btn-group-default-framed-corners.gif); }
+
+/* line 454, ../../../../ext/packages/ext-theme-base/sass/etc/mixins/frame.scss */
+.x-btn-group-default-framed-ml,
+.x-btn-group-default-framed-mr {
+  background-image: url(images/btn-group/btn-group-default-framed-sides.gif);
+  background-repeat: repeat-y; }
+
 /* line 464, ../../../../ext/packages/ext-theme-base/sass/etc/mixins/frame.scss */
 .x-btn-group-default-framed-mc {
   padding: 0px 1px 0px 1px; }
@@ -6267,3 +6284,25 @@ tr.x-grid-subtable-row {
 /* line 56, ../../../../ext/packages/ext-theme-neptune/sass/src/resizer/Resizer.scss */
 .x-resizable-pinned .x-resizable-handle-southwest {
   background-position: 2px -2px; }
+
+/* including package Packt */
+/* line 3, ../../../../sass/src/view/main/Footer.scss */
+.app-footer-title {
+  color: #0b67c4;
+  font-size: 12px;
+  font-weight: bold; }
+
+/* line 9, ../../../../sass/src/view/main/Footer.scss */
+.app-footer {
+  border-top: 1px solid #07417c; }
+
+/* line 3, ../../../../sass/src/view/main/Header.scss */
+.app-header-logo {
+  color: #2a3f5d; }
+
+/* line 7, ../../../../sass/src/view/main/Header.scss */
+.app-header-title {
+  padding: 5px 0 5px 3px;
+  color: #2a3f5d;
+  font-size: 18px;
+  font-weight: bold; }
