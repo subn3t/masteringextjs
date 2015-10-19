@@ -67,7 +67,8 @@ Ext.define('Ext.util.Floating', {
 
     /**
      * @property {Ext.ZIndexManager} zIndexManager
-     * Only present for {@link Ext.Component#floating floating} Components after they have been rendered.
+     * Only present for {@link Ext.Component#cfg-floating floating} Components after 
+     * they have been rendered.
      *
      * A reference to the ZIndexManager which is managing this Component's z-index.
      *
@@ -78,26 +79,28 @@ Ext.define('Ext.util.Floating', {
      * z-index stack.
      *
      * This defaults to the global {@link Ext.WindowManager ZIndexManager} for floating Components that are
-     * programatically {@link Ext.Component#method-render rendered}.
+     * programmatically {@link Ext.Component#method-render rendered}.
      *
-     * For {@link Ext.Component#floating floating} Components which are added to a
+     * For {@link Ext.Component#cfg-floating floating} Components which are added to a
      * Container, the ZIndexManager is acquired from the first ancestor Container found
      * which is floating. If no floating ancestor is found, the global
      * {@link Ext.WindowManager ZIndexManager} is used.
      *
-     * See {@link Ext.Component#floating} and {@link #zIndexParent}
+     * See {@link Ext.Component#cfg-floating} and {@link #zIndexParent}
      * @readonly
      */
 
     /**
      * @property {Ext.Container} zIndexParent
-     * Only present for {@link Ext.Component#floating} Components which were inserted as child items of Containers, and which have a floating
-     * Container in their containment ancestry.
+     * Only present for {@link Ext.Component#cfg-floating} Components which were 
+     * inserted as child items of Containers, and which have a floating Container in 
+     * their containment ancestry.
      *
-     * For {@link Ext.Component#floating} Components which are child items of a Container, the zIndexParent will be a floating
-     * ancestor Container which is responsible for the base z-index value of all its floating descendants. It provides
-     * a {@link Ext.ZIndexManager ZIndexManager} which provides z-indexing services for all its descendant floating
-     * Components.
+     * For {@link Ext.Component#cfg-floating} Components which are child items of a 
+     * Container, the zIndexParent will be a floating ancestor Container which is 
+     * responsible for the base z-index value of all its floating descendants. It 
+     * provides a {@link Ext.ZIndexManager ZIndexManager} which provides z-indexing 
+     * services for all its descendant floating Components.
      *
      * Floating Components that are programmatically {@link Ext.Component#method-render rendered} will not have a `zIndexParent`
      * property.
@@ -105,7 +108,7 @@ Ext.define('Ext.util.Floating', {
      * For example, the dropdown {@link Ext.view.BoundList BoundList} of a ComboBox which is in a Window will have the
      * Window as its `zIndexParent`, and will always show above that Window, wherever the Window is placed in the z-index stack.
      *
-     * See {@link Ext.Component#floating} and {@link #zIndexManager}
+     * See {@link Ext.Component#cfg-floating} and {@link #zIndexManager}
      * @readonly
      */
 

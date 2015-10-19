@@ -28,7 +28,8 @@ Ext.define('Ext.grid.locking.View', {
     eventRelayRe: /^(beforeitem|beforecontainer|item|container|cell|refresh)/,
 
     constructor: function(config){
-        var me = this,
+        var ext = Ext,
+            me = this,
             lockedView,
             normalView;
 
@@ -36,13 +37,13 @@ Ext.define('Ext.grid.locking.View', {
         me.ownerGrid.view = me;
 
         // A single NavigationModel is configured into both views.
-        me.navigationModel = config.locked.xtype === 'treepanel' ? new Ext.tree.NavigationModel(me) : new Ext.grid.NavigationModel(me);
+        me.navigationModel = config.locked.xtype === 'treepanel' ? new ext.tree.NavigationModel(me) : new ext.grid.NavigationModel(me);
 
         // Disable store binding for the two child views.
         // The store is bound to the *this* locking View.
         // This avoids the store being bound to two views (with duplicated layouts on each store mutation)
         // and also avoids the store being bound to the selection model twice.
-        config.locked.viewConfig.bindStore = Ext.emptyFn;
+        config.locked.viewConfig.bindStore = ext.emptyFn;
         config.normal.viewConfig.bindStore = me.subViewBindStore;
         config.normal.viewConfig.isNormalView = config.locked.viewConfig.isLockedView = true;
 
@@ -54,7 +55,7 @@ Ext.define('Ext.grid.locking.View', {
         // Share the same NavigationModel
         config.locked.viewConfig.navigationModel = config.normal.viewConfig.navigationModel = me.navigationModel;
 
-        me.lockedGrid = me.ownerGrid.lockedGrid = Ext.ComponentManager.create(config.locked);
+        me.lockedGrid = me.ownerGrid.lockedGrid = ext.ComponentManager.create(config.locked);
 
         me.lockedView = lockedView = me.lockedGrid.getView();
 
@@ -62,7 +63,7 @@ Ext.define('Ext.grid.locking.View', {
         // Locked grid has a right border so we must increment by the border width: 1px.
         // TODO: Use shrinkWrapDock on the locked grid when it works.
         if (me.ownerGrid.shrinkWrapLocked) {
-            me.lockedGrid.width += (Ext.num(lockedView.getSelectionModel().headerWidth, 0) + (me.lockedGrid.getVisibleColumnManager().getColumns().length ? 1 : 0));
+            me.lockedGrid.width += (ext.num(lockedView.getSelectionModel().headerWidth, 0) + (me.lockedGrid.getVisibleColumnManager().getColumns().length ? 1 : 0));
         }
 
         // The normal view uses the same selection model
@@ -84,7 +85,7 @@ Ext.define('Ext.grid.locking.View', {
         // Inject lockingGrid and normalGrid into owning panel.
         // This is because during constraction, it must be possible for descendant components
         // to navigate up to the owning lockable panel and then down into either side.
-        me.normalGrid = me.ownerGrid.normalGrid = Ext.ComponentManager.create(config.normal);
+        me.normalGrid = me.ownerGrid.normalGrid = ext.ComponentManager.create(config.normal);
         lockedView.lockingPartner = normalView = me.normalView = me.normalGrid.getView();
         normalView.lockingPartner = lockedView;
 
@@ -92,9 +93,12 @@ Ext.define('Ext.grid.locking.View', {
 
         me.mixins.observable.constructor.call(me);
 
-        // relay both view's events
-        me.relayEvents(lockedView, Ext.view.Table.events);
-        me.relayEvents(normalView, Ext.view.Table.events);
+        // Relay both view's events.
+        me.relayEvents(lockedView, ext.view.Table.events);
+
+        // Relay extra events from only the normal view.
+        // These are events that both sides fire (selection events), so avoid firing them twice.
+        me.relayEvents(normalView, ext.view.Table.events.concat(ext.view.Table.normalSideEvents));
 
         normalView.on({
             scope: me,
@@ -131,18 +135,12 @@ Ext.define('Ext.grid.locking.View', {
 
     // This is injected into the two child views as the bindStore implementation.
     // Subviews in a lockable asseembly do not bind to stores.
-    subViewBindStore: function (dataSource) {
-        var me = this,
-            selModel = me.getSelectionModel();
+    subViewBindStore: function (store) {
+        var selModel = this.getSelectionModel();
 
-        // SelectionModel must bind to the underlying store, not the dataSource (may be a FeatureStore)
-        // If dataSource is null we're unbinding, so don't bind the store. If we're reconfiguring, then the
-        // dataSource we get here will be the store
-        if (dataSource !== null && !me.ownerGrid.reconfiguring) {
-            dataSource = me.store;
-        }
-        selModel.bindStore(dataSource);
-        selModel.bindComponent(me);
+        // If `store` is null we're unbinding, so don't bind the store.
+        selModel.bindStore(store);
+        selModel.bindComponent(this);
     },
 
     // Called in the context of a child view when the first child view begins its layout run
@@ -327,15 +325,30 @@ Ext.define('Ext.grid.locking.View', {
     getStoreListeners: function() {
         var me = this;
         return {
+            // Give view listeners the highest priority, since they need to relay things to
+            // children first
+            priority: 1000,
             refresh: me.onDataRefresh,
             replace: me.onReplace,
             add: me.onAdd,
             remove: me.onRemove,
             update: me.onUpdate,
-            clear: me.refresh,
+            clear: me.onDataRefresh,
             beginupdate: me.onBeginUpdate,
             endupdate: me.onEndUpdate
         };
+    },
+
+    onOwnerGridHide: function() {
+        Ext.suspendLayouts();
+        this.relayFn('onOwnerGridHide', arguments);
+        Ext.resumeLayouts(true);
+    },
+
+    onOwnerGridShow: function() {
+        Ext.suspendLayouts();
+        this.relayFn('onOwnerGridShow', arguments);
+        Ext.resumeLayouts(true);
     },
 
     onBeginUpdate: function() {
@@ -375,28 +388,30 @@ Ext.define('Ext.grid.locking.View', {
     },
 
     onUpdate: function() {
-        var normalView = this.normalGrid.view;
-
         Ext.suspendLayouts();
         this.relayFn('onUpdate', arguments);
-
-        // The update might have only updated the locked side (with no scrollbar present)
-        // Ensure that the scroll range is updated on the normal side when all layouts are complete.
-        // Note that the following resumeLayouts call probably is NOT the outermost layout resumption.
-        if (normalView.hasVariableRowHeight() && normalView.bufferedRenderer) {
-            Ext.on({
-                afterlayout: normalView.bufferedRenderer.refreshSize,
-                scope: normalView.bufferedRenderer,
-                single: true
-            });
-        }
-
         Ext.resumeLayouts(true);
     },
 
     refresh: function() {
         Ext.suspendLayouts();
         this.relayFn('refresh', arguments);
+        Ext.resumeLayouts(true);
+    },
+
+    refreshView: function() {
+        Ext.suspendLayouts();
+        this.relayFn('refreshView', arguments);
+        Ext.resumeLayouts(true);
+    },
+    
+    setScrollable: function(scrollable) {
+        Ext.suspendLayouts();
+        this.lockedView.setScrollable(scrollable);
+        if (scrollable.isScroller) {
+            scrollable = Ext.scroll.Scroller.create(scrollable.initialConfig);
+        }
+        this.normalView.setScrollable(scrollable);
         Ext.resumeLayouts(true);
     },
 

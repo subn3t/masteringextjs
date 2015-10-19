@@ -97,8 +97,8 @@
  * horizontally to full width. Child items may either be configured with a numeric height, or with a `flex` value to
  * distribute available space proportionately.
  *
- * This Panel itself may be a child item of, for exaple, a {@link Ext.tab.Panel} which will size its child items to fit
- * within its content area.
+ * This Panel itself may be a child item of, for example, a {@link Ext.tab.Panel} which 
+ * will size its child items to fit within its content area.
  *
  * Using these techniques, as long as the **layout** is chosen and configured correctly, an application may have any
  * level of nested containment, all dynamically sized according to configuration, the user's preference and available
@@ -158,65 +158,61 @@ Ext.define('Ext.panel.Panel', {
 
     beforeRenderConfig: {
         /**
-         * @cfg {Number/String} glyph
-         * @inheritdoc Ext.panel.Header#glyph
+         * @cfg glyph
+         * @inheritdoc Ext.panel.Header#cfg-glyph
+         * @accessor
          */
         glyph: null,
 
         /**
-         * @cfg {String} [headerPosition='top']
+         * @cfg {'top'/'bottom'/'left'/'right'} [headerPosition='top']
          * Specify as `'top'`, `'bottom'`, `'left'` or `'right'`.
+         * @accessor
          */
         headerPosition: null,
 
         /**
-         * @cfg {String} icon
-         * @inheritdoc Ext.panel.Header#icon
+         * @cfg icon
+         * @inheritdoc Ext.panel.Header#cfg-icon
+         * @accessor
          */
         icon: null,
 
         /**
-         * @cfg {'top'/'right'/'bottom'/'left'} [iconAlign='left']
-         * The side of the title to render the icon.
+         * @cfg iconAlign
+         * @inheritdoc Ext.panel.Header#cfg-iconAlign
+         * @accessor
          */
         iconAlign: null,
 
         /**
-         * @cfg {String} iconCls
-         * @inheritdoc Ext.panel.Header#iconCls
+         * @cfg iconCls
+         * @inheritdoc Ext.panel.Header#cfg-iconCls
+         * @accessor
          */
         iconCls: null,
 
         /**
          * @cfg {String}
-         * The title text to be used to display in the {@link Ext.panel.Header Panel Header}.
-         * Or a config object for a {@link Ext.panel.Title Panel Title}. When a `title` is
-         * specified the {@link Ext.panel.Header} will automatically be created and
-         * displayed unless {@link #header} is set to `false`.
+         * @inheritdoc Ext.panel.Header#title
+         * @localdoc When a `title` is specified, the {@link Ext.panel.Header} will 
+         * automatically be created and displayed unless {@link #header} is set to 
+         * `false`.
+         * @accessor
          */
         title: null,
 
         /**
-         * @cfg {String} [titleAlign='left']
-         * The alignment of the title text within the available space between the
-         * icon and the tools.
+         * @cfg titleAlign
+         * @inheritdoc Ext.panel.Header#cfg-titleAlign
+         * @accessor
          */
         titleAlign: null,
 
         /**
-         * @cfg {'default'/0/1/2} [titleRotation='default']
-         * The rotation of the header's title text.  Can be one of the following values:
-         *
-         * - `'default'` - use the default rotation, depending on the dock position of the header
-         * - `0` - no rotation
-         * - `1` - rotate 90deg clockwise
-         * - `2` - rotate 90deg counter-clockwise
-         *
-         * The default behavior of this config depends on the dock position of the header:
-         *
-         * - `'top'` or `'bottom'` - `0`
-         * - `'right'` - `1`
-         * - `'left'` - `1`
+         * @cfg titleRotation
+         * @inheritdoc Ext.panel.Header#cfg-titleRotation
+         * @accessor
          */
         titleRotation: null
     },
@@ -276,6 +272,8 @@ Ext.define('Ext.panel.Panel', {
      * Leaving the value as `true` uses the selected theme's {@link Ext.panel.Panel#$panel-border-width}
      *
      * Defaults to `false` when using or extending Neptune.
+     * 
+     * **Note:** is ignored when {@link #frame} is set to **true**.
      */
     border: true,
 
@@ -579,6 +577,8 @@ Ext.define('Ext.panel.Panel', {
     /**
      * @cfg {Boolean} frame
      * True to apply a frame to the panel.
+     * 
+     * **Note:** `frame: true` overrides {@link #border border:false}
      */
     frame: false,
 
@@ -742,6 +742,16 @@ Ext.define('Ext.panel.Panel', {
      *     // Floating components begin life hidden
      *     win.child('[title=Floating Panel]').show();
      *
+     */
+
+    /**
+     * @cfg stateEvents
+     * @inheritdoc Ext.state.Stateful#cfg-stateEvents
+     * @localdoc By default the following stateEvents are added:
+     * 
+     *  - {@link #event-resize} - _(added by Ext.Component)_
+     *  - {@link #event-collapse}
+     *  - {@link #event-expand}
      */
 
     /**
@@ -1111,6 +1121,11 @@ Ext.define('Ext.panel.Panel', {
     beforeRender: function() {
         var me = this,
             wasCollapsed;
+
+        // Ensure the protoBody exists so that initOverflow gets right answer from getOverflowEl.
+        // If this Panel was applied to an existing element (such as being used as a Viewport)
+        // then it will not have been created.
+        me.getProtoBody();
 
         me.callParent();
 
@@ -2288,9 +2303,8 @@ Ext.define('Ext.panel.Panel', {
         return data;
     },
 
-    /*
+    /**
      * @private
-     * @override
      * Override of Positionable method to calculate constrained position based upon possibly only
      * constraining our header.
      */

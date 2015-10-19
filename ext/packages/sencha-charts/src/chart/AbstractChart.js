@@ -80,7 +80,6 @@
  * each series (Line, Bar, Pie, etc).
  *
  */
-
 Ext.define('Ext.chart.AbstractChart', {
 
     extend: 'Ext.draw.Container',
@@ -286,7 +285,7 @@ Ext.define('Ext.chart.AbstractChart', {
          * @cfg {Boolean/Object} shadow (optional) `true` for the default shadow configuration
          * `{shadowOffsetX: 2, shadowOffsetY: 2, shadowBlur: 3, shadowColor: '#444'}`
          * or a standard shadow config object to be used for default chart shadows.
-         * @hide
+         * @ignore
          */
         shadow: false,
 
@@ -1050,6 +1049,8 @@ Ext.define('Ext.chart.AbstractChart', {
     },
 
     updateSpriteTheme: function (theme) {
+        this.getSprites();
+
         var me = this,
             chartSurface = me.getSurface('chart'),
             sprites = chartSurface.getItems(),

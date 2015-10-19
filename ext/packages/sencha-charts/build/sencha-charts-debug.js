@@ -1523,6 +1523,8 @@ Ext.define('Ext.draw.sprite.AttributeDefinition', {
          * Processor declaration in the form of 'processorFactory(argument1,argument2,...)'.
          * E.g.: {@link Ext.draw.sprite.AttributeParser#enums enums},
          * {@link Ext.draw.sprite.AttributeParser#limited limited}.
+         * @static
+         * @inheritable
          */
         processorFactoryRe: /^(\w+)\(([\w\-,]*)\)$/
     },
@@ -3844,6 +3846,12 @@ Ext.define('Ext.draw.sprite.Sprite', {
         'Ext.draw.modifier.Highlight'
     ],
     isSprite: true,
+    statics: {
+        defaultHitTestOptions: {
+            fill: true,
+            stroke: true
+        }
+    },
     inheritableStatics: {
         def: {
             processors: {
@@ -4195,7 +4203,7 @@ Ext.define('Ext.draw.sprite.Sprite', {
             updaters = me.self.def.getUpdaters(),
             any = false,
             dirty = false,
-            flags, updater;
+            flags, updater, fn;
         // If updaters set sprite attributes that trigger other updaters,
         // those updaters are not called right away, but wait until all current
         // updaters are called (till the next do/while loop iteration).
@@ -4207,8 +4215,12 @@ Ext.define('Ext.draw.sprite.Sprite', {
                 any = true;
                 flags = pendingUpdaters[updater];
                 delete pendingUpdaters[updater];
-                if (updaters[updater]) {
-                    updaters[updater].call(me, attr, flags);
+                fn = updaters[updater];
+                if (typeof fn === 'string') {
+                    fn = me[fn];
+                }
+                if (fn) {
+                    fn.call(me, attr, flags);
                 }
             }
             dirty = dirty || any;
@@ -4516,15 +4528,41 @@ Ext.define('Ext.draw.sprite.Sprite', {
      * exactly was hit or null if nothing was hit.
      */
     hitTest: function(point, options) {
-        var x = point[0],
-            y = point[1],
-            bbox = this.getBBox();
-        if (bbox && x >= bbox.left && x <= bbox.right && y >= bbox.top && y <= bbox.bottom) {
-            return {
-                sprite: this
-            };
+        // Meant to be overridden in subclasses for more precise hit testing.
+        // This version doesn't take any options and simply hit tests sprite's
+        // bounding box, if the sprite is visible.
+        if (this.isVisible()) {
+            var x = point[0],
+                y = point[1],
+                bbox = this.getBBox(),
+                isBBoxHit = bbox && x >= bbox.x && x <= (bbox.x + bbox.width) && y >= bbox.y && y <= (bbox.y + bbox.height);
+            if (isBBoxHit) {
+                return {
+                    sprite: this
+                };
+            }
         }
         return null;
+    },
+    /**
+     * @private
+     * Checks if the sprite can be seen.
+     * This includes the `hidden` attribute check, alpha/opacity checks,
+     * fill/stroke color checks and surface/parent checks.
+     * The method doesn't check if the sprite is off-screen.
+     * @return {Boolean} Returns `true`, if the sprite can be seen.
+     */
+    isVisible: function() {
+        var attr = this.attr,
+            parent = this.getParent(),
+            hasParent = parent && (parent.isSurface || parent.isVisible()),
+            isSeen = hasParent && !attr.hidden && attr.globalAlpha,
+            none1 = Ext.draw.Color.NONE,
+            none2 = Ext.draw.Color.RGBA_NONE,
+            hasFill = attr.fillOpacity && attr.fillStyle !== none1 && attr.fillStyle !== none2,
+            hasStroke = attr.strokeOpacity && attr.strokeStyle !== none1 && attr.strokeStyle !== none2,
+            result = isSeen && (hasFill || hasStroke);
+        return !!result;
     },
     repaint: function() {
         var surface = this.getSurface();
@@ -6108,23 +6146,27 @@ Ext.define('Ext.draw.overrides.sprite.Path', {
         var me = this,
             attr = me.attr,
             path = attr.path,
-            bbox = me.getBBox(),
             matrix = attr.matrix,
             x = point[0],
             y = point[1],
-            hasFill = attr.fillStyle !== Ext.draw.Color.NONE && attr.fillStyle !== Ext.draw.Color.RGBA_NONE,
-            bboxHit = bbox && x >= bbox.x && x <= (bbox.x + bbox.width) && y >= bbox.y && y <= (bbox.y + bbox.height),
+            parentResult = me.callParent([
+                point,
+                options
+            ]),
             result = null,
-            params;
-        if (!bboxHit) {
+            params, isFilled;
+        if (!parentResult) {
+            // The sprite is not visible or bounding box wasn't hit.
             return result;
         }
+        options = options || Ext.draw.sprite.Sprite.defaultHitTestOptions;
         if (!matrix.isIdentity()) {
             params = path.params.slice(0);
             path.transform(attr.matrix);
         }
         if (options.fill && options.stroke) {
-            if (hasFill) {
+            isFilled = attr.fillStyle !== Ext.draw.Color.NONE && attr.fillStyle !== Ext.draw.Color.RGBA_NONE;
+            if (isFilled) {
                 if (path.isPointInPath(x, y)) {
                     result = {
                         sprite: me
@@ -6527,6 +6569,17 @@ Ext.define('Ext.draw.sprite.Composite', {
         for (i = 0 , ln = this.sprites.length; i < ln; i++) {
             surface.renderSprite(this.sprites[i], rect);
         }
+    },
+    destroy: function() {
+        var me = this,
+            sprites = me.sprites,
+            ln = sprites.length,
+            i;
+        me.callParent();
+        for (i = 0; i < ln; i++) {
+            sprites[i].destroy();
+        }
+        sprites.length = 0;
     }
 });
 
@@ -7100,6 +7153,18 @@ Ext.define('Ext.draw.sprite.Instancing', {
         this.position = 0;
     },
     /**
+     * @private
+     * Checks if the instancing sprite can be seen.
+     * @return {Boolean}
+     */
+    isVisible: function() {
+        var attr = this.attr,
+            parent = this.getParent(),
+            result;
+        result = parent && parent.isSurface && !attr.hidden && attr.globalAlpha;
+        return !!result;
+    },
+    /**
      * Creates a new sprite instance.
      * 
      * @param {Object} config The configuration of the instance.
@@ -7206,6 +7271,53 @@ Ext.define('Ext.draw.sprite.Instancing', {
         if (this.getTemplate()) {
             this.getTemplate().destroy();
         }
+    }
+});
+
+/**
+ * @private
+ * Adds hit testing methods to the Ext.draw.sprite.Instancing.
+ * Included by the Ext.draw.PathUtil.
+ */
+Ext.define('Ext.draw.overrides.sprite.Instancing', {
+    override: 'Ext.draw.sprite.Instancing',
+    /**
+     * Performs a hit test on the instances of an instancing sprite.
+     * @param point A two-item array containing x and y coordinates of the point.
+     * @param options Hit testing options.
+     * @return {Object} A hit result object that contains more information about what
+     * exactly was hit or null if nothing was hit.
+     * @return {Boolean} return.isInstance `true` if an instance was hit.
+     * @return {Ext.draw.sprite.Instancing} return.sprite The instancing sprite.
+     * @return {Ext.draw.sprite.Sprite} return.template The template of the instancing sprite.
+     * @return {Object} return.instance The attributes of the instance.
+     * @return {Number} return.index The index of the instance.
+     */
+    hitTest: function(point, options) {
+        var me = this,
+            template = me.getTemplate(),
+            originalAttr = template.attr,
+            instances = me.instances,
+            ln = instances.length,
+            i = 0,
+            result = null;
+        if (!me.isVisible()) {
+            return result;
+        }
+        for (; i < ln; i++) {
+            template.attr = instances[i];
+            result = template.hitTest(point, options);
+            if (result) {
+                result.isInstance = true;
+                result.template = result.sprite;
+                result.sprite = this;
+                result.instance = instances[i];
+                result.index = i;
+                return result;
+            }
+        }
+        template.attr = originalAttr;
+        return result;
     }
 });
 
@@ -7706,7 +7818,7 @@ Ext.define('Ext.draw.TextMeasurer', {
  *
  *     @example
  *     Ext.create({
- *        xtype: 'draw', 
+ *        xtype: 'draw',
  *        renderTo: document.body,
  *        width: 600,
  *        height: 400,
@@ -7728,7 +7840,7 @@ Ext.define('Ext.draw.sprite.Text', {
     ],
     alias: 'sprite.text',
     type: 'text',
-    lineBreakRe: /\n/g,
+    lineBreakRe: /\r?\n/g,
     statics: {
         /**
          * Debug rendering options:
@@ -7741,10 +7853,6 @@ Ext.define('Ext.draw.sprite.Text', {
         debug: false
     },
     inheritableStatics: {
-        shortHand1Re: /'(.*)'/g,
-        shortHand2Re: / /g,
-        shortHand3Re: /\s*,\s*/g,
-        shortHand4Re: /\$\$\$\$/g,
         def: {
             animationProcessors: {
                 text: 'text'
@@ -7769,13 +7877,25 @@ Ext.define('Ext.draw.sprite.Text', {
                  * @cfg {String/Number} [fontSize='10px']
                  * The size of the font displayed.
                  */
-                fontSize: function(n) {
-                    if (!isNaN(n)) {
-                        return +n + 'px';
-                    } else if (n.match(Ext.dom.Element.unitRe)) {
-                        return n;
-                    }
-                },
+                fontSize: (function(fontSizes) {
+                    return function(n) {
+                        if (Ext.isNumber(+n)) {
+                            return n + 'px';
+                        } else if (n.match(Ext.dom.Element.unitRe)) {
+                            return n;
+                        } else if (n in fontSizes) {
+                            return n;
+                        }
+                    };
+                })({
+                    'xx-small': 'fontSize',
+                    'x-small': 'fontSize',
+                    'small': 'fontSize',
+                    'medium': 'fontSize',
+                    'large': 'fontSize',
+                    'x-large': 'fontSize',
+                    'xx-large': 'fontSize'
+                }),
                 /**
                  * @cfg {String} [fontStyle='']
                  * The style of the font displayed. {normal, italic, oblique}
@@ -7792,24 +7912,26 @@ Ext.define('Ext.draw.sprite.Text', {
                  */
                 fontWeight: (function(fontWeights) {
                     return function(n) {
-                        if (!n) {
+                        if (n in fontWeights) {
+                            return String(n);
+                        } else {
                             return '';
-                        } else if (n === 'normal') {
-                            return '';
-                        } else if (!isNaN(n)) {
-                            n = +n;
-                            if (100 <= n && n <= 900) {
-                                return n;
-                            }
-                        } else if (n in fontWeights) {
-                            return n;
                         }
                     };
                 })({
                     normal: true,
                     bold: true,
                     bolder: true,
-                    lighter: true
+                    lighter: true,
+                    100: true,
+                    200: true,
+                    300: true,
+                    400: true,
+                    500: true,
+                    600: true,
+                    700: true,
+                    800: true,
+                    900: true
                 }),
                 /**
                  * @cfg {String} [fontFamily='sans-serif']
@@ -7818,7 +7940,8 @@ Ext.define('Ext.draw.sprite.Text', {
                 fontFamily: 'string',
                 /**
                  * @cfg {String} [textAlign='start']
-                 * The alignment of the text displayed. {left, right, center, start, end}
+                 * The alignment of the text displayed.
+                 * {left, right, center, start, end}
                  */
                 textAlign: (function(textAligns) {
                     return function(n) {
@@ -7834,7 +7957,8 @@ Ext.define('Ext.draw.sprite.Text', {
                 }),
                 /**
                  * @cfg {String} [textBaseline="alphabetic"]
-                 * The baseline of the text displayed. {top, hanging, middle, alphabetic, ideographic, bottom}
+                 * The baseline of the text displayed.
+                 * {top, hanging, middle, alphabetic, ideographic, bottom}
                  */
                 textBaseline: (function(textBaselines) {
                     return function(n) {
@@ -7853,7 +7977,7 @@ Ext.define('Ext.draw.sprite.Text', {
                  * @cfg {String} [font='10px sans-serif']
                  * The font displayed.
                  */
-                font: "string",
+                font: 'string',
                 debug: 'default'
             },
             aliases: {
@@ -7879,12 +8003,12 @@ Ext.define('Ext.draw.sprite.Text', {
                 text: ''
             },
             triggers: {
-                fontStyle: 'font,bbox',
-                fontVariant: 'font,bbox',
-                fontWeight: 'font,bbox',
-                fontSize: 'font,bbox',
-                fontFamily: 'font,bbox',
-                font: 'font-short-hand,bbox,canvas',
+                fontStyle: 'fontX,bbox',
+                fontVariant: 'fontX,bbox',
+                fontWeight: 'fontX,bbox',
+                fontSize: 'fontX,bbox',
+                fontFamily: 'fontX,bbox',
+                font: 'font,bbox,canvas',
                 textBaseline: 'bbox',
                 textAlign: 'bbox',
                 x: 'bbox',
@@ -7892,68 +8016,8 @@ Ext.define('Ext.draw.sprite.Text', {
                 text: 'bbox'
             },
             updaters: {
-                'font-short-hand': (function(dispatcher) {
-                    return function(attrs) {
-                        // TODO: Do this according to http://www.w3.org/TR/CSS21/fonts.html#font-shorthand
-                        var value = attrs.font,
-                            parts, part, i, ln, dispKey;
-                        value = value.replace(Ext.draw.sprite.Text.shortHand1Re, function(a, arg1) {
-                            return arg1.replace(Ext.draw.sprite.Text.shortHand2Re, '$$$$');
-                        });
-                        value = value.replace(Ext.draw.sprite.Text.shortHand3Re, ',');
-                        parts = value.split(' ');
-                        attrs = {};
-                        for (i = 0 , ln = parts.length; i < ln; i++) {
-                            part = parts[i];
-                            dispKey = dispatcher[part];
-                            if (dispKey) {
-                                attrs[dispKey] = part;
-                            } else if (part.match(Ext.dom.Element.unitRe)) {
-                                attrs.fontSize = part;
-                            } else {
-                                attrs.fontFamily = part.replace(Ext.draw.sprite.Text.shortHand4Re, ' ');
-                            }
-                        }
-                        this.setAttributes(attrs, true);
-                    };
-                })({
-                    'italic': 'fontStyle',
-                    'oblique': 'fontStyle',
-                    'bold': 'fontWeight',
-                    'bolder': 'fontWeight',
-                    'lighter': 'fontWeight',
-                    '100': 'fontWeight',
-                    '200': 'fontWeight',
-                    '300': 'fontWeight',
-                    '400': 'fontWeight',
-                    '500': 'fontWeight',
-                    '600': 'fontWeight',
-                    '700': 'fontWeight',
-                    '800': 'fontWeight',
-                    '900': 'fontWeight',
-                    'small-caps': 'fontVariant'
-                }),
-                font: function(attrs) {
-                    var font = '';
-                    if (attrs.fontWeight) {
-                        font += attrs.fontWeight + ' ';
-                    }
-                    if (attrs.fontStyle) {
-                        font += attrs.fontStyle + ' ';
-                    }
-                    if (attrs.fontVariant) {
-                        font += attrs.fontVariant + ' ';
-                    }
-                    if (attrs.fontSize) {
-                        font += attrs.fontSize + ' ';
-                    }
-                    if (attrs.fontFamily) {
-                        font += attrs.fontFamily;
-                    }
-                    this.setAttributes({
-                        font: font
-                    }, true);
-                }
+                fontX: 'makeFontShorthand',
+                font: 'parseFontShorthand'
             }
         }
     },
@@ -7968,6 +8032,120 @@ Ext.define('Ext.draw.sprite.Text', {
         }
         Ext.draw.sprite.Sprite.prototype.constructor.call(this, config);
     },
+    // Maps values to font properties they belong to.
+    fontValuesMap: {
+        // Skip 'normal' and 'inherit' values, as the first one
+        // is the default and the second one has no meaning in Canvas.
+        'italic': 'fontStyle',
+        'oblique': 'fontStyle',
+        'small-caps': 'fontVariant',
+        'bold': 'fontWeight',
+        'bolder': 'fontWeight',
+        'lighter': 'fontWeight',
+        '100': 'fontWeight',
+        '200': 'fontWeight',
+        '300': 'fontWeight',
+        '400': 'fontWeight',
+        '500': 'fontWeight',
+        '600': 'fontWeight',
+        '700': 'fontWeight',
+        '800': 'fontWeight',
+        '900': 'fontWeight',
+        // Absolute font sizes.
+        'xx-small': 'fontSize',
+        'x-small': 'fontSize',
+        'small': 'fontSize',
+        'medium': 'fontSize',
+        'large': 'fontSize',
+        'x-large': 'fontSize',
+        'xx-large': 'fontSize'
+    },
+    // Relative font sizes like 'smaller' and 'larger'
+    // have no meaning, and are not included.
+    makeFontShorthand: function(attr) {
+        var parts = [];
+        if (attr.fontStyle) {
+            parts.push(attr.fontStyle);
+        }
+        if (attr.fontVariant) {
+            parts.push(attr.fontVariant);
+        }
+        if (attr.fontWeight) {
+            parts.push(attr.fontWeight);
+        }
+        if (attr.fontSize) {
+            parts.push(attr.fontSize);
+        }
+        if (attr.fontFamily) {
+            parts.push(attr.fontFamily);
+        }
+        this.setAttributes({
+            font: parts.join(' ')
+        }, true);
+    },
+    // For more info see:
+    // http://www.w3.org/TR/CSS21/fonts.html#font-shorthand
+    parseFontShorthand: function(attr) {
+        var value = attr.font,
+            ln = value.length,
+            changes = {},
+            dispatcher = this.fontValuesMap,
+            start = 0,
+            end, slashIndex, part, fontProperty;
+        while (start < ln && end !== -1) {
+            end = value.indexOf(' ', start);
+            if (end < 0) {
+                part = value.substr(start);
+            } else if (end > start) {
+                part = value.substr(start, end - start);
+            } else {
+                
+                continue;
+            }
+            // Since Canvas fillText doesn't support multi-line text,
+            // it is assumed that line height is never specified, i.e.
+            // in entries like these the part after slash is omitted:
+            // 12px/14px sans-serif
+            // x-large/110% "New Century Schoolbook", serif
+            slashIndex = part.indexOf('/');
+            if (slashIndex > 0) {
+                part = part.substr(0, slashIndex);
+            } else if (slashIndex === 0) {
+                
+                continue;
+            }
+            // All optional font properties (fontStyle, fontVariant or fontWeight) can be 'normal'.
+            // They can go in any order. Which ones are 'normal' is determined by elimination.
+            // E.g. if only fontVariant is specified, then 'normal' applies to fontStyle and fontWeight.
+            // If none are explicitly mentioned, then all are 'normal'.
+            if (part !== 'normal' && part !== 'inherit') {
+                fontProperty = dispatcher[part];
+                if (fontProperty) {
+                    changes[fontProperty] = part;
+                } else if (part.match(Ext.dom.Element.unitRe)) {
+                    changes.fontSize = part;
+                } else {
+                    // Assuming that font family always goes last in the font shorthand.
+                    changes.fontFamily = value.substr(start);
+                    break;
+                }
+            }
+            start = end + 1;
+        }
+        if (!changes.fontStyle) {
+            changes.fontStyle = '';
+        }
+        // same as 'normal'
+        if (!changes.fontVariant) {
+            changes.fontVariant = '';
+        }
+        // same as 'normal'
+        if (!changes.fontWeight) {
+            changes.fontWeight = '';
+        }
+        // same as 'normal'
+        this.setAttributes(changes, true);
+    },
     // Overriding the getBBox method of the abstract sprite here to always
     // recalculate the bounding box of the text in flipped RTL mode
     // because in that case the position of the sprite depends not just on
@@ -7978,7 +8156,7 @@ Ext.define('Ext.draw.sprite.Text', {
             plain = me.attr.bbox.plain,
             surface = me.getSurface();
         if (!surface) {
-            Ext.Error.raise("The sprite does not belong to a surface.");
+            Ext.raise("The sprite does not belong to a surface.");
         }
         if (plain.dirty) {
             me.updatePlainBBox(plain);
@@ -8022,11 +8200,16 @@ Ext.define('Ext.draw.sprite.Text', {
             ln = sizes ? sizes.length : 0,
             lineWidth,
             i = 0;
-        // To get consistent results in all browsers we don't apply textAlign and textBaseline
-        // attributes of the sprite to context, so text is always left aligned and has an alphabetic baseline.
-        // Instead we have to calculate the horizontal offset of each line based on sprite's textAlign,
-        // and the vertical offset of the bounding box based on sprite's textBaseline.
-        // These offsets are then used by the sprite's 'render' method to position text properly.
+        // To get consistent results in all browsers we don't apply textAlign
+        // and textBaseline attributes of the sprite to context, so text is always
+        // left aligned and has an alphabetic baseline.
+        //
+        // Instead we have to calculate the horizontal offset of each line
+        // based on sprite's textAlign, and the vertical offset of the bounding box
+        // based on sprite's textBaseline.
+        //
+        // These offsets are then used by the sprite's 'render' method
+        // to position text properly.
         switch (baseline) {
             case 'hanging':
             case 'top':
@@ -8084,16 +8267,6 @@ Ext.define('Ext.draw.sprite.Text', {
             text: text
         }, true);
     },
-    setElementStyles: function(element, styles) {
-        var stylesCache = element.stylesCache || (element.stylesCache = {}),
-            style = element.dom.style,
-            name;
-        for (name in styles) {
-            if (stylesCache[name] !== styles[name]) {
-                stylesCache[name] = style[name] = styles[name];
-            }
-        }
-    },
     renderBBox: function(surface, ctx) {
         var bbox = this.getBBox(true);
         ctx.beginPath();
@@ -8118,7 +8291,7 @@ Ext.define('Ext.draw.sprite.Text', {
         if (attr.text.length === 0) {
             return;
         }
-        lines = attr.text.split('\n');
+        lines = attr.text.split(me.lineBreakRe);
         lineHeight = bbox.height / lines.length;
         // Simulate textBaseline and textAlign.
         x = attr.bbox.plain.x;
@@ -11641,14 +11814,6 @@ Ext.define('Ext.draw.engine.Canvas', {
         this.canvases.push(canvas);
         this.contexts.push(ctx);
     },
-    // Have to create canvas element here, instead of in the initElement,
-    // because otherwise the created canvas will be cached along with the
-    // surface's markup and used as a template for future surface
-    // instances.
-    afterCachedConfig: function() {
-        this.callParent();
-        this.createCanvas();
-    },
     updateHighPrecision: function(highPrecision) {
         var contexts = this.contexts,
             ln = contexts.length,
@@ -12532,10 +12697,10 @@ Ext.define('Ext.draw.Container', {
         }
     },
     /**
-     * Produces an image of the chart.
-     * @param {String} [format] Possible options are 'image' (the method will return an Image object)
-     *                          and 'stream' (the method will return the image as a byte stream).
-     *                          If missing, the DataURL of the chart's image will be returned.
+     * Produces an image of the chart / drawing.
+     * @param {String} [format] Possible options are 'image' (the method will return an 
+     * Image object) and 'stream' (the method will return the image as a byte stream).  
+     * If missing, the DataURL of the drawing's (or chart's) image will be returned.
      * @return {Object}
      * @return {String} return.data Image element, byte stream or DataURL.
      * @return {String} return.type The type of the data (e.g. 'png' or 'svg').
@@ -12571,10 +12736,10 @@ Ext.define('Ext.draw.Container', {
         return image;
     },
     /**
-     * Downloads an image or PDF of the chart or opens it in a separate browser tab/window
-     * if the download can't be triggered. The exact behavior is platform and browser
-     * specific. For more consistent results on mobile devices use the {@link #preview}
-     * method instead.
+     * Downloads an image or PDF of the chart / drawing or opens it in a separate 
+     * browser tab/window if the download can't be triggered. The exact behavior is 
+     * platform and browser specific. For more consistent results on mobile devices use 
+     * the {@link #preview} method instead.
      *
      * @param {Object} [config] The following config options are supported:
      *
@@ -13708,8 +13873,8 @@ Ext.define('Ext.chart.series.Series', {
          * Whether to show this series in the legend.
          */
         showInLegend: true,
-        //@private triggerdrawlistener flag
         triggerAfterDraw: false,
+        // private triggerdrawlistener flag
         /**
          * @cfg {Object} style Custom style configuration for the sprite used in the series.
          * It overrides the style that is provided by the current theme.
@@ -13923,20 +14088,41 @@ Ext.define('Ext.chart.series.Series', {
         animation: null,
         /**
          * @cfg {Object} tooltip
-         * Add tooltips to the visualization's markers. The options for the tooltip are the
-         * same configuration used with {@link Ext.tip.ToolTip}. For example:
+         * Add tooltips to the visualization's markers. The config options for the 
+         * tooltip are the same configuration used with {@link Ext.tip.ToolTip} plus a 
+         * `renderer` config option. For example:
          *
          *     tooltip: {
          *       trackMouse: true,
          *       width: 140,
          *       height: 28,
-         *       renderer: function (storeItem, item) {
-         *           this.setHtml(storeItem.get('name') + ': ' + storeItem.get('data1') + ' views');
+         *       renderer: function (record, ctx) {
+         *           this.setHtml(record.get('name') + ': ' + record.get('data1') + ' views');
          *       }
          *     }
          *
          * Note that tooltips are shown for series markers and won't work
          * if the {@link #marker} is not configured.
+         * @cfg {Function} tooltip.renderer An 'interceptor' method which can be used to 
+         * modify the tooltip attributes before it is shown.  The renderer function's 
+         * scope is the tooltip instance.  The renderer function is passed the following 
+         * params:
+         * @cfg {Ext.data.Model} tooltip.renderer.record The record instance for the 
+         * chart item (sprite) currently targeted by the tooltip.
+         * @cfg {Object} tooltip.renderer.ctx A data object with values relating to the 
+         * currently targeted chart sprite
+         * @cfg {String} tooltip.renderer.ctx.category The type of sprite passed to the 
+         * renderer function (will be "items", "markers", or "labels" depending on the 
+         * target sprite of the tooltip)
+         * @cfg {String} tooltip.renderer.ctx.field The {@link Ext.chart.series.Cartesian#cfg-yField yField} for the series
+         * @cfg {Number} tooltip.renderer.ctx.index The target sprite's index within the 
+         * series' items
+         * @cfg {Ext.data.Model} tooltip.renderer.ctx.record The record instance for the 
+         * chart item (sprite) currently targeted by the tooltip.
+         * @cfg {Ext.chart.series.Series} tooltip.renderer.ctx.series The series instance 
+         * containing the tooltip's target sprite
+         * @cfg {Ext.draw.sprite.Sprite} tooltip.renderer.ctx.sprite The sprite (item) 
+         * target of the tooltip
          */
         tooltip: null
     },
@@ -14261,15 +14447,21 @@ Ext.define('Ext.chart.series.Series', {
         var data = [],
             length = items.length,
             layout = axis && axis.getLayout(),
-            coord = axis ? function(x, field, idx, items) {
-                return layout.getCoordFor(x, field, idx, items);
-            } : function(x) {
-                return +x;
-            },
             i, x;
         for (i = 0; i < length; i++) {
             x = items[i].data[field];
-            data[i] = !Ext.isEmpty(x) ? coord(x, field, i, items) : x;
+            // An empty string (a valid discrete axis value) will be coordinated
+            // by the axis layout (if axis is given), otherwise it will be converted
+            // to zero (via +'').
+            if (!Ext.isEmpty(x, true)) {
+                if (layout) {
+                    data[i] = layout.getCoordFor(x, field, i, items);
+                } else {
+                    data[i] = +x;
+                }
+            } else {
+                data[i] = x;
+            }
         }
         return data;
     },
@@ -16103,9 +16295,11 @@ Ext.define('Ext.chart.axis.sprite.Axis', {
             }
         }
     },
-    renderLimits: function() {
+    renderLimits: function(clipRect) {
         var me = this,
             axis = me.getAxis(),
+            chart = axis.getChart(),
+            innerPadding = chart.getInnerPadding(),
             limits = Ext.Array.from(axis.getLimits());
         if (!limits.length) {
             return;
@@ -16125,7 +16319,7 @@ Ext.define('Ext.chart.axis.sprite.Axis', {
                 !limit.line && (limit.line = {});
                 value = Ext.isString(limit.value) ? axis.getCoordFor(limit.value) : limit.value;
                 value = value * matrix.getYY() + matrix.getDY();
-                limit.line.y = value;
+                limit.line.y = value + innerPadding.top;
                 limit.line.strokeStyle = limit.line.strokeStyle || attr.strokeStyle;
                 me.putMarker('horizontal-limit-lines', limit.line, i, true);
                 if (limit.line.title) {
@@ -16145,7 +16339,7 @@ Ext.define('Ext.chart.axis.sprite.Axis', {
                     }
                     titles.setAttributesFor(titles.position - 1, {
                         x: x,
-                        y: value - titleBBox.height / 2,
+                        y: limit.line.y - titleBBox.height / 2,
                         textAlign: titlePosition,
                         fillStyle: limit.line.title.fillStyle || limit.line.strokeStyle
                     });
@@ -16157,7 +16351,7 @@ Ext.define('Ext.chart.axis.sprite.Axis', {
                 !limit.line && (limit.line = {});
                 value = Ext.isString(limit.value) ? axis.getCoordFor(limit.value) : limit.value;
                 value = value * matrix.getXX() + matrix.getDX();
-                limit.line.x = value;
+                limit.line.x = value + innerPadding.left;
                 limit.line.strokeStyle = limit.line.strokeStyle || attr.strokeStyle;
                 me.putMarker('vertical-limit-lines', limit.line, i, true);
                 if (limit.line.title) {
@@ -16176,7 +16370,7 @@ Ext.define('Ext.chart.axis.sprite.Axis', {
                             break;
                     }
                     titles.setAttributesFor(titles.position - 1, {
-                        x: value + titleBBox.height / 2,
+                        x: limit.line.x + titleBBox.height / 2,
                         y: y,
                         fillStyle: limit.line.title.fillStyle || limit.line.strokeStyle,
                         rotationRads: Math.PI / 2
@@ -16255,7 +16449,7 @@ Ext.define('Ext.chart.axis.sprite.Axis', {
             me.renderTicks(surface, ctx, layout, clipRect);
             me.renderAxisLine(surface, ctx, layout, clipRect);
             me.renderGridLines(surface, ctx, layout, clipRect);
-            me.renderLimits();
+            me.renderLimits(clipRect);
             ctx.stroke();
         }
     }
@@ -18508,7 +18702,7 @@ Ext.define('Ext.chart.AbstractChart', {
          * @cfg {Boolean/Object} shadow (optional) `true` for the default shadow configuration
          * `{shadowOffsetX: 2, shadowOffsetY: 2, shadowBlur: 3, shadowColor: '#444'}`
          * or a standard shadow config object to be used for default chart shadows.
-         * @hide
+         * @ignore
          */
         shadow: false,
         /**
@@ -19207,6 +19401,7 @@ Ext.define('Ext.chart.AbstractChart', {
         }
     },
     updateSpriteTheme: function(theme) {
+        this.getSprites();
         var me = this,
             chartSurface = me.getSurface('chart'),
             sprites = chartSurface.getItems(),
@@ -21587,7 +21782,9 @@ Ext.define('Ext.chart.interactions.CrossZoom', {
          */
         axes: true,
         /**
-         * @inheritdoc
+         * @cfg {Object} gestures
+         * Defines the gestures that should trigger the cross zoom interaction to be
+         * displayed.
          */
         gestures: {
             dragstart: 'onGestureStart',
@@ -22323,7 +22520,8 @@ Ext.define('Ext.chart.interactions.ItemHighlight', {
     alias: 'interaction.itemhighlight',
     config: {
         /**
-         * @inheritdoc
+         * @cfg {Object} gestures
+         * Defines the gestures that should trigger the item highlight interaction.
          */
         gestures: {
             tap: 'onHighlightGesture',
@@ -23006,7 +23204,8 @@ Ext.define('Ext.chart.interactions.Rotate', {
          */
         gesture: 'rotate',
         /**
-         * @inheritdoc
+         * @cfg {Object} gestures
+         * Defines the gestures that should trigger the rotate interaction.
          */
         gestures: {
             rotate: 'onRotate',
@@ -26943,6 +27142,7 @@ Ext.define('Ext.chart.series.sprite.Line', {
             attr = me.attr,
             step = attr.step,
             matrix = attr.matrix,
+            renderer = attr.renderer,
             xx = matrix.getXX(),
             yy = matrix.getYY(),
             dx = matrix.getDX(),
@@ -26950,7 +27150,7 @@ Ext.define('Ext.chart.series.sprite.Line', {
             smoothX = me.smoothX,
             smoothY = me.smoothY,
             scale = me.calculateScale(attr.dataX.length, end),
-            cx1, cy1, cx2, cy2, x, y, x0, y0, i, j, changes,
+            cx1, cy1, cx2, cy2, x, y, x0, y0, i, j, changes, params,
             lineConfig = {
                 type: 'line',
                 smooth: true,
@@ -26963,11 +27163,11 @@ Ext.define('Ext.chart.series.sprite.Line', {
             cy1 = smoothY[j] * yy + dy;
             cx2 = smoothX[j + 1] * xx + dx;
             cy2 = smoothY[j + 1] * yy + dy;
-            x = list[i + 3];
+            x = surface.roundPixel(list[i + 3]);
             y = list[i + 4];
-            x0 = list[i];
+            x0 = surface.roundPixel(list[i]);
             y0 = list[i + 1];
-            if (attr.renderer) {
+            if (renderer) {
                 lineConfig.x0 = x0;
                 lineConfig.y0 = y0;
                 lineConfig.cx1 = cx1;
@@ -26976,32 +27176,35 @@ Ext.define('Ext.chart.series.sprite.Line', {
                 lineConfig.cy2 = cy2;
                 lineConfig.x = x;
                 lineConfig.y = y;
-                changes = attr.renderer.call(me, me, lineConfig, me.rendererData, start + i / 3 + 1);
+                changes = renderer.call(me, me, lineConfig, me.rendererData, start + i / 3 + 1);
                 ctx.save();
                 Ext.apply(ctx, changes);
-                if (attr.fillArea) {
-                    ctx.moveTo(x0, y0);
-                    ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x, y);
-                    ctx.lineTo(x, xAxis);
-                    ctx.lineTo(x0, xAxis);
-                    ctx.lineTo(x0, y0);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.beginPath();
-                }
-                // Draw the line on top of the filled area.
-                ctx.moveTo(x0, y0);
-                ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x, y);
-                ctx.stroke();
-                ctx.moveTo(x0, y0);
-                ctx.closePath();
-                ctx.restore();
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-            } else {
-                ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x, y);
             }
+            if (attr.fillArea) {
+                ctx.moveTo(x0, y0);
+                ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x, y);
+                ctx.lineTo(x, xAxis);
+                ctx.lineTo(x0, xAxis);
+                ctx.lineTo(x0, y0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.beginPath();
+            }
+            // Draw the line on top of the filled area.
+            ctx.moveTo(x0, y0);
+            ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x, y);
+            ctx.stroke();
+            ctx.moveTo(x0, y0);
+            ctx.closePath();
+            if (renderer) {
+                ctx.restore();
+            }
+            ctx.beginPath();
+            ctx.moveTo(x, y);
         }
+        // Prevent the last visible segment from being stroked twice
+        // (second time by the ctx.fillStroke inside Path sprite 'render' method)
+        ctx.beginPath();
     },
     drawLabel: function(text, dataX, dataY, labelId, rect) {
         var me = this,
@@ -27828,12 +28031,58 @@ Ext.define('Ext.chart.series.Pie', {
          */
         hidden: [],
         /**
-         * @cfg {Number} Allows adjustment of the radius by a specific percentage.
+         * @cfg {Number} [radiusFactor=100] Allows adjustment of the radius by a 
+         * specific percentage.
          */
         radiusFactor: 100,
         /**
-         * @cfg {Object} highlightCfg Default highlight config for the pie series.
-         * Slides highlighted pie sector outward.
+         * @cfg {Ext.chart.series.sprite.PieSlice/Object} highlightCfg
+         * Default highlight config for the pie series.
+         * Slides highlighted pie sector outward by default.
+         * 
+         * highlightCfg accepts as its value a config object (or array of configs) for a 
+         * {@link Ext.chart.series.sprite.PieSlice pie sprite}.
+         * 
+         * **Note:** You must configure the 
+         * {@link Ext.chart.interactions.ItemHighlight itemhighlight} 
+         * {@link Ext.chart.AbstractChart#interactions interaction} in order to 
+         * apply highlighting to the series.
+         * 
+         * Example config:
+         * 
+         *     Ext.create('Ext.chart.PolarChart', {
+         *         renderTo: document.body,
+         *         width: 600,
+         *         height: 400,
+         *         interactions: 'itemhighlight',
+         *         innerPadding: 5,
+         *         store: {
+         *             fields: ['name', 'data1'],
+         *             data: [{
+         *                 name: 'metric one',
+         *                 data1: 10
+         *             }, {
+         *                 name: 'metric two',
+         *                 data1: 7
+         *             }, {
+         *                 name: 'metric three',
+         *                 data1: 5
+         *             }]
+         *         },
+         *         series: {
+         *             type: 'pie',
+         *             label: {
+         *                 field: 'name',
+         *                 display: 'rotate'
+         *             },
+         *             xField: 'data1',
+         *             donut: 30,
+         *             highlightCfg: {
+         *                 margin: 10,
+         *                 fillOpacity: .7
+         *             }
+         *         }
+         *     });
          */
         highlightCfg: {
             margin: 20
@@ -30029,6 +30278,7 @@ Ext.define('Ext.draw.PathUtil', function() {
         requires: [
             'Ext.draw.overrides.Path',
             'Ext.draw.overrides.sprite.Path',
+            'Ext.draw.overrides.sprite.Instancing',
             'Ext.draw.overrides.Surface'
         ],
         /**

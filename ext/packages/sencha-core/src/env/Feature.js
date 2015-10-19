@@ -343,20 +343,18 @@ Ext.feature = {
          */
         name: 'touchScroll',
         fn: function() {
-            var supports = Ext.supports,
-                touchScroll = 0;
+            var touchScroll = 0;
 
-            if (navigator.msMaxTouchPoints ||
-                    (Ext.isWebKit && supports.TouchEvents && Ext.os.is.Desktop)) {
+            if (Ext.os.is.Desktop && (navigator.maxTouchPoints || navigator.msMaxTouchPoints)) {
                 touchScroll = 1;
-            } else if (supports.Touch) {
+            } else if (Ext.supports.Touch) {
                 touchScroll = 2;
             }
             return touchScroll;
         }
     },{
         /**
-         * @property Touch`true` if the browser supports touch input.
+         * @property Touch `true` if the browser supports touch input.
          *
          * This property is available at application boot time, before document ready.
          * @type {Boolean}
@@ -369,11 +367,17 @@ Ext.feature = {
             // a touch screen
             // browsers that use pointer event have maxTouchPoints > 1 if the
             // device supports touch input
-            // Chrome Desktop reports maxTouchPoints === 1 even if there is no
+            // Chrome Desktop < 39 reports maxTouchPoints === 1 even if there is no
             // touch support on the device
             // http://www.w3.org/TR/pointerevents/#widl-Navigator-maxTouchPoints
-            return (Ext.supports.TouchEvents && maxTouchPoints !== 1) ||
-                maxTouchPoints > 1;
+            // Chrome Desktop > 39 properly reports maxTouchPoints === 0 and
+            // Chrome Desktop Device Emulation mode reports maxTouchPoints === 1
+            if (Ext.browser.is.Chrome && Ext.browser.version.isLessThanOrEqual(39)) {
+                return (Ext.supports.TouchEvents && maxTouchPoints !== 1) ||
+                    maxTouchPoints > 1;
+            } else {
+                return Ext.supports.TouchEvents || maxTouchPoints > 0;
+            }
         }
     },{
         /**
@@ -929,10 +933,15 @@ Ext.feature = {
         fn: function(doc) {
             var body = doc.body,
                 supports = false,
-                el = this.getTestElement(),
+                el = doc.createElement('div'),
                 style = el.style;
 
             if (el.getBoundingClientRect) {
+                // If the document body already has child nodes (text nodes etc) we can end
+                // up with subpixel rounding errors in IE11 when measuring the height.
+                // Absolute positioning prevents this.
+                style.position = 'absolute';
+                style.top = "0";
                 style.WebkitTransform = style.MozTransform = style.msTransform =
                     style.OTransform = style.transform = 'rotate(90deg)';
                 style.width = '100px';
@@ -1203,7 +1212,7 @@ Ext.feature = {
         }
     },
 
-    /*
+    /**
      * @property {Boolean} SpecialKeyDownRepeat
      * True if the browser fires the keydown event on specialkey autorepeat
      * 

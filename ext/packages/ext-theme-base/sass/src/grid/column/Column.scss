@@ -39,11 +39,14 @@
 }
 
 .#{$prefix}column-header-text {
-    background-repeat: no-repeat;
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.#{$prefix}column-header-text-inner {
+    background-repeat: no-repeat;
 }
 
 @if $include-ie and $include-rtl {

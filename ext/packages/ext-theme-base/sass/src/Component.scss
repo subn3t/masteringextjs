@@ -188,6 +188,7 @@ td.#{$prefix}frame-br {
 .#{$prefix}item-disabled,
 .#{$prefix}item-disabled * {
     cursor: default;
+    pointer-events: none; // prevents :hover styling on child elements
 }
 
 .#{$prefix}component,
@@ -202,4 +203,11 @@ td.#{$prefix}frame-br {
 // This prevents the default outline added to focused elements by some browsers (ahem, webkit)
 :focus {
     outline:none;
+}
+
+// This is used by FileButton to reset position: absolute temporarily
+// after focusing parent input field. A workaround for file input element
+// not being properly positioned in IE8/9.
+.#{$prefix}position-relative {
+    position: relative !important;
 }

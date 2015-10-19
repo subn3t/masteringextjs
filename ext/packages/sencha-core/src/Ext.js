@@ -126,6 +126,34 @@ Ext._startTime = Date.now ? Date.now() : (+ new Date());
         return object;
     };
 
+    // Used by Ext.override
+    function addInstanceOverrides(target, owner, overrides) {
+        var name, value;
+
+        for (name in overrides) {
+            if (overrides.hasOwnProperty(name)) {
+                value = overrides[name];
+
+                if (typeof value === 'function') {
+                    //<debug>
+                    if (owner.$className) {
+                        value.name = owner.$className + '#' + name;
+                    }
+                    //</debug>
+
+                    value.$name = name;
+                    value.$owner = owner;
+
+                    value.$previous = target.hasOwnProperty(name) ?
+                        target[name] // already hooked, so call previous hook
+                        : callOverrideParent; // calls by name on prototype
+                }
+
+                target[name] = value;
+            }
+        }
+    }
+
     Ext.buildSettings = Ext.apply({
         baseCSSPrefix: 'x-'
     }, Ext.buildSettings || {});
@@ -144,11 +172,6 @@ Ext._startTime = Date.now ? Date.now() : (+ new Date());
          */
         isSecure: /^https/i.test(window.location.protocol),
 
-        /**
-         * `true` to automatically uncache orphaned Ext.Elements periodically. If set to
-         * `false`, the application will be required to clean up orphaned Ext.Elements and
-         * it's listeners as to not cause memory leakage.
-         */
         enableGarbageCollector: false,
 
         /**
@@ -384,7 +407,7 @@ Ext._startTime = Date.now ? Date.now() : (+ new Date());
 
         // Vendor-specific events do not work if lower-cased.  This regex specifies event
         // prefixes for names that should NOT be lower-cased by Ext.canonicalEventName()
-        $vendorEventRe: /^(Moz.+|MS.+|webkit.+)/,
+        $vendorEventRe: /^(DOMMouse|Moz.+|MS.+|webkit.+)/,
 
         // TODO: inlinable function - SDKTOOLS-686
         // @inline
@@ -511,31 +534,17 @@ Ext._startTime = Date.now ? Date.now() : (+ new Date());
                 Ext.apply(target.prototype, overrides);
             } else {
                 var owner = target.self,
-                    name, value;
+                    privates;
 
                 if (owner && owner.$isClass) { // if (instance of Ext.define'd class)
-                    for (name in overrides) {
-                        if (overrides.hasOwnProperty(name)) {
-                            value = overrides[name];
-
-                            if (typeof value === 'function') {
-                                //<debug>
-                                if (owner.$className) {
-                                    value.name = owner.$className + '#' + name;
-                                }
-                                //</debug>
-
-                                value.$name = name;
-                                value.$owner = owner;
-
-                                value.$previous = target.hasOwnProperty(name) ?
-                                    target[name] // already hooked, so call previous hook
-                                    : callOverrideParent; // calls by name on prototype
-                            }
-
-                            target[name] = value;
-                        }
+                    privates = overrides.privates;
+                    if (privates) {
+                        overrides = Ext.apply({}, overrides);
+                        delete overrides.privates;
+                        addInstanceOverrides(target, owner, privates);
                     }
+
+                    addInstanceOverrides(target, owner, overrides);
                 } else {
                     Ext.apply(target, overrides);
                 }

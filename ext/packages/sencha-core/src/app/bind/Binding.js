@@ -1,6 +1,6 @@
 /**
- * This class is created to manage a direct bind. Both `Ext.data.Session`
- * and `Ext.app.ViewModel` return these objects from their `bind` method.
+ * This class is created to manage a direct bind.  `Ext.app.ViewModel` returns this from 
+ * its {@link Ext.app.ViewModel#method-bind bind} method.
  */
 Ext.define('Ext.app.bind.Binding', {
     extend: 'Ext.app.bind.BaseBinding',

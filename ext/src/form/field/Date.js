@@ -211,6 +211,8 @@ Ext.define('Ext.form.field.Date', {
      */
     valuePublishEvent: ['select', 'blur'],
 
+    componentCls: Ext.baseCSSPrefix + 'form-field-date',
+
     initComponent : function(){
         var me = this,
             isString = Ext.isString,
@@ -552,6 +554,11 @@ Ext.define('Ext.form.field.Date', {
             me.setValue(v);
         }
         me.callParent([e]);
+    },
+
+    onArrowKey: function(direction, e) {
+        // Don't move the cursor around while the date picker is navigating
+        e.preventDefault();
     }
 
     /**

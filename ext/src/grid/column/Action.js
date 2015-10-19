@@ -3,6 +3,9 @@
  * handler for each icon.
  *
  *     @example
+ *     // Init the singleton.  Any tag-based quick tips will start working.
+ *     Ext.tip.QuickTipManager.init();
+ *
  *     Ext.create('Ext.data.Store', {
  *         storeId:'employeeStore',
  *         fields:['firstname', 'lastname', 'seniority', 'dep', 'hired'],
@@ -339,12 +342,10 @@ Ext.define('Ext.grid.column.Action', {
     // class name x-action-col-{n}
     defaultRenderer: function(v, cellValues, record, rowIdx, colIdx, store, view) {
         var me = this,
-            prefix = Ext.baseCSSPrefix,
             scope = me.origScope || me,
             items = me.items,
             len = items.length,
-            i = 0,
-            item, ret, disabled, tooltip;
+            i, item, ret, disabled, tooltip;
 
         // Allow a configured renderer to create initial value (And set the other values in the "metadata" argument!)
         // Assign a new variable here, since if we modify "v" it will also modify the arguments collection, meaning
@@ -352,7 +353,7 @@ Ext.define('Ext.grid.column.Action', {
         ret = Ext.isFunction(me.origRenderer) ? me.origRenderer.apply(scope, arguments) || '' : '';
 
         cellValues.tdCls += ' ' + Ext.baseCSSPrefix + 'action-col-cell';
-        for (; i < len; i++) {
+        for (i = 0; i < len; i++) {
             item = items[i];
 
             disabled = item.disabled || (item.isDisabled ? item.isDisabled.call(item.scope || scope, view, rowIdx, colIdx, item, record) : false);
@@ -368,7 +369,8 @@ Ext.define('Ext.grid.column.Action', {
             }
 
             ret += '<img role="button" alt="' + (item.altText || me.altText) + '" src="' + (item.icon || Ext.BLANK_IMAGE_URL) +
-                '" class="' + me.actionIconCls + ' ' + prefix + 'action-col-' + String(i) + ' ' + (disabled ? prefix + 'item-disabled' : ' ') +
+                '" class="' + me.actionIconCls + ' ' + Ext.baseCSSPrefix + 'action-col-' + String(i) + ' ' +
+                (disabled ? me.disabledCls + ' ' : ' ') +
                 (Ext.isFunction(item.getClass) ? item.getClass.apply(item.scope || scope, arguments) : (item.iconCls || me.iconCls || '')) + '"' +
                 (tooltip ? ' data-qtip="' + tooltip + '"' : '') + ' />';
         }
@@ -442,6 +444,9 @@ Ext.define('Ext.grid.column.Action', {
             item,
             disabled;
 
+        // Flag event to tell SelectionModel not to process it.
+        e.stopSelection = !key && me.stopSelection;
+
         // If the target was not within a cell (ie it's a keydown event from the View), then
         // rely on the selection data injected by View.processUIEvent to grab the
         // first action icon from the selected cell.
@@ -454,19 +459,12 @@ Ext.define('Ext.grid.column.Action', {
             item = me.items[parseInt(match[1], 10)];
             disabled = item.disabled || (item.isDisabled ? item.isDisabled.call(item.scope || me.origScope || me, view, recordIndex, cellIndex, item, record) : false);
             if (item && !disabled) {
-                // Don't process mousedown events anymore!
-                if (type === 'mousedown') {
-                    if (item.stopSelection) {
-                        e.preventDefault();
-                    }
-                    return false;
-                }
-
                 if (type === 'click' || (key === e.ENTER || key === e.SPACE)) {
                     Ext.callback(item.handler || me.handler, item.scope || me.origScope, [view, recordIndex, cellIndex, item, e, record, row], undefined, me);
-                    // The default is to stop the event from propagating (thus preventing the selection model from
-                    // selecting and focusing the grid row). See EXTJSIV-11177.
-                    if (item.stopSelection !== false) {
+
+                    // If the handler moved focus outside of the view, do not allow this event to propagate
+                    // to cause any navigation.
+                    if (!view.el.contains(Ext.Element.getActiveElement())) {
                         return false;
                     }
                 }
@@ -490,6 +488,11 @@ Ext.define('Ext.grid.column.Action', {
             // Override is here to prevent the default behaviour which tries to access
             // this.items.items, which will be null.
             return [];
+        },
+
+        // Overriden method to always return a bitwise value that will result in a call to this column's updater.
+        shouldUpdateCell: function() {
+            return 2;
         }
     }
 });

@@ -1,3 +1,6 @@
+/**
+ * @private
+ */
 Ext.define('Ext.ux.colorpick.ColorMapController', {
     extend : 'Ext.app.ViewController',
     alias: 'controller.colorpickercolormapcontroller',

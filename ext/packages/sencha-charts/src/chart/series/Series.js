@@ -229,8 +229,7 @@ Ext.define('Ext.chart.series.Series', {
          */
         showInLegend: true,
 
-        //@private triggerdrawlistener flag
-        triggerAfterDraw: false,
+        triggerAfterDraw: false, // private triggerdrawlistener flag
 
         /**
          * @cfg {Object} style Custom style configuration for the sprite used in the series.
@@ -466,20 +465,41 @@ Ext.define('Ext.chart.series.Series', {
 
         /**
          * @cfg {Object} tooltip
-         * Add tooltips to the visualization's markers. The options for the tooltip are the
-         * same configuration used with {@link Ext.tip.ToolTip}. For example:
+         * Add tooltips to the visualization's markers. The config options for the 
+         * tooltip are the same configuration used with {@link Ext.tip.ToolTip} plus a 
+         * `renderer` config option. For example:
          *
          *     tooltip: {
          *       trackMouse: true,
          *       width: 140,
          *       height: 28,
-         *       renderer: function (storeItem, item) {
-         *           this.setHtml(storeItem.get('name') + ': ' + storeItem.get('data1') + ' views');
+         *       renderer: function (record, ctx) {
+         *           this.setHtml(record.get('name') + ': ' + record.get('data1') + ' views');
          *       }
          *     }
          *
          * Note that tooltips are shown for series markers and won't work
          * if the {@link #marker} is not configured.
+         * @cfg {Function} tooltip.renderer An 'interceptor' method which can be used to 
+         * modify the tooltip attributes before it is shown.  The renderer function's 
+         * scope is the tooltip instance.  The renderer function is passed the following 
+         * params:
+         * @cfg {Ext.data.Model} tooltip.renderer.record The record instance for the 
+         * chart item (sprite) currently targeted by the tooltip.
+         * @cfg {Object} tooltip.renderer.ctx A data object with values relating to the 
+         * currently targeted chart sprite
+         * @cfg {String} tooltip.renderer.ctx.category The type of sprite passed to the 
+         * renderer function (will be "items", "markers", or "labels" depending on the 
+         * target sprite of the tooltip)
+         * @cfg {String} tooltip.renderer.ctx.field The {@link Ext.chart.series.Cartesian#cfg-yField yField} for the series
+         * @cfg {Number} tooltip.renderer.ctx.index The target sprite's index within the 
+         * series' items
+         * @cfg {Ext.data.Model} tooltip.renderer.ctx.record The record instance for the 
+         * chart item (sprite) currently targeted by the tooltip.
+         * @cfg {Ext.chart.series.Series} tooltip.renderer.ctx.series The series instance 
+         * containing the tooltip's target sprite
+         * @cfg {Ext.draw.sprite.Sprite} tooltip.renderer.ctx.sprite The sprite (item) 
+         * target of the tooltip
          */
         tooltip: null
     },
@@ -824,14 +844,24 @@ Ext.define('Ext.chart.series.Series', {
         var data = [],
             length = items.length,
             layout = axis && axis.getLayout(),
-            coord = axis ? function (x, field, idx, items) {
-                return layout.getCoordFor(x, field, idx, items);
-            } : function (x) { return +x; },
             i, x;
+
         for (i = 0; i < length; i++) {
             x = items[i].data[field];
-            data[i] = !Ext.isEmpty(x) ? coord(x, field, i, items) : x;
+            // An empty string (a valid discrete axis value) will be coordinated
+            // by the axis layout (if axis is given), otherwise it will be converted
+            // to zero (via +'').
+            if (!Ext.isEmpty(x, true)) {
+                if (layout) {
+                    data[i] = layout.getCoordFor(x, field, i, items);
+                } else {
+                    data[i] = +x;
+                }
+            } else {
+                data[i] = x;
+            }
         }
+
         return data;
     },
 

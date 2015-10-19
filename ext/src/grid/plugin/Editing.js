@@ -418,7 +418,6 @@ Ext.define('Ext.grid.plugin.Editing', {
 
         // Attach new bindings to the View's NavigationModel which processes cellkeydown events.
         me.view.getNavigationModel().addKeyBindings({
-            enter: me.onEnterKey,
             esc: me.onEscKey,
             scope: me
         });
@@ -477,41 +476,6 @@ Ext.define('Ext.grid.plugin.Editing', {
 
     // Template method which may be implemented in subclasses (RowEditing and CellEditing)
     onColumnMove: Ext.emptyFn,
-
-    // @private
-    onEnterKey: function(e) {
-        var me = this,
-            grid = me.grid,
-            navModel,
-            record,
-            pos,
-            column,
-            targetComponent;
-
-        if (me.editing) {
-            targetComponent = Ext.getCmp(e.getTarget().getAttribute('componentId'));
-
-            // ENTER when a picker is expanded does not complete the edit
-            if (!(targetComponent && targetComponent.isPickerField && targetComponent.isExpanded)) {
-                me.completeEdit();
-            }
-        }
-        else if (e.view === me.view) {
-            navModel = grid.getView().getNavigationModel();
-
-            // Calculate editing start position from NavigationModel
-            pos = navModel.getPosition();
-            if (pos) {
-                record = pos.record;
-                column = pos.column;
-            }
-
-            // If there was a selection to provide a starting context...
-            if (record && column) {
-                me.startEdit(record, column);
-            }
-        }
-    },
 
     // @private
     onEscKey: function(e) {
@@ -611,6 +575,11 @@ Ext.define('Ext.grid.plugin.Editing', {
         // Navigate to the view which the column header relates to.
         view = columnHeader.getRootHeaderCt().view;
 
+        // Ensure the row we want to edit is in the rendered range if the view is buffer rendered
+        grid.ensureVisible(record, {
+            column : columnHeader
+        });
+        
         gridRow = view.getRow(record);
 
         // An intervening listener may have deleted the Record.

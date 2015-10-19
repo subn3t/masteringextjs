@@ -31,11 +31,6 @@ Ext.define('ExtThemeNeptune.resizer.Splitter', {
     size: 8
 });
 
-Ext.define('Ext.touch.sizing.resizer.Splitter', {
-    override: 'Ext.resizer.Splitter',
-    size: 16
-});
-
 Ext.define('ExtThemeNeptune.toolbar.Toolbar', {
     override: 'Ext.toolbar.Toolbar',
     usePlainButtons: false,
@@ -327,30 +322,9 @@ Ext.define('ExtThemeNeptune.panel.Panel', {
     }
 });
 
-Ext.define('ExtThemeNeptune.panel.Table', {
-    override: 'Ext.panel.Table',
-    initComponent: function() {
-        var me = this;
-        if (!me.hasOwnProperty('bodyBorder') && !me.hideHeaders) {
-            me.bodyBorder = true;
-        }
-        me.callParent();
-    }
-});
-
-Ext.define('Ext.theme.crisp.view.Table', {
-    override: 'Ext.view.Table',
-    stripeRows: false
-});
-
 Ext.define('ExtThemeNeptune.container.ButtonGroup', {
     override: 'Ext.container.ButtonGroup',
     usePlainButtons: false
-});
-
-Ext.define('Ext.touch.sizing.form.trigger.Spinner', {
-    override: 'Ext.form.trigger.Spinner',
-    vertical: false
 });
 
 Ext.define('ExtThemeNeptune.toolbar.Paging', {
@@ -378,6 +352,22 @@ Ext.define('ExtThemeNeptune.form.field.HtmlEditor', {
     defaultButtonUI: 'plain-toolbar'
 });
 
+Ext.define('ExtThemeNeptune.panel.Table', {
+    override: 'Ext.panel.Table',
+    initComponent: function() {
+        var me = this;
+        if (!me.hasOwnProperty('bodyBorder') && !me.hideHeaders) {
+            me.bodyBorder = true;
+        }
+        me.callParent();
+    }
+});
+
+Ext.define('Ext.theme.crisp.view.Table', {
+    override: 'Ext.view.Table',
+    stripeRows: false
+});
+
 Ext.define('ExtThemeNeptune.grid.RowEditor', {
     override: 'Ext.grid.RowEditor',
     buttonUI: 'default-toolbar'
@@ -388,11 +378,6 @@ Ext.define('ExtThemeNeptune.grid.column.RowNumberer', {
     width: 25
 });
 
-Ext.define('Ext.touch.sizing.grid.column.RowNumberer', {
-    override: 'Ext.grid.column.RowNumberer',
-    width: 50
-});
-
 Ext.define('ExtThemeNeptune.menu.Separator', {
     override: 'Ext.menu.Separator',
     border: true
@@ -401,21 +386,6 @@ Ext.define('ExtThemeNeptune.menu.Separator', {
 Ext.define('ExtThemeNeptune.menu.Menu', {
     override: 'Ext.menu.Menu',
     showSeparator: false
-});
-
-Ext.define('Ext.touch.sizing.grid.plugin.RowExpander', {
-    override: 'Ext.grid.plugin.RowExpander',
-    headerWidth: 32
-});
-
-Ext.define('Ext.touch.sizing.grid.selection.SpreadsheetModel', {
-    override: 'Ext.grid.selection.SpreadsheetModel',
-    checkboxHeaderWidth: 32
-});
-
-Ext.define('Ext.touch.sizing.selection.CheckboxModel', {
-    override: 'Ext.selection.CheckboxModel',
-    headerWidth: 32
 });
 
 

@@ -298,7 +298,7 @@ Ext.Number = (new function() { // jshint ignore:line
         /**
          * Corrects floating point numbers that overflow to a non-precise
          * value because of their floating nature, for example `0.1 + 0.2`
-         * @param {Number} The number
+         * @param {Number} n The number
          * @return {Number} The correctly rounded number
          */
         correctFloat: function(n) {

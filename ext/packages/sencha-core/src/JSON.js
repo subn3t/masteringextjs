@@ -264,7 +264,7 @@ var me = this,
 
     me.encodeMSDate = encodeMSDate;
 
-    //@private Alias for backwards compatibility
+    // private Alias for backwards compatibility
     if (!Ext.util) {
         Ext.util = {};
     }

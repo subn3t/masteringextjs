@@ -7225,7 +7225,8 @@ Ext.define('Ext.draw.Draw', {
             y2: control2Y
         };
     },
-    /* Smoothing function for a path.  Converts a path into cubic beziers.  Value defines the divider of the distance between points.
+    /**
+     * Smoothing function for a path.  Converts a path into cubic beziers.  Value defines the divider of the distance between points.
      * Defaults to a value of 4.
      */
     smooth: function(originalPath, value) {
@@ -12426,7 +12427,8 @@ Ext.define('Ext.chart.series.Bar', {
             }), true);
         }
     },
-    /* @private
+    /** 
+     * @private
      * Gets the dimensions of a given bar label. Uses a single hidden sprite to avoid
      * changing visible sprites.
      * @param value
@@ -18446,7 +18448,8 @@ Ext.define('Ext.draw.engine.Svg', {
             sprite.fireEvent(name, sprite, e);
         }
     },
-    /* @private - Wrap SVG text inside a tspan to allow for line wrapping.  In addition this normallizes
+    /** 
+     * @private - Wrap SVG text inside a tspan to allow for line wrapping.  In addition this normallizes
      * the baseline for text the vertical middle of the text to be the same as VML.
      */
     tuneText: function(sprite, attrs) {

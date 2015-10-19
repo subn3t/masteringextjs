@@ -1070,7 +1070,6 @@ Ext.define('Ext.overrides.dom.Element', (function() {
         },
 
         /**
-         * @override
          * Hide this element - Uses display mode to determine whether to use "display",
          * "visibility", or "offsets". See {@link #setVisible}.
          * @param {Boolean/Object} [animate] true for the default animation or a standard
@@ -1742,11 +1741,17 @@ Ext.define('Ext.overrides.dom.Element', (function() {
         /**
          * Updates the innerHTML of this element, optionally searching for and processing scripts.
          * @param {String} html The new HTML
-         * @param {Boolean} [loadScripts] True to look for and process scripts (defaults to false)
-         * @param {Function} [callback] For async script loading you can be notified when the update completes
+         * @param {Boolean} [loadScripts] Pass `true` to look for and process scripts.
+         * @param {Function} [callback] For async script loading you can be notified when the update completes.
+         * @param {Object} [scope=`this`] The scope (`this` reference) in which to execute the callback.
+         * 
+         * Also used as the scope for any *inline* script source if the `loadScripts` parameter is `true`.
+         * Scripts with a `src` attribute cannot be executed in this scope.
+         *
+         * Defaults to this Element.
          * @return {Ext.dom.Element} this
          */
-        setHtml: function(html, loadScripts, callback) {
+        setHtml: function(html, loadScripts, callback, scope) {
             var me = this,
                 id,
                 dom,
@@ -1794,10 +1799,14 @@ Ext.define('Ext.overrides.dom.Element', (function() {
                        }
                        hd.appendChild(s);
                     } else if (match[2] && match[2].length > 0) {
-                        (WIN.execScript || WIN.eval)(match[2]); // jshint ignore:line
+                        if (scope) {
+                            Ext.functionFactory(match[2]).call(scope);
+                        } else {
+                            Ext.globalEval(match[2]);
+                        }
                     }
                 }
-                Ext.callback(callback, me);
+                Ext.callback(callback, scope || me);
             }, 20);
             dom.innerHTML = html.replace(replaceScriptTagRe, '');
             return me;
@@ -1938,6 +1947,9 @@ Ext.define('Ext.overrides.dom.Element', (function() {
         /**
          * Sets the visibility of the element (see details). If the visibilityMode is set to Element.DISPLAY, it will use
          * the display property to hide the element, otherwise it uses visibility. The default is to hide and show using the visibility property.
+         * 
+         * The visibility mode can be set using {@link #setVisibilityMode}.
+         * 
          * @param {Boolean} visible Whether the element is visible
          * @param {Boolean/Object} [animate] True for the default animation, or a standard Element animation config object
          * @return {Ext.dom.Element} this
@@ -2319,10 +2331,12 @@ Ext.define('Ext.overrides.dom.Element', (function() {
                     
                     el.setStyle(originalStyles);
                     if (slideOut) {
-                        if (obj.useDisplay) {
-                            el.setDisplayed(false);
-                        } else {
-                            el.hide();
+                        if (!obj.preventHide) {
+                            if (obj.useDisplay) {
+                                el.setDisplayed(false);
+                            } else {
+                                el.hide();
+                            }
                         }
                     }
                     if (wrap.dom) {

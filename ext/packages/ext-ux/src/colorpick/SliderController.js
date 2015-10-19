@@ -1,3 +1,6 @@
+/**
+ * @private
+ */
 Ext.define('Ext.ux.colorpick.SliderController', {
     extend: 'Ext.app.ViewController',
     alias: 'controller.colorpick-slidercontroller',

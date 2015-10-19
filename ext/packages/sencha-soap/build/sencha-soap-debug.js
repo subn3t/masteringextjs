@@ -20,7 +20,7 @@ Ext.define('Ext.data.soap.Reader', {
  * (Simple Object Access Protocol) services.  SOAP Proxy constructs a SOAP Envelope and 
  * submits an AJAX request to load a SOAP response from the server.
  * 
- * For help getting started please refer to the [Soap Guide](#/guide/soap).
+ * For help getting started please refer to the [Soap Guide](../../../enterprise/soap.html).
  *
  * **Note: **  _This functionality is only available with the purchase of
  * Sencha Complete.  For more information about using this class, please visit

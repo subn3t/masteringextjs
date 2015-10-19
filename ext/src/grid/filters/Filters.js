@@ -93,7 +93,7 @@
  * Since this plugin now uses actual store filters, the `onBeforeLoad` listener and all
  * helper methods that were used to clean and build the params have been removed. The store
  * will send the filters managed by this plugin along in its normal request.
-*/
+ */
 Ext.define('Ext.grid.filters.Filters', {
     extend: 'Ext.plugin.Abstract',
 
@@ -197,10 +197,10 @@ Ext.define('Ext.grid.filters.Filters', {
     initColumns: function () {
         var grid = this.grid,
             store = grid.getStore(),
+            autoLoad = store.autoLoad,
             columns = grid.columnManager.getColumns(),
             len = columns.length,
-            i, column,
-            filter, filterCollection;
+            i, column, filter, filterCollection, suppressNextFilter;
 
         // We start with filters defined on any columns.
         for (i = 0; i < len; i++) {
@@ -218,7 +218,15 @@ Ext.define('Ext.grid.filters.Filters', {
         }
 
         if (filterCollection) {
+            // Don't autoLoad the store if false.
+            if (Ext.isDefined(autoLoad)) {
+                suppressNextFilter = store.suppressNextFilter;
+                store.suppressNextFilter = !autoLoad;
+            }
+
             filterCollection.endUpdate();
+
+            store.suppressNextFilter = suppressNextFilter;
         }
     },
 
@@ -402,7 +410,9 @@ Ext.define('Ext.grid.filters.Filters', {
         return headerCt.getMenu().activeHeader.filter;
     },
 
-    /** @private */
+    /**
+     *  @private
+     */
     onCheckChange: function (item, value) {
         // Locking grids must lookup the correct grid.
         var parentTable = this.isLocked ? item.up('tablepanel') : this.grid,
@@ -490,8 +500,6 @@ Ext.define('Ext.grid.filters.Filters', {
 
     /**
      * Turns all filters off. This does not clear the configuration information.
-     * @param {Boolean} autoFilter If true, don't fire the deactivate event in
-     * {@link Ext.grid.filters.filter.Base#setActive setActive}.
      */
     clearFilters: function () {
         var grid = this.grid,
@@ -534,3 +542,4 @@ Ext.define('Ext.grid.filters.Filters', {
         }
     }
 });
+

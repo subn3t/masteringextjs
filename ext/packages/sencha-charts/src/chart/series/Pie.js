@@ -109,13 +109,59 @@ Ext.define('Ext.chart.series.Pie', {
         hidden: [],
 
         /**
-         * @cfg {Number} Allows adjustment of the radius by a specific percentage.
+         * @cfg {Number} [radiusFactor=100] Allows adjustment of the radius by a 
+         * specific percentage.
          */
         radiusFactor: 100,
 
         /**
-         * @cfg {Object} highlightCfg Default highlight config for the pie series.
-         * Slides highlighted pie sector outward.
+         * @cfg {Ext.chart.series.sprite.PieSlice/Object} highlightCfg
+         * Default highlight config for the pie series.
+         * Slides highlighted pie sector outward by default.
+         * 
+         * highlightCfg accepts as its value a config object (or array of configs) for a 
+         * {@link Ext.chart.series.sprite.PieSlice pie sprite}.
+         * 
+         * **Note:** You must configure the 
+         * {@link Ext.chart.interactions.ItemHighlight itemhighlight} 
+         * {@link Ext.chart.AbstractChart#interactions interaction} in order to 
+         * apply highlighting to the series.
+         * 
+         * Example config:
+         * 
+         *     Ext.create('Ext.chart.PolarChart', {
+         *         renderTo: document.body,
+         *         width: 600,
+         *         height: 400,
+         *         interactions: 'itemhighlight',
+         *         innerPadding: 5,
+         *         store: {
+         *             fields: ['name', 'data1'],
+         *             data: [{
+         *                 name: 'metric one',
+         *                 data1: 10
+         *             }, {
+         *                 name: 'metric two',
+         *                 data1: 7
+         *             }, {
+         *                 name: 'metric three',
+         *                 data1: 5
+         *             }]
+         *         },
+         *         series: {
+         *             type: 'pie',
+         *             label: {
+         *                 field: 'name',
+         *                 display: 'rotate'
+         *             },
+         *             xField: 'data1',
+         *             donut: 30,
+         *             highlightCfg: {
+         *                 margin: 10,
+         *                 fillOpacity: .7
+         *             }
+         *         }
+         *     });
          */
         highlightCfg: {
             margin: 20

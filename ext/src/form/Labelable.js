@@ -98,7 +98,7 @@ Ext.define("Ext.form.Labelable", {
                 ' {errorWrapExtraCls}" style="{errorWrapStyle}">',
                 '<div role="alert" aria-live="polite" id="{id}-errorEl" data-ref="errorEl" ',
                     'class="{errorMsgCls} {invalidMsgCls} {invalidMsgCls}-{ui}" ',
-                    'data-anchorTarget="{id}-inputEl">',
+                    'data-anchorTarget="{tipAnchorTarget}">',
                 '</div>',
             '</div>',
         '</tpl>',
@@ -687,6 +687,7 @@ Ext.define("Ext.form.Labelable", {
             invalidMsgCls: sideError ? me.invalidIconCls : underError ? me.invalidUnderCls : '',
             errorMsgCls: errorMsgCls,
             growCls: me.grow ? me.growCls : '',
+            tipAnchorTarget: me.id + '-inputEl',
             errorWrapStyle: (sideError && !autoFitErrors) ?
                     'visibility:hidden' : 'display:none',
             fieldLabel: me.getFieldLabel(),

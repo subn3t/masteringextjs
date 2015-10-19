@@ -1,3 +1,4 @@
+/* ======================== ETC ======================== */
 /* including package ext-theme-base */
 /**
  * Creates a background gradient.
@@ -75,7 +76,7 @@
  *
  * Outputs:
  *
- *     @import url(http://fonts.googleapis.com/css?family=Exo:200,300,400);
+ *     @import url(//fonts.googleapis.com/css?family=Exo:200,300,400);
  *
  * @member Global_CSS
  */
@@ -99,7 +100,10 @@
  * @param {number/list} [$border-width=0]
  * The border-width of the element receiving the outline.
  * Required in order for outline-offset to work in IE8
+ * 
+ * @member Global_CSS
  */
+/* ======================== VAR ======================== */
 /* including package ext-theme-base */
 /**
  * @class Global_CSS
@@ -192,6 +196,7 @@
  * @private
  * Flag to ensure GridField rules only get set once
  */
+/* ======================== RULE ======================== */
 /* including package ext-charts */
 /* line 1, ../../sass/src/draw/Component.scss */
 .x-hide-visibility {

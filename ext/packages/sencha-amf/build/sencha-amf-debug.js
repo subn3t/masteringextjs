@@ -2371,7 +2371,7 @@ Ext.define('Ext.data.amf.XmlDecoder', {
     },
     /**
      * Parses and returns an AMFX object.
-     * @param {HTMLElement/XMLElement} the `<object>` node to parse
+     * @param {HTMLElement/XMLElement} node the `<object>` node to parse
      * @return {Object} the deserialized object
      */
     readObject: function(node) {
@@ -3335,11 +3335,9 @@ TestAction.multiply(
         };
         return handler;
     },
-    // inherit docs
     isConnected: function() {
         return !!this.connected;
     },
-    // inherit docs
     connect: function() {
         var me = this;
         if (me.url) {
@@ -3353,7 +3351,6 @@ TestAction.multiply(
             Ext.Error.raise('Error initializing RemotingProvider, no url configured.');
         }
     },
-    // inherit docs
     disconnect: function() {
         var me = this;
         if (me.connected) {

@@ -118,12 +118,16 @@ Ext.define('Ext.util.Filter', {
          *    * `!=`
          *    * `in`
          *    * `like`
+         *    * /=
          *
          * The `in` operator expects this filter's {@link #cfg-value} to be an array and matches
          * values that are present in that array.
          * 
          * The `like` operator matches values that contain this filter's {@link #cfg-value} as a
          * substring.
+         *
+         * The `'*='` operator uses the {@link #cfg-value} as the source for a `RegExp` and tests whether the
+         * candidate value matches the regular expression.
          */
         operator: null,
 
@@ -483,6 +487,23 @@ Ext.define('Ext.util.Filter', {
             like: function (candidate) {
                 var v = this._filterValue;
                 return v && this.getCandidateValue(candidate, v).toLowerCase().indexOf(v.toLowerCase()) > -1;
+            },
+            "/=": function (candidate) {
+                var me = this,
+                    v = me._filterValue;
+
+                candidate = me.getCandidateValue(candidate, v);
+
+                // Only compile a RegExp when the source string changes
+                if (v !== me.lastRegExpSource) {
+                    me.lastRegExpSource = v;
+                    try {
+                        me.regex = new RegExp(v, 'i');
+                    } catch (e) {
+                        me.regex = null;
+                    }
+                }
+                return me.regex ? me.regex.test(candidate) : false;
             }
         });
 

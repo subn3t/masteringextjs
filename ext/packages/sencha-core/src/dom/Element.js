@@ -587,6 +587,11 @@ Ext.define('Ext.dom.Element', function(Element) {
         },
 
         inheritableStatics: {
+            /**
+             * @private
+             * @static
+             * @inheritable
+             */
             cache: Ext.cache = {},
 
             /**
@@ -598,6 +603,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * for an element even though it actually has a parent element that is hidden. For this
              * reason, and in most cases, using the {@link #OFFSETS} mode is a better choice.
              * @static
+             * @inheritable
              */
             VISIBILITY: 1,
 
@@ -606,6 +612,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * Visibility mode constant for use with {@link Ext.dom.Element#setVisibilityMode}.
              * Use the CSS 'display' property to hide the element.
              * @static
+             * @inheritable
              */
             DISPLAY: 2,
 
@@ -614,6 +621,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * Visibility mode constant for use with {@link Ext.dom.Element#setVisibilityMode}.
              * Use CSS absolute positioning and top/left offsets to hide the element.
              * @static
+             * @inheritable
              */
             OFFSETS: 3,
 
@@ -623,6 +631,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * @property {Boolean}
              * @private
              * @static
+             * @inheritable
              * True to globally disable the delegated event system.  The results of
              * setting this to false are unpredictable since the Gesture publisher relies
              * on delegated events in order to work correctly.  Disabling delegated events
@@ -635,6 +644,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * @property {Object}
              * @private
              * @static
+             * @inheritable
              * The list of valid nodeTypes that are allowed to be wrapped
              */
             validNodeTypes: {
@@ -649,6 +659,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * @return {String}
              * @private
              * @static
+             * @inheritable
              */
             addUnits: function(size, units) {
                 // Most common case first: Size is set to a number
@@ -692,6 +703,11 @@ Ext.define('Ext.dom.Element', function(Element) {
             // but should instead use DomHelper methods, or Element methods that use
             // DomHelper under the hood (e.g. createChild).
             // see https://fiddle.sencha.com/#fiddle/tj
+            /**
+             * @private
+             * @static
+             * @inheritable
+             */
             create: function(attributes, domNode) {
                 var me = this,
                     hidden = CREATE_ATTRIBUTES.hidden,
@@ -790,6 +806,7 @@ Ext.define('Ext.dom.Element', function(Element) {
 
             /**
              * @static
+             * @inheritable
              * @private
              */
             detach: function() {
@@ -805,6 +822,7 @@ Ext.define('Ext.dom.Element', function(Element) {
             /**
              * @inheritdoc Ext#fly
              * @static
+             * @inheritable
              */
             fly: function(dom, named) {
                 return Ext.fly(dom, named);
@@ -813,6 +831,7 @@ Ext.define('Ext.dom.Element', function(Element) {
             /**
              * Returns the top Element that is located at the passed coordinates
              * @static
+             * @inheritable
              * @param {Number} x The x coordinate
              * @param {Number} y The y coordinate
              * @return {String} The found Element
@@ -839,6 +858,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * @param {String/HTMLElement/Ext.dom.Element} element The `id` of the node, a DOM Node or an existing Element.
              * @return {Ext.dom.Element} The Element object (or `null` if no matching element was found).
              * @static
+             * @inheritable
              */
             get: function(el) {
                 var me = this,
@@ -968,6 +988,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * on the document, this is returned. If not, the focus is tracked and the active
              * element is maintained internally.
              * @static
+             * @inheritable
              * @return {HTMLElement} The active (focused) element in the document.
              */
             getActiveElement: function () {
@@ -985,6 +1006,7 @@ Ext.define('Ext.dom.Element', function(Element) {
             /**
              * Retrieves the document height
              * @static
+             * @inheritable
              * @return {Number} documentHeight
              */
             getDocumentHeight: function() {
@@ -994,6 +1016,7 @@ Ext.define('Ext.dom.Element', function(Element) {
             /**
              * Retrieves the document width
              * @static
+             * @inheritable
              * @return {Number} documentWidth
              */
             getDocumentWidth: function() {
@@ -1004,6 +1027,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * Retrieves the current orientation of the window. This is calculated by
              * determining if the height is greater than the width.
              * @static
+             * @inheritable
              * @return {String} Orientation of window: 'portrait' or 'landscape'
              */
             getOrientation: function() {
@@ -1017,6 +1041,7 @@ Ext.define('Ext.dom.Element', function(Element) {
             /**
              * Retrieves the viewport height of the window.
              * @static
+             * @inheritable
              * @return {Number} viewportHeight
              */
             getViewportHeight: function() {
@@ -1026,6 +1051,7 @@ Ext.define('Ext.dom.Element', function(Element) {
             /**
              * Retrieves the viewport width of the window.
              * @static
+             * @inheritable
              * @return {Number} viewportWidth
              */
             getViewportWidth: function() {
@@ -1035,6 +1061,7 @@ Ext.define('Ext.dom.Element', function(Element) {
             /**
              * Retrieves the viewport size of the window.
              * @static
+             * @inheritable
              * @return {Object} object containing width and height properties
              */
             getViewSize: function() {
@@ -1052,6 +1079,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * - padding-top -> paddingTop
              *
              * @static
+             * @inheritable
              * @param {String} prop The property to normalize
              * @return {String} The normalized string
              */
@@ -1063,6 +1091,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * Parses a number or string representing margin sizes into an object. Supports CSS-style margin declarations
              * (e.g. 10, "10", "10 10", "10 10 10" and "10 10 10 10" are all valid options and would return the same result)
              * @static
+             * @inheritable
              * @param {Number/String} box The encoded margins
              * @return {Object} An object with margin sizes for top, right, bottom and left containing the unit
              */
@@ -1115,6 +1144,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              *     console.log(Ext.dom.Element.parseStyles(css));
              *
              * @static
+             * @inheritable
              * @param {String} styles A CSS string
              * @return {Object} styles
              */
@@ -1141,6 +1171,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * elements in one statement through the returned
              * {@link Ext.dom.CompositeElementLite CompositeElementLite} object.
              * @static
+             * @inheritable
              * @param {String/HTMLElement[]} selector The CSS selector or an array of
              * elements
              * @param {Boolean} [composite=false] Return a CompositeElement as opposed to
@@ -1156,6 +1187,7 @@ Ext.define('Ext.dom.Element', function(Element) {
             /**
              * Selects child nodes of a given root based on the passed CSS selector.
              * @static
+             * @inheritable
              * @param {String} selector The CSS selector.
              * @param {Boolean} [asDom=true] `false` to return an array of Ext.dom.Element
              * @param {HTMLElement/String} [root] The root element of the query or id of
@@ -1171,6 +1203,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * Parses a number or string representing margin sizes into an object. Supports CSS-style margin declarations
              * (e.g. 10, "10", "10 10", "10 10 10" and "10 10 10 10" are all valid options and would return the same result)
              * @static
+             * @inheritable
              * @param {Number/String/Object} box The encoded margins, or an object with top, right,
              * @param {String} units The type of units to add
              * @return {String} An string with unitized (px if units is not specified) metrics for top, right, bottom and left
@@ -1190,6 +1223,7 @@ Ext.define('Ext.dom.Element', function(Element) {
              * @param {Object} form The form
              * @return {String} The url encoded form
              * @static
+             * @inheritable
              */
             serializeForm: function(form) {
                 var fElements = form.elements || (DOC.forms[form] || Ext.getDom(form)).elements,
@@ -1230,6 +1264,7 @@ Ext.define('Ext.dom.Element', function(Element) {
             /**
              * Returns the common ancestor of the two passed elements.
              * @static
+             * @inheritable
              *
              * @param {Ext.dom.Element/HTMLElement} nodeA
              * @param {Ext.dom.Element/HTMLElement} nodeB
@@ -1449,6 +1484,30 @@ Ext.define('Ext.dom.Element', function(Element) {
 
         /**
          * More flexible version of {@link #setStyle} for setting style properties.
+         * 
+         * Styles in object form should be a valid DOM element style property.  
+         * [Valid style property names](http://www.w3schools.com/jsref/dom_obj_style.asp) 
+         * (_along with the supported CSS version for each_)
+         * 
+         *     // <div id="my-el">Phineas Flynn</div>
+         *     
+         *     var el = Ext.get('my-el');
+         *     
+         *     el.applyStyles('color: white;');
+         *     
+         *     el.applyStyles({
+         *         fontWeight: 'bold',
+         *         backgroundColor: 'gray',
+         *         padding: '10px'
+         *     });
+         *     
+         *     el.applyStyles(function () {
+         *         if (name.initialConfig.html === 'Phineas Flynn') {
+         *             return 'font-style: italic;';
+         *             // OR return { fontStyle: 'italic' };
+         *         }
+         *     });
+         * 
          * @param {String/Object/Function} styles A style specification string, e.g. "width:100px", or object in the form `{width:"100px"}`, or
          * a function which returns such a specification.
          * @return {Ext.dom.Element} this
@@ -2319,7 +2378,7 @@ Ext.define('Ext.dom.Element', function(Element) {
          * a given container.  These coordinates translate into the scrollLeft and scrollTop
          * positions that will need to be set on an ancestor of the element in order to make
          * this element visible within its container.
-         * @param {String/HTMLElement/Ext.Element} The container
+         * @param {String/HTMLElement/Ext.Element} container The container
          * @param {Number} scrollX The container's current scroll position on the x axis
          * @param {Number} scrollY The container's current scroll position on the y axis
          * @return {Object} An object with "x" and "y" properties
@@ -2672,11 +2731,6 @@ Ext.define('Ext.dom.Element', function(Element) {
             return elementData.classMap.hasOwnProperty(name);
         },
 
-        /**
-         * Hide this element - Uses display mode to determine whether to use "display",
-         * "visibility", or "offsets". See {@link #setVisible}.
-         * @return {Ext.dom.Element} this
-         */
         hide: function() {
             this.setVisible(false);
             return this;
@@ -2920,6 +2974,26 @@ Ext.define('Ext.dom.Element', function(Element) {
         last: function(selector, returnDom) {
             return this.matchNode('previousSibling', 'lastChild', selector, returnDom);
         },
+        
+        /**
+         * Mask iframes when shim is true. See {@link Ext.util.Floating#shim}.
+         * @private
+         */
+        maskIframes: function() {
+            var iframes = document.getElementsByTagName('iframe');
+
+            Ext.each(iframes, function(iframe) {
+                var iframeParent = Ext.fly(iframe.parentNode),
+                    myMask = iframeParent.mask();
+                myMask.setStyle('background-color','transparent');
+            });
+
+        },
+
+        /**
+         * @cfg listeners
+         * @hide
+         */
 
         matchNode: function(dir, start, selector, returnDom) {
             var dom = this.dom,
@@ -3598,9 +3672,53 @@ Ext.define('Ext.dom.Element', function(Element) {
         },
 
         /**
-         * Sets the passed attributes as attributes of this element (a style attribute can be a string, object or function).
+         * Sets the passed attributes as attributes of this element (a `style` attribute 
+         * can be a string, object or function).
+         * 
+         * Example component (though any Ext.dom.Element would suffice):
+         * 
+         *     var cmp = Ext.create({
+         *         xtype: 'component',
+         *         html: 'test',
+         *         renderTo: Ext.getBody()
+         *     });
+         * 
+         * Once the component is rendered, you can fetch a reference to its outer 
+         * element to use `set`:
+         * 
+         *     cmp.el.set({
+         *         foo: 'bar'
+         *     });
+         * 
+         * This sets an attribute on the element of **foo="bar"**:
+         * 
+         *     <div class="x-component x-component-default x-border-box" id="component-1009" foo="bar">test</div>
+         * 
+         * To remove the attribute pass a value of **undefined**:
+         * 
+         *     cmp.el.set({
+         *         foo: undefined
+         *     });
+         * 
+         * **Note:**
+         * 
+         *  - You cannot remove an attribute by passing `undefined` when the 
+         * `expandos` param is set to **false**.
+         *  - Passing an attribute of `style` results in the request being handed off to 
+         * {@link #method-applyStyles}.
+         *  - Passing an attribute of `cls` results in the element's dom's 
+         * [className](http://www.w3schools.com/jsref/prop_html_classname.asp) property 
+         * being set directly.  For additional flexibility when setting / removing 
+         * classes see: 
+         *     - {@link #method-addCls}
+         *     - {@link #method-removeCls}
+         *     - {@link #method-replaceCls}
+         *     - {@link #method-setCls}
+         *     - {@link #method-toggleCls}
+         * 
          * @param {Object} attributes The object with the attributes.
-         * @param {Boolean} [useSet=true] `false` to override the default `setAttribute` to use expandos.
+         * @param {Boolean} [useSet=true] `false` to override the default `setAttribute` 
+         * to use [expandos](http://help.dottoro.com/ljvovanq.php).
          * @return {Ext.dom.Element} this
          */
         set: function(attributes, useSet) {
@@ -3690,11 +3808,6 @@ Ext.define('Ext.dom.Element', function(Element) {
             me.dom.className = className.join(' ');
         },
 
-        /**
-         * Set the height of this Element.
-         * @param {Number/String} height The new height.
-         * @return {Ext.dom.Element} this
-         */
         setHeight: function(height) {
             var me = this;
 
@@ -3707,10 +3820,6 @@ Ext.define('Ext.dom.Element', function(Element) {
             return me;
         },
 
-        /**
-         * Sets the `innerHTML` of this element.
-         * @param {String} html The new HTML.
-         */
         setHtml: function(html) {
             if (this.dom) {
                 this.dom.innerHTML = html;
@@ -3920,21 +4029,6 @@ Ext.define('Ext.dom.Element', function(Element) {
             return this;
         },
 
-        /**
-         * Set the size of this Element.
-         *
-         * @param {Number/String} width The new width. This may be one of:
-         *
-         * - A Number specifying the new width in pixels.
-         * - A String used to set the CSS width style. Animation may **not** be used.
-         * - A size object in the format `{width: widthValue, height: heightValue}`.
-         *
-         * @param {Number/String} height The new height. This may be one of:
-         *
-         * - A Number specifying the new height in pixels.
-         * - A String used to set the CSS height style. Animation may **not** be used.
-         * @return {Ext.dom.Element} this
-         */
         setSize: function(width, height) {
             var me = this,
                 style = me.dom.style;
@@ -3980,9 +4074,31 @@ Ext.define('Ext.dom.Element', function(Element) {
         },
 
         /**
-         * Wrapper for setting style properties, also takes single object parameter of multiple styles.
-         * @param {String/Object} property The style property to be set, or an object of multiple styles.
-         * @param {String} [value] The value to apply to the given property, or null if an object was passed.
+         * Wrapper for setting style properties, also takes single object parameter of 
+         * multiple styles.
+         * 
+         * Styles should be a valid DOM element style property.  
+         * [Valid style property names](http://www.w3schools.com/jsref/dom_obj_style.asp) 
+         * (_along with the supported CSS version for each_)
+         * 
+         *     // <div id="my-el">Phineas Flynn</div>
+         *     
+         *     var el = Ext.get('my-el');
+         *     
+         *     // two-param syntax
+         *     el.setStyle('color', 'white');
+         *     
+         *     // single-param syntax
+         *     el.setStyle({
+         *         fontWeight: 'bold',
+         *         backgroundColor: 'gray',
+         *         padding: '10px'
+         *     });
+         * 
+         * @param {String/Object} property The style property to be set, or an object of 
+         * multiple styles.
+         * @param {String} [value] The value to apply to the given property, or null if 
+         * an object was passed.
          * @return {Ext.dom.Element} this
          */
         setStyle: function(prop, value) {
@@ -4093,8 +4209,8 @@ Ext.define('Ext.dom.Element', function(Element) {
         /**
          * Use this to change the visibility mode between {@link #VISIBILITY}, 
          * {@link #DISPLAY} or {@link #OFFSETS}.
-         * @param {Ext.dom.Element.VISIBILITY/Ext.dom.Element.DISPLAY/Ext.dom.Element.OFFSETS} 
-         * mode The method by which the element will be {@link #hide hidden} (you can 
+         * @param {Ext.dom.Element.VISIBILITY/Ext.dom.Element.DISPLAY/Ext.dom.Element.OFFSETS} mode
+         * The method by which the element will be {@link #hide hidden} (you can 
          * also use the {@link #setVisible} or {@link #toggle} method to toggle element 
          * visibility).
          * @return {Ext.dom.Element} this
@@ -4110,17 +4226,6 @@ Ext.define('Ext.dom.Element', function(Element) {
             return this;
         },
 
-        /**
-         * Sets the visibility of the element based on the current visibility mode. Use
-         * {@link #setVisibilityMode} to switch between the following visibility modes:
-         *
-         * - {@link #DISPLAY} (the default)
-         * - {@link #VISIBILITY}
-         * - {@link #OFFSETS}
-         *
-         * @param {Boolean} visible Whether the element is visible.
-         * @return {Ext.dom.Element} this
-         */
         setVisible: function(visible) {
             var me = this,
                 mode = me.getVisibilityMode(),
@@ -4150,11 +4255,6 @@ Ext.define('Ext.dom.Element', function(Element) {
             return me;
         },
 
-        /**
-         * Set the width of this Element.
-         * @param {Number/String} width The new width.
-         * @return {Ext.dom.Element} this
-         */
         setWidth: function(width) {
             var me = this;
 
@@ -4235,11 +4335,6 @@ Ext.define('Ext.dom.Element', function(Element) {
             return me.setStyle('z-index', zindex);
         },
 
-        /**
-         * Show this element - Uses display mode to determine whether to use "display",
-         * "visibility", or "offsets". See {@link #setVisible}.
-         * @return {Ext.dom.Element} this
-         */
         show: function() {
             this.setVisible(true);
             return this;
@@ -4343,10 +4438,6 @@ Ext.define('Ext.dom.Element', function(Element) {
             return (force) ? this.addCls(className) : this.removeCls(className);
         },
 
-        /**
-         * Toggles the element's visibility, depending on visibility mode.
-         * @return {Ext.dom.Element} this
-         */
         toggle: function() {
             this.setVisible(!this.isVisible());
             return this;
@@ -4361,18 +4452,42 @@ Ext.define('Ext.dom.Element', function(Element) {
         }(),
 
         /**
+         * Unmask iframes when shim is true. See {@link Ext.util.Floating#shim}.
+         * @private
+         */
+        unmaskIframes: function() {
+            var iframes = document.getElementsByTagName('iframe');
+
+            Ext.each(iframes, function(iframe) {
+                var iframeParent = Ext.fly(iframe.parentNode);
+                iframeParent.unmask();
+            });
+
+        },
+
+        /**
          * @private
          */
         unwrap: function() {
             var dom = this.dom,
                 parentNode = dom.parentNode,
                 grandparentNode,
-                activeElement = Ext.fly(Ext.Element.getActiveElement()),
-                resumeFocus;
+                activeElement = Ext.Element.getActiveElement(),
+                cached, resumeFocus;
+
+            cached = Ext.cache[activeElement.id];
+            // If the element is in the cache, we need to get the instance so
+            // we can suspend events on it. If it's not in the cache, it can't
+            // have any events so we don't need to suspend on it.
+            if (cached) {
+                activeElement = cached;
+            }
 
             if (this.contains(activeElement)) {
                 Ext.GlobalEvents.suspendEvent('focus');
-                activeElement.suspendEvent('focus', 'blur');
+                if (cached) {
+                    activeElement.suspendEvent('focus', 'blur');
+                }
                 resumeFocus = true;
             }
             if (parentNode) {
@@ -4385,9 +4500,13 @@ Ext.define('Ext.dom.Element', function(Element) {
                 grandparentNode.appendChild(dom);
             }
             if (resumeFocus) {
-                activeElement.focus();
+                if (cached) {
+                    activeElement.focus();
+                    activeElement.resumeEvent('focus', 'blur');
+                } else {
+                    Ext.fly(activeElement).focus();
+                }
                 Ext.GlobalEvents.resumeEvent('focus');
-                activeElement.resumeEvent('focus', 'blur');
             }
 
             return this;
@@ -4428,22 +4547,36 @@ Ext.define('Ext.dom.Element', function(Element) {
                 dom = me.dom,
                 newEl = Ext.DomHelper.insertBefore(dom, config || {tag: "div"}, !returnDom),
                 target = newEl,
-                activeElement = Ext.fly(Ext.Element.getActiveElement()),
-                resumeFocus;
+                activeElement = Ext.Element.getActiveElement(),
+                cached, resumeFocus;
 
             if (selector) {
                 target = newEl.selectNode(selector, returnDom);
             }
 
+            cached = Ext.cache[activeElement.id];
+            // If the element is in the cache, we need to get the instance so
+            // we can suspend events on it. If it's not in the cache, it can't
+            // have any events so we don't need to suspend on it.
+            if (cached) {
+                activeElement = cached;
+            }
+
             if (me.contains(activeElement)) {
                 Ext.GlobalEvents.suspendEvent('focus');
-                activeElement.suspendEvent('focus', 'blur');
+                if (cached) {
+                    activeElement.suspendEvent('focus', 'blur');
+                }
                 resumeFocus = true;
             }
             target.appendChild(dom);
             if (resumeFocus) {
-                activeElement.focus();
-                activeElement.resumeEvent('focus', 'blur');
+                if (cached) {
+                    activeElement.focus();
+                    activeElement.resumeEvent('focus', 'blur');
+                } else {
+                    Ext.fly(activeElement).focus();
+                }
                 Ext.GlobalEvents.resumeEvent('focus');
             }
             return newEl;
@@ -4452,6 +4585,7 @@ Ext.define('Ext.dom.Element', function(Element) {
         privates: {
             doAddListener: function(eventName, fn, scope, options, order, caller, manager) {
                 var me = this,
+                    originalName = eventName,
                     observableDoAddListener, additiveEventName,
                     translatedEventName;
 
@@ -4492,11 +4626,18 @@ Ext.define('Ext.dom.Element', function(Element) {
                         if (translatedEventName) {
                             // options.type may have already been set above
                             options.type = options.type || eventName;
+                            if (manager) {
+                                options.managedName = originalName;
+                            }
                             eventName = translatedEventName;
                         }
                     }
 
                     observableDoAddListener.call(me, eventName, fn, scope, options, order, caller, manager);
+
+                    if (manager && translatedEventName) {
+                        delete options.managedName;
+                    }
 
                     // after the listener has been added to the ListenerStack, it's original
                     // "type" (for translated events) will be stored on the listener object in

@@ -86,9 +86,11 @@ Ext.define('Ext.grid.column.Check', {
             key = type === 'keydown' && e.getKey(),
             mousedown = type === 'mousedown',
             disabled = me.disabled,
-            ret = false,
+            ret,
             checked;
 
+        // Flag event to tell SelectionModel not to process it.
+        e.stopSelection = !key && me.stopSelection;
 
         if (!disabled && (mousedown || (key === e.ENTER || key === e.SPACE))) {
             checked = !me.isRecordChecked(record);
@@ -97,24 +99,7 @@ Ext.define('Ext.grid.column.Check', {
             if (me.fireEvent('beforecheckchange', me, recordIndex, checked) !== false) {
                 me.setRecordCheck(record, checked, cell, row, e);
                 me.fireEvent('checkchange', me, recordIndex, checked);
-
-                // Mousedown on the now nonexistent cell causes the view to blur, so stop it continuing.
-                if (mousedown) {
-                    e.stopEvent();
-                }
-
-                // Selection may not proceed after this because of the DOM update caused by the record modification,
-                // this depends on whether or not we overwrite the DOM element, which may prevent the click event. Regardless,
-                // we'll veto the click event below and just do the selection here if needed.
-                if (!me.stopSelection) {
-                    view.selModel.selectByPosition({
-                        row: recordIndex,
-                        column: cellIndex
-                    });
-                }
             }
-        } else if (!disabled && type === 'click') {
-            ret = false;
         } else {
             ret = me.callParent(arguments);
         }
@@ -186,12 +171,9 @@ Ext.define('Ext.grid.column.Check', {
     },
 
     updater: function (cell, value) {
-        var cellValues = {},
-            tdCls;
-        cell.firstChild.innerHTML = this.defaultRenderer(value, cellValues);
-        tdCls = cellValues.tdCls;
-        if (tdCls) {
-            Ext.fly(cell).addCls(tdCls);
-        }
+        cell = Ext.fly(cell);
+
+        cell[this.disabled ? 'addCls' : 'removeCls'](this.disabledCls);
+        Ext.fly(cell.down(this.getView().innerSelector, true).firstChild)[value ? 'addCls' : 'removeCls'](Ext.baseCSSPrefix + 'grid-checkcolumn-checked');
     }
 });

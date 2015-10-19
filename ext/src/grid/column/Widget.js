@@ -188,20 +188,61 @@ Ext.define('Ext.grid.column.Widget', {
      * @cfg {Function/String} onWidgetAttach
      * A function that will be called when a widget is attached to a record. This may be useful for
      * doing any post-processing.
+     * 
+     *     Ext.create({
+     *         xtype: 'grid',
+     *         title: 'Student progress report',
+     *         width: 250,
+     *         renderTo: Ext.getBody(),
+     *         disableSelection: true,
+     *         store: {
+     *             fields: ['name', 'isHonorStudent'],
+     *             data: [{
+     *                 name: 'Finn',
+     *                 isHonorStudent: true
+     *             }, {
+     *                 name: 'Jake',
+     *                 isHonorStudent: false
+     *             }]
+     *         },
+     *         columns: [{
+     *             text: 'Name',
+     *             dataIndex: 'name',
+     *             flex: 1
+     *         }, {
+     *             xtype: 'widgetcolumn',
+     *             text: 'Honor Roll',
+     *             dataIndex: 'isHonorStudent',
+     *             width: 150,
+     *             widget: {
+     *                 xtype: 'button',
+     *                 handler: function() {
+     *                     // print certificate handler
+     *                 }
+     *             },
+     *             // called when the widget is initially instantiated
+     *             // on the widget column
+     *             onWidgetAttach: function(col, widget, rec) {
+     *                 widget.setText('Print Certificate');
+     *                 widget.setDisabled(!rec.get('isHonorStudent'));
+     *             }
+     *         }]
+     *     });
+     * 
      * @param {Ext.grid.column.Column} column The column.
      * @param {Ext.Component/Ext.Widget} widget The {@link #widget} rendered to each cell.
      * @param {Ext.data.Model} record The record used with the current widget (cell).
      * @declarativeHandler
      */
     onWidgetAttach: null,
-    
+
+    preventUpdate: true,
+
     /**
      * @cfg {Boolean} [stopSelection=true]
      * Prevent grid selection upon click on the widget.
      */
     stopSelection: true,
-     
-    preventUpdate: true,
 
     initComponent: function() {
         var me = this,
@@ -235,7 +276,7 @@ Ext.define('Ext.grid.column.Widget', {
             // prevent the selection from happening
             target = e.getTarget(selector);
             if (target && target !== e.target) {
-                return false;
+                e.stopSelection = true;
             }
         }
     },

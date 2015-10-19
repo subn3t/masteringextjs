@@ -314,7 +314,6 @@ Ext.define('Ext.tab.Tab', {
         }
     },
 
-    // inherit docs
     enable: function(silent) {
         var me = this;
 
@@ -325,7 +324,6 @@ Ext.define('Ext.tab.Tab', {
         return me;
     },
 
-    // inherit docs
     disable: function(silent) {
         var me = this;
 

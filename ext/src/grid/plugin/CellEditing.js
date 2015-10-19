@@ -444,8 +444,8 @@ Ext.define('Ext.grid.plugin.CellEditing', {
             editors = me.editors,
             editorId = column.getItemId(),
             editor = editors.getByKey(editorId),
-            // Add to top level grid if we are editing one side of a locking system
-            editorOwner = me.grid.ownerLockable || me.grid;
+            // Add to view
+            editorOwner = column.getView();
 
         if (!editor) {
             editor = column.getEditor(record);
@@ -470,9 +470,9 @@ Ext.define('Ext.grid.plugin.CellEditing', {
             // collection, if the grid happens to be used inside a form
             editor.field.excludeForm = true;
 
-            // If the editor is new to this grid, then add it to the grid, and ensure it tells us about its life cycle.
-            if (editor.ownerCt !== editorOwner) {
-                editorOwner.add(editor);
+            // If the editor is new to this view, then link it to the view, and ensure it tells us about its life cycle.
+            if (editor.ownerCmp !== editorOwner) {
+                editor.ownerCmp = editorOwner;
                 editor.on({
                     scope: me,
                     specialkey: me.onSpecialKey,
@@ -504,7 +504,7 @@ Ext.define('Ext.grid.plugin.CellEditing', {
             context = me.context,
             editor,
             // Editor is owned by top level grid if we are editing one side of a locking system
-            editorOwner = me.grid.ownerLockable || me.grid;
+            editorOwner = column.getView();
 
         // If the column was being edited, when plucked out of the grid, cancel the edit.
         if (context && context.column === column) {
@@ -513,8 +513,8 @@ Ext.define('Ext.grid.plugin.CellEditing', {
 
         // Remove the CellEditor of that column from the grid, and no longer listen for events from it.
         column.un('removed', me.onColumnRemoved, me);
-        if (column.getEditor && (editor = column.getEditor()) && editor.ownerCt === editorOwner) {
-            editorOwner.remove(editor);
+        if (column.getEditor && (editor = column.getEditor()) && editor.ownerCmp === editorOwner) {
+            editor.ownerCmp = null;
             editor.un({
                 scope: me,
                 specialkey: me.onSpecialKey,
@@ -524,7 +524,6 @@ Ext.define('Ext.grid.plugin.CellEditing', {
         }
     },
 
-    // inherit docs
     setColumnField: function(column, field) {
         var ed = this.editors.getByKey(column.getItemId());
         Ext.destroy(ed, column.field);
@@ -570,10 +569,11 @@ Ext.define('Ext.grid.plugin.CellEditing', {
     onEditComplete : function(ed, value, startValue) {
         var me = this,
             activeColumn = me.getActiveColumn(),
+            activeEd = me.getActiveEditor(),
             context = me.context,
-            view, record;
+            view, record, sm, preserveCurrentSelection;
 
-        if (activeColumn) {
+        if (activeEd) {
             view = context.view;
             record = context.record;
 
@@ -585,6 +585,16 @@ Ext.define('Ext.grid.plugin.CellEditing', {
             if (!me.validateEdit()) {
                 me.editing = false;
                 return;
+            }
+
+            // Restore focus back to the view only if we are focused (eg, pressed ENTER, not tabbed or clicked out).
+            // In IE and Edge, hiding the editor will throw focus back to the view so we can't check
+            // if it is focused after hiding. See CellEditor.onHide().
+            if (activeEd.el.contains(Ext.Element.getActiveElement()) || activeEd.currentlyFocused) {
+                sm = view.getSelectionModel();
+                preserveCurrentSelection = sm.getSelectionMode() === 'MULTI' && (sm.getSelection().length > 1 || !sm.isSelected(record));
+                view.getNavigationModel().setPosition(context, null, null, null, preserveCurrentSelection);
+                activeEd.currentlyFocused = null;
             }
 
             // Only update the record if the new value is different than the
@@ -612,24 +622,23 @@ Ext.define('Ext.grid.plugin.CellEditing', {
             preserveCurrentSelection,
             activeEd = me.getActiveEditor();
 
-        if (activeEd) {
+        if (activeEd && !activeEd.isDestroyed) {
             me.setActiveEditor(null);
             me.setActiveColumn(null);
             me.setActiveRecord(null);
 
             view = context.view;
-            sm = view.getSelectionModel();
-            preserveCurrentSelection = sm.getSelectionMode() === 'MULTI' && (sm.getSelection().length > 1 || !sm.isSelected(record));
-            if (activeEd.field) {
-                me.context.value = ('editedValue' in activeEd) ? activeEd.editedValue : activeEd.getValue();
-                activeEd.cancelEdit();
-            }
 
-            // Restore focus back to the view.
-            // Use delay so that if other operations cause some other focus call, we can cancel the focus task
-            // deferSetPosition uses the Component's singleton focusTask so is cancelable by any other focus request.
-            // Pass final parameter true so as NOT to inform the SelectionModel. This is just a focus.
-            context.view.getNavigationModel().deferSetPosition(100, context, null, null, null, preserveCurrentSelection);
+            // Restore focus back to the view only if we are focused (eg, pressed ESC).
+            if (activeEd.el.contains(Ext.Element.getActiveElement())) {
+                sm = view.getSelectionModel();
+                preserveCurrentSelection = sm.getSelectionMode() === 'MULTI' && (sm.getSelection().length > 1 || !sm.isSelected(record));
+                if (activeEd.field) {
+                    me.context.value = ('editedValue' in activeEd) ? activeEd.editedValue : activeEd.getValue();
+                    activeEd.cancelEdit();
+                }
+                view.getNavigationModel().setPosition(context, null, null, null, preserveCurrentSelection);
+            }
 
             // Editing flag cleared in superclass
             me.callParent(arguments);

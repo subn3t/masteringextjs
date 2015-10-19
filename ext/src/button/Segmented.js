@@ -31,7 +31,10 @@
 Ext.define('Ext.button.Segmented', {
     extend: 'Ext.container.Container',
     xtype: 'segmentedbutton',
-    requires: [ 'Ext.button.Button' ],
+    requires: [ 
+        'Ext.button.Button' ,
+        'Ext.layout.container.SegmentedButton'
+    ],
 
     config: {
         /**
@@ -70,6 +73,7 @@ Ext.define('Ext.button.Segmented', {
     beforeRenderConfig: {
         /**
          * @cfg {String/Number/String[]/Number[]}
+         * @accessor
          * The value of this button.  When {@link #allowMultiple} is `false`, value is a
          * String or Number.  When {@link #allowMultiple is `true`, value is an array
          * of values.  A value corresponds to a child button's {@link Ext.button.Button#value

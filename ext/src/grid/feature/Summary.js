@@ -118,27 +118,24 @@ Ext.define('Ext.grid.feature.Summary', {
             priority: 300,
 
             beginRowSync: function (rowSync) {
-                rowSync.add('fullSummary', this.summaryRowSelector);
+                rowSync.add('fullSummary', this.summaryFeature.summaryRowSelector);
             },
 
             syncContent: function(destRow, sourceRow, columnsToUpdate) {
                 destRow = Ext.fly(destRow, 'syncDest');
                 sourceRow = Ext.fly(sourceRow, 'sycSrc');
-                var owner = this.owner,
-                    selector = owner.summaryRowSelector,
+                var summaryFeature = this.summaryFeature,
+                    selector = summaryFeature.summaryRowSelector,
                     destSummaryRow = destRow.down(selector, true),
                     sourceSummaryRow = sourceRow.down(selector, true);
 
                 // Sync just the updated columns in the summary row.
                 if (destSummaryRow && sourceSummaryRow) {
 
-                    // If we were passed a column set, only update them
+                    // If we were passed a column set, only update those, otherwise do the entire row
                     if (columnsToUpdate) {
                         this.summaryFeature.view.updateColumns(destSummaryRow, sourceSummaryRow, columnsToUpdate);
-                    }
-
-                    // Else simply sync the content
-                    else {
+                    } else {
                         Ext.fly(destSummaryRow).syncContent(sourceSummaryRow);
                     }
                 }
@@ -219,7 +216,7 @@ Ext.define('Ext.grid.feature.Summary', {
             }
         }
 
-        grid.on({
+        grid.ownerGrid.on({
             beforereconfigure: me.onBeforeReconfigure,
             columnmove: me.onStoreUpdate,
             scope: me
@@ -305,7 +302,7 @@ Ext.define('Ext.grid.feature.Summary', {
 
     createSummaryRecord: function (view) {
         var me = this,
-            columns = view.headerCt.getVisibleGridColumns(),
+            columns = view.headerCt.getGridColumns(),
             remoteRoot = me.remoteRoot,
             summaryRecord = me.summaryRecord,
             colCount = columns.length, i, column,
@@ -373,15 +370,21 @@ Ext.define('Ext.grid.feature.Summary', {
             oldRowDom = p.firstChild;
         }
         // Summary row is a regular row in a THEAD inside the View.
-        // Downlinked through the summary record's ID'
+        // Downlinked through the summary record's ID
         else {
             oldRowDom = me.view.el.down(selector, true);
-            p = oldRowDom ? oldRowDom.parentNode : null;
+            
+            // If the old row doesn't exist, it means that the store update we are
+            // reacting to is a remove of the last row. So we will be appending
+            // to the node container.
+            p = oldRowDom ? oldRowDom.parentNode : view.getNodeContainer();
         }
 
         if (p) {
             p.insertBefore(newRowDom, oldRowDom);
-            p.removeChild(oldRowDom);
+            if (oldRowDom) {
+                p.removeChild(oldRowDom);
+            }
         }
         // If docked, the updated row will need sizing because it's outside the View
         if (dock) {
@@ -413,3 +416,4 @@ Ext.define('Ext.grid.feature.Summary', {
         me.callParent();
     }
 });
+

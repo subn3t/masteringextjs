@@ -1,3 +1,6 @@
+/**
+ * @private
+ */
 Ext.define('Ext.ux.colorpick.ColorUtils', function (ColorUtils) {
     var oldIE = Ext.isIE && Ext.ieVersion < 10;
 
@@ -351,6 +354,9 @@ Ext.define('Ext.ux.colorpick.ColorUtils', function (ColorUtils) {
             return (r + g + b).toUpperCase();
         },
 
+        /**
+         * @property
+         */
         colorMap: {
             aliceblue:              [240, 248, 255],
             antiquewhite:           [250, 235, 215],

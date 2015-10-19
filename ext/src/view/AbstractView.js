@@ -16,10 +16,20 @@ Ext.define('Ext.view.AbstractView', {
     ],
 
     inheritableStatics: {
+        /**
+         * @private
+         * @static
+         * @inheritable
+         */
         getRecord: function(node) {
             return this.getBoundView(node).getRecord(node);
         },
 
+        /**
+         * @private
+         * @static
+         * @inheritable
+         */
         getBoundView: function(node) {
             return Ext.getCmp(node.getAttribute('data-boundView'));
         }
@@ -172,7 +182,7 @@ Ext.define('Ext.view.AbstractView', {
          */
         selection: null,
 
-        /*
+        /**
          * @cfg {Ext.data.Store} store
          * The {@link Ext.data.Store} to bind this DataView to.
          * @since 2.3.0
@@ -373,6 +383,17 @@ Ext.define('Ext.view.AbstractView', {
      */
     preserveScrollOnRefresh: false,
 
+    /**
+     * @cfg {Boolean} [preserveScrollOnReload=false]
+     * True to preserve scroll position when the store is reloaded.
+     *
+     * You may want to configure this as `true` if you are using a {@link Ext.data.BufferedStore buffered store}
+     * and you require refreshes of the client side data state not to disturb the state of the UI.
+     *
+     * @since 5.1.1
+     */
+    preserveScrollOnReload: false,
+
     ariaRole: 'listbox',
     itemAriaRole: 'option',
     
@@ -450,7 +471,8 @@ Ext.define('Ext.view.AbstractView', {
         var me = this,
             isDef = Ext.isDefined,
             itemTpl = me.itemTpl,
-            memberFn = {};
+            memberFn = {},
+            store;
 
         if (itemTpl) {
             if (Ext.isArray(itemTpl)) {
@@ -513,21 +535,18 @@ Ext.define('Ext.view.AbstractView', {
         me.addCmpEvents();
 
         // Look up the configured Store. If none configured, use the fieldless, empty Store defined in Ext.data.Store.
-        me.store = Ext.data.StoreManager.lookup(me.store || 'ext-empty-store');
-        
+        store = me.store = Ext.data.StoreManager.lookup(me.store || 'ext-empty-store');
+
         // Use the provided store as the data source unless a Feature or plugin has injected a special one
         if (!me.dataSource) {
-            me.dataSource = me.store;
+            me.dataSource = store;
         }
+
+        me.bindStore(store, true);
 
         // Must exist before the selection model.
         // Selection model listens to this for navigation events.
         me.getNavigationModel().bindComponent(this);
-
-        // Bind to the data source. Cache it by the property name "dataSource".
-        // The store property is public and must reference the provided store.
-        // The selection model is configured and bound to the store at the top of bindStore.
-        me.bindStore(me.dataSource, true, 'dataSource');
 
         if (!me.all) {
             me.all = new Ext.CompositeElementLite();
@@ -541,7 +560,7 @@ Ext.define('Ext.view.AbstractView', {
 
         me.savedTabIndexAttribute = 'data-savedtabindex-' + me.id;
     },
-    
+
     getElConfig: function() {
         var result = this.mixins.renderable.getElConfig.call(this);
 
@@ -773,17 +792,15 @@ Ext.define('Ext.view.AbstractView', {
             prevItemCount = items.getCount(),
             refreshCounter = me.refreshCounter,
             targetEl,
-            overflowEl,
             dom,
             records,
             selModel = me.getSelectionModel(),
             navModel = me.getNavigationModel(),
-
-            // If there are items in the view, and there isn't a scroll range stretcher (bufferedRenderer), then honour preserveScrollOnRefresh
-            preserveScroll = refreshCounter && items.getCount() && me.preserveScrollOnRefresh && !me.bufferedRenderer,
+            // If there are items in the view, then honour preserveScrollOnRefresh
+            scroller = refreshCounter && items.getCount() && me.preserveScrollOnRefresh && me.getScrollable(),
             scrollPos;
 
-        if (!me.rendered || me.isDestroyed || me.preventRefresh) {
+        if (!me.rendered || me.isDestroyed) {
             return;
         }
 
@@ -799,9 +816,8 @@ Ext.define('Ext.view.AbstractView', {
             records = me.getViewRange();
             dom = targetEl.dom;
 
-            if (preserveScroll) {
-                overflowEl = me.getOverflowEl();
-                scrollPos = overflowEl.getScroll();
+            if (scroller) {
+                scrollPos = scroller.getPosition();
             }
 
             if (refreshCounter) {
@@ -843,9 +859,8 @@ Ext.define('Ext.view.AbstractView', {
 
             me.fireEvent('refresh', me, records);
 
-            if (preserveScroll) {
-                overflowEl.setScrollLeft(scrollPos.left);
-                overflowEl.setScrollTop(scrollPos.top);
+            if (scroller) {
+                scroller.scrollTo(scrollPos);
             }
 
             // Upon first refresh, fire the viewready event.
@@ -861,8 +876,10 @@ Ext.define('Ext.view.AbstractView', {
     },
 
     addEmptyText: function() {
-        var me = this;
-        if (me.emptyText && !me.getStore().isLoading() && (!me.deferEmptyText || me.refreshCounter > 1)) {
+        var me = this,
+            store = me.getStore();
+
+        if (me.emptyText && !store.isLoading() && (!me.deferEmptyText || me.refreshCounter > 1 || store.isLoaded())) {
             me.emptyEl = Ext.core.DomHelper.insertHtml('beforeEnd', me.getTargetEl().dom, me.emptyText);
         }
     },
@@ -930,19 +947,19 @@ Ext.define('Ext.view.AbstractView', {
         }
     },
 
-    onResize: function() {
+    afterFirstLayout: function(width, height) {
         var me = this,
             scroller = me.getScrollable();
 
-        if (scroller && !me._hasScrollListener) {
+        if (scroller) {
             scroller.on({
                 scroll: me.onViewScroll,
+                scrollend: me.onViewScrollEnd,
                 scope: me,
                 onFrame: !!Ext.global.requestAnimationFrame
             });
-            me._hasScrollListener = true;
         }
-        this.callParent(arguments);
+        me.callParent([width, height]);
     },
 
     clearViewEl: function() {
@@ -972,6 +989,10 @@ Ext.define('Ext.view.AbstractView', {
 
     onViewScroll: function(scroller, x, y) {
         this.fireEvent('scroll', this, x, y);
+    },
+
+    onViewScrollEnd: function(scroller, x, y) {
+        this.fireEvent('scrollend', this, x, y);
     },
 
     /**
@@ -1123,7 +1144,7 @@ Ext.define('Ext.view.AbstractView', {
             node,
             selModel = me.getSelectionModel();
 
-        if (me.viewReady) {
+        if (me.viewReady && !me.refreshNeeded) {
             index = me.dataSource.indexOf(record);
 
             // If the record has been removed from the data source since the changes were made, do nothing
@@ -1153,30 +1174,31 @@ Ext.define('Ext.view.AbstractView', {
     // This saves a layout because a remove and add operation are coalesced in this operation.
     onReplace: function(store, startIndex, oldRecords, newRecords) {
         var me = this,
-            endIndex,
             all = me.all,
             selModel = me.getSelectionModel(),
-            result, item, i, j, fragment, children;
+            origStart = startIndex,
+            result, item, i, j, fragment, children, items, endIndex;
 
         if (me.rendered) {
-
             // Insert the new items before the remove block
             result = me.bufferRender(newRecords, startIndex, true);
             fragment = result.fragment;
             children = result.children;
             item = all.item(startIndex);
+
             if (item) {
                 all.item(startIndex).insertSibling(fragment, 'before', true);
             } else {
-                me.appendNodes(fragment); 
+                me.appendNodes(fragment);
             }
+
             all.insert(startIndex, children);
 
             startIndex += newRecords.length;
             endIndex = startIndex + oldRecords.length - 1;
 
             // Remove the items which correspond to old records
-            all.removeRange(startIndex, endIndex, true);
+            items = all.removeRange(startIndex, endIndex, true);
 
             // Some subclasses do not need to do this. TableView does not need to do this.
             if (me.refreshSelmodelOnRefresh !== false) {
@@ -1186,16 +1208,17 @@ Ext.define('Ext.view.AbstractView', {
             // Update the row indices (TableView) doesn't do this.
             me.updateIndexes(startIndex);
 
-            // Fire the itemremove event for each removed item
             if (me.hasListeners.itemremove) {
-                for (i = oldRecords.length, j = endIndex; i >= 0; --i, --j) {
-                    me.fireEvent('itemremove', oldRecords[i], j, me);
+                endIndex = origStart + oldRecords.length - 1;
+                for (i = oldRecords.length - 1, j = endIndex; i >= 0; --i, --j) {
+                    me.fireEvent('itemremove', oldRecords[i], j, items[i], me);
                 }
             }
 
             if (me.hasListeners.itemadd) {
                 me.fireEvent('itemadd', newRecords, startIndex, children);
             }
+
             me.refreshSize();
         }
     },
@@ -1206,7 +1229,7 @@ Ext.define('Ext.view.AbstractView', {
             nodes,
             selModel = me.getSelectionModel();
 
-        if (me.rendered) {
+        if (me.rendered && !me.refreshNeeded) {
             // If we are adding into an empty view, we must refresh in order that the *full tpl* is applied
             // which might create boilerplate content *around* the record nodes.
             if (me.all.getCount() === 0) {
@@ -1275,7 +1298,7 @@ Ext.define('Ext.view.AbstractView', {
             fireItemRemove = me.hasListeners.itemremove,
             currIdx, i, record, nodes, node;
 
-        if (rows.getCount()) {
+        if (me.rendered && !me.refreshNeeded && rows.getCount()) {
             if (me.dataSource.getCount() === 0) {
                 // Refresh so emptyText can be applied if necessary
                 if (fireItemRemove) {
@@ -1352,22 +1375,18 @@ Ext.define('Ext.view.AbstractView', {
      * @param {Ext.data.Store} store The store to bind to this view
      * @since 3.4.0
      */
-    bindStore: function(store, initial, propName) {
+    bindStore: function(store, initial) {
         var me = this,
             selModel = me.getSelectionModel();
 
-        // We'll refresh the selModel below when we refresh
-        selModel.preventRefresh = true;
         selModel.bindStore(store);
         selModel.bindComponent(store ? me : null);
-        selModel.preventRefresh = false;
-
         me.mixins.storeholder.bindStore.apply(me, arguments);
 
         // If we have already achieved our first layout, refresh immediately.
         // If we bind to the Store before the first layout, then beforeLayout will
         // call doFirstRefresh
-        if (store && me.componentLayoutCounter && !me.preventRefresh) {
+        if (store && me.componentLayoutCounter) {
             // If not the initial bind, we enforce noDefer
             me.doFirstRefresh(store, !initial);
         }
@@ -1398,27 +1417,31 @@ Ext.define('Ext.view.AbstractView', {
         }
     },
 
-    onUnbindStore: function(store, initial, propertyName) {
-        if (propertyName === 'store') {
-            this.setMaskBind(null);
-            this.getSelectionModel().bindStore(null);
+    onUnbindStore: function(store) {
+        this.setMaskBind(null);
+
+        if (this.dataSource === store) {
+            this.dataSource = null;
         }
     },
 
-    onBindStore: function(store, initial, propName) {
+    onBindStore: function(store, oldStore) {
         var me = this;
 
+        // A BufferedStore has to know to reload the most recent visible zone if its View is preserveScrollOnReload
+        if (me.store.isBufferedStore) {
+            me.store.preserveScrollOnReload = me.preserveScrollOnReload;
+        }
+        if (oldStore && oldStore.isBufferedStore) {
+            delete oldStore.preserveScrollOnReload;
+        }
+
         me.setMaskBind(store);
-        // After the oldStore (.store) has been unbound/bound,
-        // do the same for the old data source (.dataSource).
-        if (!initial && propName === 'store') {
-            // Block any refresh, since this means we're binding the store, which will kick off
-            // a refresh.
-            me.preventRefresh = true;
-            // Ensure we have the this.store reference set correctly.
-            me.store = store;
-            me.bindStore(store, false, 'dataSource');
-            me.preventRefresh = false;
+
+        // When unbinding the data store, the dataSource will be nulled out if it's the same as the data store.
+        // Restore it here.
+        if (!me.dataSource) {
+            me.dataSource = store;
         }
     },
 
@@ -1443,12 +1466,12 @@ Ext.define('Ext.view.AbstractView', {
             add: me.onAdd,
             remove: me.onRemove,
             update: me.onUpdate,
-            clear: me.refresh,
+            clear: me.onDataRefresh,
             beginupdate: me.onBeginUpdate,
             endupdate: me.onEndUpdate
         };
     },
-    
+
     onBeginUpdate: function() {
         ++this.updateSuspendCounter;
         Ext.suspendLayouts();
@@ -1474,7 +1497,15 @@ Ext.define('Ext.view.AbstractView', {
      * @since 3.4.0
      */
     onDataRefresh: function() {
-        this.refreshView();
+        var me = this,
+            preserveScrollOnRefresh = me.preserveScrollOnRefresh;
+
+        // This refresh, caused by a Store declaring that its data has all changed
+        // must obey the preserveScrollOnLoad setting.
+        me.preserveScrollOnRefresh = me.preserveScrollOnReload;
+        me.lastFocused = null;
+        me.refreshView();
+        me.preserveScrollOnRefresh = preserveScrollOnRefresh;
     },
 
     refreshView: function() {
@@ -1488,7 +1519,7 @@ Ext.define('Ext.view.AbstractView', {
         if (blocked) {
             me.refreshNeeded = true;
         } else {
-            if (me.bufferedRenderer && me.all.getCount()) {
+            if (me.bufferedRenderer) {
                 me.bufferedRenderer.refreshView();
             } else {
                 me.refresh();
@@ -1735,12 +1766,25 @@ Ext.define('Ext.view.AbstractView', {
         }
     },
 
-    updateStore: function(store) {
-        if (!this.isConfiguring) {
-            // bindStore has various checks to see if the current store is the same, so
-            // delete the property from our instance, it will be assigned during bindStore
-            delete this.store;
-            this.bindStore(store);
+    setStore: function (newStore) {
+        // Here we want to override the config system setter because setting the store is a special case
+        // that the config system wasn't able to handle.
+        //
+        // For instance, because `bindStore` is the only API for both binding and unbinding a store, we
+        // couldn't unbind the old store using the config system because it would simply unbind the new
+        // store that the setter had just poked onto the instance:
+        //
+        //      setStore    -> intance.store = newStore
+        //      updateStore -> view.unbind(null) (unbinds the newStore)
+        //
+        var me = this;
+
+        if (me.store !== newStore) {
+            if (me.isConfiguring) {
+                me.store = newStore;
+            } else {
+                me.bindStore(newStore, /*initial*/ false);
+            }
         }
     },
 
@@ -1875,3 +1919,4 @@ Ext.define('Ext.view.AbstractView', {
         });
     });
 });
+

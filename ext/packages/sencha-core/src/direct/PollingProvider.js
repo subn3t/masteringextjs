@@ -235,6 +235,11 @@ Ext.define('Ext.direct.PollingProvider', {
     },
     
     inheritableStatics: {
+        /**
+         * @private
+         * @static
+         * @inheritable
+         */
         checkConfig: function(config) {
             // Polling provider needs either URI or pollFn
             return config && config.type === 'polling' &&

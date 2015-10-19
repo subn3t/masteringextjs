@@ -59,18 +59,18 @@ Ext.define('Ext.overrides.event.publisher.Dom', {
                 if(dom.attachEvent) {
                     dom.attachEvent('on' + eventName, boundFn);
                 } else {
-                    me.callParent(arguments);
+                    me.callParent([eventName, element, capture]);
                 }
             },
 
-            removeDirectListener: function(eventName, element) {
+            removeDirectListener: function(eventName, element, capture) {
                 var dom = element.dom;
 
                 if (dom.detachEvent) {
                     dom.detachEvent('on' + eventName,
                         this.directBoundListeners[eventName][dom.id]);
                 } else {
-                    this.callParent(arguments);
+                    this.callParent([eventName, element, capture]);
                 }
             },
 
@@ -91,6 +91,14 @@ Ext.define('Ext.overrides.event.publisher.Dom', {
         // can't capture any events without addEventListener.  Have to have direct
         // listeners for every event that does not bubble.
         Ext.apply(prototype.directEvents, prototype.captureEvents);
+        
+        // These do not bubble in IE9m so have to attach direct listeners as well.
+        Ext.apply(prototype.directEvents, {
+            change: 1,
+            input: 1,
+            paste: 1
+        });
+        
         prototype.captureEvents = {};
     }
 });

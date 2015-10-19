@@ -110,6 +110,7 @@ Ext.define('Ext.toolbar.Breadcrumb', {
         /**
          * @cfg {Ext.data.TreeModel/String} selection
          * The selected node, or `"root"` to select the root node
+         * @accessor
          */
         selection: 'root'
     },
@@ -161,6 +162,11 @@ Ext.define('Ext.toolbar.Breadcrumb', {
         me._buttons = Ext.destroy(me._buttons);
         me.setStore(null);
         me.callParent();
+    },
+
+    onRemove: function(component, destroying) {
+        this.callParent([component, destroying]);
+        delete component._breadcrumbNodeId;
     },
 
     afterComponentLayout: function() {

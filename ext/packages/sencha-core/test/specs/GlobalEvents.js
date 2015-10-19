@@ -126,4 +126,73 @@ describe("Ext.GlobalEvents", function() {
             });
         });
     });
+    
+    describe('scroll event', function() {
+        var stretcher,
+            scrollingPanel,
+            scrolledElements = [],
+            DomScroller = Ext.scroll.DomScroller,
+            runIt = Ext.supports.touchScroll ? xit : it;
+
+        beforeEach(function() {
+            // Gets destroyed by viewports, so restore to initial conditions for tests
+            if (!DomScroller.document) {
+                DomScroller.document = new DomScroller({
+                    x: true,
+                    y: true,
+                    element: document.body
+                });
+            };            
+        });
+
+        afterEach(function() {
+            stretcher.destroy();
+            scrollingPanel.destroy();
+        });
+
+        function onGlobalScroll(scroller) {
+            scrolledElements.push(scroller.getElement());
+        }
+
+        runIt('should fire the global scroll event whenever anything scrolls', function() {
+            stretcher = Ext.getBody().createChild({
+                style: 'height:10000px'
+            });
+            scrollingPanel = new Ext.panel.Panel({
+                renderTo: document.body,
+                floating: true,
+                x: 0,
+                y: 0,
+                width: 300,
+                height: 300,
+                scrollable: true,
+                items: {
+                    xtype: 'component',
+                    style: 'height:1000px'
+                }
+            });
+
+            // Record all scroll events
+            Ext.on({
+                scroll: onGlobalScroll
+            });
+            Ext.scroll.DomScroller.document.scrollBy(null, 100);
+
+            // Wait for scroll events to fire (may be async)
+            waitsFor(function() {
+                return scrolledElements.length === 1 &&
+                       scrolledElements[0] === Ext.scroll.DomScroller.document.getElement();
+            }, 'document scroller to scroll');
+            
+            runs(function() {
+                scrollingPanel.getScrollable().scrollBy(null, 100);
+            });
+            
+            // Wait for scroll events to fire (may be async)
+            waitsFor(function() {
+                return scrolledElements.length === 2 &&
+                       scrolledElements[1] === scrollingPanel.getScrollable().getElement();
+            }, 'panel scroller to scroll');
+        });
+    });
 });

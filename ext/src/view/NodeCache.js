@@ -152,6 +152,10 @@ Ext.define('Ext.view.NodeCache', {
             step,
             i;
 
+        // No movement; return
+        if (!increment) {
+            return;
+        }
         if (increment < 0) {
             i = me.startIndex - 1;
             end = me.endIndex;
@@ -244,6 +248,7 @@ Ext.define('Ext.view.NodeCache', {
     removeRange: function(start, end, removeDom) {
         var me = this,
             elements = me.elements,
+            removed = [],
             el, i, removeCount, fromPos;
 
         if (end == null) {
@@ -259,8 +264,11 @@ Ext.define('Ext.view.NodeCache', {
             el = elements[i];
 
             // Within removal range and we are removing from DOM
-            if (removeDom && i < end) {
-                Ext.removeNode(el);
+            if (i < end) {
+                removed.push(el);
+                if (removeDom) {
+                    Ext.removeNode(el);
+                }
             }
             // If the from position is occupied, shuffle that entry back into reference "i"
             if (fromPos <= me.endIndex) {
@@ -274,6 +282,7 @@ Ext.define('Ext.view.NodeCache', {
         }
         me.count -= removeCount;
         me.endIndex -= removeCount;
+        return removed;
     },
 
     /**

@@ -241,11 +241,11 @@ Ext.define('Ext.Widget', {
 
     /**
      * A template method for modifying the {@link #element} config before it is processed.
-     * By default adds the result of `this.getTemplate()` as the `children` array of {@link
-     * #element} if `children` were not specified in the original {@link #element} config.
-     * Typically this method should not need to be implemented in subclasses.  Instead the
-     * {@link #element} property should be use to configure the element template for a
-     * given Widget subclass.
+     * By default adds the result of `this.getTemplate()` as the `children` array of 
+     * {@link #element} if `children` were not specified in the original 
+     * {@link #element} config.  Typically this method should not need to be implemented 
+     * in subclasses.  Instead the {@link #element} property should be use to configure 
+     * the element template for a given Widget subclass.
      *
      * This method is called once when the first instance of each Widget subclass is
      * created.  The element config object that is returned is cached and used as the template
@@ -433,6 +433,15 @@ Ext.define('Ext.Widget', {
         }
     },
 
+    // Workarounds to keep Ext.ComponentManager from throwing errors when dealing
+    // Widgets.
+    // Focusing is not handled strictly in 5.x. It is in 6.x
+    onFocus: Ext.emptyFn,
+    onBlur: Ext.emptyFn,
+    onFocusEnter: Ext.emptyFn,
+    onFocusLeave: Ext.emptyFn,
+    isAncestor: function () { return false; },
+
     //-------------------------------------------------------------------------
 
     privates: {
@@ -535,7 +544,6 @@ Ext.define('Ext.Widget', {
             this.isDetached = true;
         },
 
-        //@private
         doAddListener: function(name, fn, scope, options, order, caller, manager) {
             if (options && 'element' in options) {
                 //<debug>

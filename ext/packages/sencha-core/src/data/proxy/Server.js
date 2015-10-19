@@ -243,7 +243,7 @@ Ext.define('Ext.data.proxy.Server', {
         return request;
     },
 
-    /*
+    /**
      * Processes response, which may involve updating or committing records, each of which
      * will inform the owning stores and their interested views. Finally, we may perform
      * an additional layout if the data shape has changed. 
@@ -252,7 +252,7 @@ Ext.define('Ext.data.proxy.Server', {
      */
     processResponse: function(success, operation, request, response) {
         var me = this,
-            exception, reader, resultSet;
+            exception, reader, resultSet, meta;
 
         // Processing a response may involve updating or committing many records
         // each of which will inform the owning stores, which will ultimately
@@ -284,6 +284,15 @@ Ext.define('Ext.data.proxy.Server', {
         
         if (exception) {
             me.fireEvent('exception', me, response, operation);
+        }
+
+        // If a JsonReader detected metadata, process it now.
+        // This will fire the 'metachange' event which the Store processes to fire its own 'metachange'
+        else {
+            meta = resultSet.getMetadata();
+            if (meta) {
+                me.onMetaChange(meta);
+            }
         }
 
         me.afterRequest(request, success);
@@ -355,10 +364,16 @@ Ext.define('Ext.data.proxy.Server', {
     encodeFilters: function(filters) {
         var out = [],
             length = filters.length,
-            i, op;
+            i, filter;
 
         for (i = 0; i < length; i++) {
-            out[i] = filters[i].serialize();
+            filter = filters[i];
+
+            // Only filters with the two values, property, and value may be serialized
+            // If it is a filter with a custom filterFn, it cannot be serialized.
+            if (filter.getProperty() && filter.getValue()) {
+                out.push(filter.serialize());
+            }
         }
 
         return this.applyEncoding(out);

@@ -352,15 +352,35 @@ Ext.define('Ext.grid.selection.SpreadsheetModel', {
     },
 
     /**
-     * Handles the grid's reconfigure event.  Adds the checkbox header if the columns have been reconfigured.
+     * Handles the grid's beforereconfigure event.  Adds the checkbox header if the columns have been reconfigured.
+     * Also adds the row numberer.
      * @param {Ext.panel.Table} grid
      * @param {Ext.data.Store} store
      * @param {Object[]} columns
      * @private
      */
-    onReconfigure: function(grid, store, columns) {
+    onBeforeReconfigure: function(grid, store, columns, oldStore, oldColumns) {
+        var me = this,
+            checkboxColumnIndex = me.checkboxColumnIndex;
+
         if (columns) {
-            this.addCheckbox(this.views[0]);
+            Ext.suspendLayouts();
+
+
+            if (me.numbererColumn) {
+                me.numbererColumn.ownerCt.remove(me.numbererColumn, false);
+                columns.unshift(me.numbererColumn);
+            }
+            if (me.checkColumn) {
+                if (checkboxColumnIndex === 'first') {
+                    checkboxColumnIndex = 0;
+                } else if (checkboxColumnIndex === 'last') {
+                    checkboxColumnIndex = columns.length;
+                }
+                me.checkColumn.ownerCt.remove(me.checkColumn, false);
+                Ext.Array.insert(columns, checkboxColumnIndex, [me.checkColumn]);
+            }
+            Ext.resumeLayouts();
         }
     },
 
@@ -613,18 +633,20 @@ Ext.define('Ext.grid.selection.SpreadsheetModel', {
     selectRows: function(rows, keepSelection, suppressEvent) {
         var me = this,
             sel = me.selected,
-            isSelectingRows = sel && !sel.isRows,
+            isSelectingRows = sel && sel.isRows,
             len = rows.length,
             i;
 
-        if (!keepSelection || isSelectingRows) {
+        if (!keepSelection || !isSelectingRows) {
             me.resetSelection(true);
         }
         if (!isSelectingRows) {
             me.selected = sel = new Ext.grid.selection.Rows(me.view);
         }
 
-        for (i = 0; i < len; i++) {
+        if (rows.isEntity) {
+            sel.add(rows);
+        } else for (i = 0; i < len; i++) {
             sel.add(rows[i]);
         }
 
@@ -825,11 +847,11 @@ Ext.define('Ext.grid.selection.SpreadsheetModel', {
 
                 if (me.checkboxSelect) {
                     me.addCheckbox(view, true);
-                    me.mon(view.ownerGrid, 'reconfigure', me.onReconfigure, me);
                     if (shrinkwrapLocked) {
                         grid.width += me.checkColumn.width;
                     }
                 }
+                me.mon(view.ownerGrid, 'beforereconfigure', me.onBeforeReconfigure, me);
             }
 
             // Disable sortOnClick if we're columnSelecting
@@ -848,8 +870,17 @@ Ext.define('Ext.grid.selection.SpreadsheetModel', {
          */
         onViewRender: function(view) {
             var me = this,
-                el = view.getEl();
-
+                el = view.getEl(),
+                views = me.views,
+                len = views.length,
+                i;
+            
+            // If we receive the render event after the columnSelect config has been set,
+            // ensure that the view's headerCts know not to sort on click if we're selecting columns.
+            for (i = 0; i < len; i++) {
+                views[i].headerCt.sortOnClick = !me.columnSelect;
+            }
+            
             el.ddScrollConfig = {
                 vthresh: 50,
                 hthresh: 50,
@@ -1058,6 +1089,11 @@ Ext.define('Ext.grid.selection.SpreadsheetModel', {
                 keyEvent = navigateEvent.keyEvent,
                 keyCode = keyEvent.getKey(),
                 selectionChanged;
+
+            // A Column's processEvent method may set this flag if configured to do so.
+            if (keyEvent.stopSelection) {
+                return;
+            }
 
             // CTRL/Arrow just navigates, does not select
             if (keyEvent.ctrlKey && (keyCode === keyEvent.UP || keyCode === keyEvent.LEFT || keyCode === keyEvent.RIGHT || keyCode === keyEvent.DOWN)) {
@@ -1501,6 +1537,30 @@ Ext.define('Ext.grid.selection.SpreadsheetModel', {
             if (sel && sel.isRows) {
                 this.callParent(arguments);
             }
+        },
+
+        /**
+         * Selects the cell (If {@link #cfg-cellSelect} is `true`.
+         * @param {Ext.grid.CellContext} pos The position to select
+         * @private
+         */
+        selectByPosition: function(pos) {
+            var me = this;
+
+            // Added for compatibility with grid Editor plugins whcih use it to select their context.
+            if (!pos.isCellContext) {
+                pos = new Ext.grid.CellContext(me.view).setPosition(pos.row, pos.column);
+            }
+            if (me.getCellSelect()) {
+                me.selectCells(pos, pos);
+            } else if (me.getRowSelect()) {
+                this.selectRows([pos.record]);
+            } else if (me.getColumnSelect()) {
+                me.selectColumn(pos.column);
+            }
         }
+
     }
+}, function() {
+    this.borrow(Ext.selection.RowModel, ['onEditorTab']);
 });

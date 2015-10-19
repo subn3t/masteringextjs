@@ -5,7 +5,6 @@
  *
  * Some examples: Toolbars, Radio groups, Tab bars
  */
-
 Ext.define('Ext.util.FocusableContainer', {
     extend: 'Ext.Mixin',
     
@@ -360,6 +359,14 @@ Ext.define('Ext.util.FocusableContainer', {
             // the focus to be triggered, so if the timestamp falls within some small epsilon, the focus enter
             // has been caused via the mouse and we can react accordingly.
             this.mousedownTimestamp = targetCmp === this ? Ext.Date.now() : 0;
+            
+            // Prevent focusing the container itself. DO NOT remove this clause, it is
+            // untestable by our unit tests: injecting mousedown events will not cause
+            // default action in the browser, the element never gets focus and tests
+            // never fail. See http://www.w3.org/TR/DOM-Level-3-Events/#trusted-events
+            if (targetCmp === this) {
+                e.preventDefault();
+            }
         },
 
         onFocusEnter: function(e) {

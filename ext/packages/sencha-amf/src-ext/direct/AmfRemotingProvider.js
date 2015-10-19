@@ -277,12 +277,10 @@ TestAction.multiply(
         return handler;
     },
     
-    // inherit docs
     isConnected: function(){
         return !!this.connected;
     },
 
-    // inherit docs
     connect: function(){
         var me = this;
         
@@ -300,7 +298,6 @@ TestAction.multiply(
         }
     },
 
-    // inherit docs
     disconnect: function(){
         var me = this;
         

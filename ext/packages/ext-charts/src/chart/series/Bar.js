@@ -1129,7 +1129,8 @@ Ext.define('Ext.chart.series.Bar', {
         }
     },
 
-    /* @private
+    /** 
+     * @private
      * Gets the dimensions of a given bar label. Uses a single hidden sprite to avoid
      * changing visible sprites.
      * @param value

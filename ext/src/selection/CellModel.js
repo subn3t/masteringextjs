@@ -123,7 +123,7 @@ Ext.define('Ext.selection.CellModel', {
     // Selection blindly follows focus. For now.
     onNavigate: function(e) {
         // It was a navigate out event.
-        if (!e.record) {
+        if (!e.record || e.keyEvent.stopSelection) {
             return;
         }
 

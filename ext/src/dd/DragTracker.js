@@ -245,13 +245,13 @@ Ext.define('Ext.dd.DragTracker', {
         this.disabled = false;
     },
 
-    destroy : function() {
+    destroy: function() {
         var me = this;
 
         // endDrag has a mandatory event parameter
         me.endDrag({});
-        me.clearListeners();
-        me.el = me.handle = null;
+        me.el = me.handle = me.onBeforeStart = me.onStart = me.onDrag = me.onEnd = null;
+        me.callParent();
     },
 
     // When the pointer enters a tracking element, fire a mouseover if the mouse entered from outside.

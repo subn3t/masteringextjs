@@ -69,21 +69,20 @@ Ext.define('Ext.draw.overrides.sprite.Path', {
         var me = this,
             attr = me.attr,
             path = attr.path,
-            bbox = me.getBBox(),
             matrix = attr.matrix,
             x = point[0],
             y = point[1],
-            hasFill = attr.fillStyle !== Ext.draw.Color.NONE &&
-                attr.fillStyle !== Ext.draw.Color.RGBA_NONE,
-            bboxHit = bbox && x >= bbox.x && x <= (bbox.x + bbox.width) &&
-                              y >= bbox.y && y <= (bbox.y + bbox.height),
+            parentResult = me.callParent([point, options]),
             result = null,
-            params;
+            params, isFilled;
 
 
-        if (!bboxHit) {
+        if (!parentResult) {
+            // The sprite is not visible or bounding box wasn't hit.
             return result;
         }
+
+        options = options || Ext.draw.sprite.Sprite.defaultHitTestOptions;
 
         if (!matrix.isIdentity()) {
             params = path.params.slice(0);
@@ -91,7 +90,9 @@ Ext.define('Ext.draw.overrides.sprite.Path', {
         }
 
         if (options.fill && options.stroke) {
-            if (hasFill) {
+            isFilled = attr.fillStyle !== Ext.draw.Color.NONE &&
+                       attr.fillStyle !== Ext.draw.Color.RGBA_NONE;
+            if (isFilled) {
                 if (path.isPointInPath(x, y)) {
                     result = {
                         sprite: me

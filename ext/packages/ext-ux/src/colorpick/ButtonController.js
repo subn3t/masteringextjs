@@ -1,3 +1,6 @@
+/**
+ * @private
+ */
 Ext.define('Ext.ux.colorpick.ButtonController', {
     extend: 'Ext.app.ViewController',
 

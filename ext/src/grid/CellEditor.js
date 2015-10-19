@@ -172,6 +172,12 @@ Ext.define('Ext.grid.CellEditor', {
      */
     onHide: function() {
         this.restoreCell();
+        
+        // In IE and Edge, hiding focused element will make it lose focus. Later on
+        // in CellEditing plugin we want to know if the active editor is focused;
+        // but by that time the focus has been lost.
+        this.currentlyFocused = !!this.el.contains(Ext.Element.getActiveElement());
+        
         this.callParent(arguments);
     },
 
@@ -286,14 +292,22 @@ Ext.define('Ext.grid.CellEditor', {
     },
 
     onFocusLeave : function(e) {
-        // We are going to hide because of this focus exit.
-        // Ensure that hide processing does not throw focus back to the previously focused element.
-        this.previousFocus = null;
-
         this.callParent([e]);
 
         // Reset the flag that may have been set by CellEditing#startEdit to prevent
         // Ext.Editor#onFieldBlur from canceling editing.
         this.selectSameEditor = false;
+    },
+
+    privates: {
+        // In cell editing, focus is always under programmatic control.
+        // All TAB key events are handled.
+        // Both cancel and complete edit explicitly focuses the context cell.
+        revertFocus : function() {
+            // Ensure that hide processing does not throw focus back to the previously focused element.
+            this.previousFocus = null;
+
+            this.callParent();
+        }
     }
 });

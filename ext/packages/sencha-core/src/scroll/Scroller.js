@@ -194,6 +194,20 @@ Ext.define('Ext.scroll.Scroller', {
 
         me.onDomScrollEnd = Ext.Function.createBuffered(me.onDomScrollEnd, 100, me);
     },
+    
+    destroy: function() {
+        var me = this;
+
+        // Clear any overflow styles
+        me.setX(Ext.emptyString);
+        me.setY(Ext.emptyString);
+
+        // Remove element listeners
+        me.setElement(null);
+        me.onDomScrollEnd = me._partners = me.component = null;
+        
+        me.callParent();
+    },
 
     /**
      * Adds a "partner" scroller.  Partner scrollers reflect each other's scroll position
@@ -221,8 +235,15 @@ Ext.define('Ext.scroll.Scroller', {
         };
     },
 
-    applyElement: function(element) {
-        var el;
+    applyElement: function(element, oldElement) {
+        var me = this,
+            el,
+            eventSource;
+
+        // When element is set to null in destroy, we must remove listeners.
+        if (oldElement) {
+            me.scrollListener.destroy();
+        }
 
         if (element) {
             if (element.isElement) {
@@ -237,9 +258,21 @@ Ext.define('Ext.scroll.Scroller', {
                 }
                 //</debug>
             }
-        }
 
-        return el;
+            if (el.dom === document.documentElement) {
+                // When the documentElement is scrolled, its scroll events are fired via
+                // the window object
+                eventSource = Ext.getWin();
+            } else {
+                eventSource = el;
+            }
+            me.scrollListener = eventSource.on({
+                scroll: me.onDomScroll,
+                scope: me,
+                destroyable: true
+            });
+            return el;
+        }
     },
 
     // Empty updaters - workaround for https://sencha.jira.com/browse/EXTJS-14574
@@ -254,10 +287,6 @@ Ext.define('Ext.scroll.Scroller', {
     updateSize: Ext.emptyFn,
     updateX: Ext.emptyFn,
     updateY: Ext.emptyFn,
-
-    updateElement: function(element) {
-        element.on('scroll', 'onDomScroll', this);
-    },
 
     /**
      * @method getPosition
@@ -402,6 +431,35 @@ Ext.define('Ext.scroll.Scroller', {
 
             me.doScrollTo(newX, newY, animate);
         }
+    },
+
+    /**
+     * Determines if the passed element is within the visible x and y scroll viewport.
+     * @param {String/HTMLElement/Ext.dom.Element} el The id, or element to check.
+     * @return {Object} Which ranges the element is in.
+     * @return {Boolean} return.x `true` if the passed element is within the x visible range.
+     * @return {Boolean} return.y `true` if the passed element is within the y visible range.
+     *
+     * @since 5.1.2
+     */
+    isInView: function(el) {
+        var me = this,
+            result = {
+                x: false,
+                y: false
+            },
+            elRegion,
+            myEl = me.getElement(),
+            myElRegion;
+
+        if (el && myEl.contains(el)) {
+            myElRegion = myEl.getRegion();
+            elRegion = Ext.fly(el).getRegion();
+
+            result.x = elRegion.right > myElRegion.left && elRegion.left < myElRegion.right;
+            result.y = elRegion.bottom > myElRegion.top && elRegion.top < myElRegion.bottom;
+        }
+        return result;
     },
 
     /**
@@ -630,13 +688,17 @@ Ext.define('Ext.scroll.Scroller', {
             var element = this.getElement(),
                 x = this.getX();
 
-            if (!x) {
-                x = 'hidden';
-            } else if (x === true) {
-                x = 'auto';
-            }
+            // Check that element exists and is not destroyed
+            if (element && element.dom) {
+                if (element.dom === document.body) {
+                    element = Ext.get(document.documentElement);
+                }
+                if (!x) {
+                    x = 'hidden';
+                } else if (x === true) {
+                    x = 'auto';
+                }
 
-            if (element) {
                 element.setStyle('overflow-x', x);
             }
         },
@@ -645,13 +707,17 @@ Ext.define('Ext.scroll.Scroller', {
             var element = this.getElement(),
                 y = this.getY();
 
-            if (!y) {
-                y = 'hidden';
-            } else if (y === true) {
-                y = 'auto';
-            }
+            // Check that element exists and is not destroyed
+            if (element && element.dom) {
+                if (element.dom === document.body) {
+                    element = Ext.get(document.documentElement);
+                }
+                if (!y) {
+                    y = 'hidden';
+                } else if (y === true) {
+                    y = 'auto';
+                }
 
-            if (element) {
                 element.setStyle('overflow-y', y);
             }
         },
@@ -689,7 +755,18 @@ Ext.define('Ext.scroll.Scroller', {
             var me = this,
                 position = me.getPosition(),
                 x = position.x,
-                y = position.y;
+                y = position.y,
+                el;
+
+            // If, in CSS translation scrolling mode (mode 2), we ever encounter a DOM scroll
+            // event, it must be a browser's autoscroll in response to focusing. We MUST
+            // undo this action because in mode 2 scrolling, the DOM must never scroll.
+            // https://sencha.jira.com/browse/EXTJS-18959
+            if (me.isTouchScroller && Ext.supports.touchScroll === 2) {
+                el = me.getElement().dom;
+                el.scrollTop = el.scrollLeft = 0;
+                return;
+            }
 
             if (!me.isScrolling) {
                 me.isScrolling = true;
@@ -728,7 +805,7 @@ Ext.define('Ext.scroll.Scroller', {
                 }
             }
 
-            this.doScrollTo(x, y);
+            this.doScrollTo(x, y, false, true);
         },
 
         restoreState: function () {

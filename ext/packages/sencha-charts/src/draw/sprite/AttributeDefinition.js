@@ -100,6 +100,8 @@ Ext.define('Ext.draw.sprite.AttributeDefinition', {
          * Processor declaration in the form of 'processorFactory(argument1,argument2,...)'.
          * E.g.: {@link Ext.draw.sprite.AttributeParser#enums enums},
          * {@link Ext.draw.sprite.AttributeParser#limited limited}.
+         * @static
+         * @inheritable
          */
         processorFactoryRe: /^(\w+)\(([\w\-,]*)\)$/
     },

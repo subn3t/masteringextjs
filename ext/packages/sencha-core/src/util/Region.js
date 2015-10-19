@@ -333,7 +333,7 @@ Ext.define('Ext.util.Region', {
         return this;
     },
 
-    /*
+    /**
      * Dump this to an eye-friendly string, great for debugging
      * @return {String}
      */

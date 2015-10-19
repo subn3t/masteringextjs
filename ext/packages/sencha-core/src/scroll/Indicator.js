@@ -155,8 +155,13 @@ Ext.define('Ext.scroll.Indicator', {
             el = me.element,
             anim = el.getActiveAnimation();
 
+        // Stop the fade out animation for both toolkit animation types.
+        // TODO: remove classic version when classic Ext.dom.Element overrides retire.
         if (anim) {
             anim.end();
+        }
+        if (el.stopAnimation) {
+            el.stopAnimation();
         }
 
         if (!me._inDom) {

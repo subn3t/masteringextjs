@@ -119,6 +119,8 @@ Ext.define('Ext.LoadMask', {
         '</div>'
     ],
 
+    maskOnDisable : false,
+    
     /**
      * Creates new LoadMask.
      * @param {Object} [config] The config object.
@@ -513,7 +515,7 @@ Ext.define('Ext.LoadMask', {
             me.msgTextEl.setHtml(me.msg);
         } else {
             // Only the mask is visible if useMsg is false
-            me.msgEl.hide();
+            me.msgWrapEl.hide();
         }
 
         if (me.shim || Ext.useShims) {
@@ -531,10 +533,48 @@ Ext.define('Ext.LoadMask', {
         // untabbable since it is rendered within the target
         el.restoreTabbableState();
 
-        // If owner contains focus, focus this.
-        // Component level onHide processing takes care of focus reversion on hide.
-        if (ownerCt.containsFocus) {
-            me.focus();
+        me.syncMaskState();
+    },
+
+    /**
+     * Synchronizes the visible state of the mask with the configuration settings such
+     * as {@link #msgWrapCls}, {@link #msg}, sizes the mask to occlude the target element or Component
+     * and focuses the mask.
+     * @private
+     */
+    syncMaskState: function() {
+        var me = this,
+            ownerCt = me.ownerCt,
+            el = me.el;
+
+        if (me.isVisible()) {
+
+            // Allow dynamic setting of msgWrapCls
+            if (me.hasOwnProperty('msgWrapCls')) {
+                el.dom.className = me.msgWrapCls;
+            }
+
+            if (me.useMsg) {
+                me.msgTextEl.setHtml(me.msg);
+            } else {
+                // Only the mask is visible if useMsg is false
+                me.msgWrapEl.hide();
+            }
+
+            if (me.shim || Ext.useShims) {
+                el.enableShim(null, true);
+            } else {
+                // Just in case me.shim was changed since last time we were shown (by
+                // Component#setLoading())
+                el.disableShim();
+            }
+
+            // If owner contains focus, focus this.
+            // Component level onHide processing takes care of focus reversion on hide.
+            if (ownerCt.el.contains(Ext.Element.getActiveElement())) {
+                me.focus();
+            }
+            me.sizeMask();
         }
         me.sizeMask();
     },

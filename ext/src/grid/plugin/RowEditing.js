@@ -153,6 +153,21 @@ Ext.define('Ext.grid.plugin.RowEditing', {
         return false;
     },
 
+    onEnterKey: function(e) {
+        var me = this,
+            grid = me.grid,
+            targetComponent;
+
+        if (me.editing) {
+            targetComponent = Ext.getCmp(e.getTarget().getAttribute('componentId'));
+
+            // ENTER when a picker is expanded does not complete the edit
+            if (!(targetComponent && targetComponent.isPickerField && targetComponent.isExpanded)) {
+                me.completeEdit();
+            }
+        }
+    },
+
     cancelEdit: function() {
         var me = this;
 

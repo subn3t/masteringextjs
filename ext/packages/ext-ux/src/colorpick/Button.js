@@ -1,7 +1,7 @@
 /**
  * A simple color swatch that can be clicked to bring up the color selector.
  *
- * The selected color is configurable via {@link #value}.
+ * The selected color is configurable via {@link Ext.ux.colorpick.Selection#value value}.
  *
  *     @example
  *     Ext.create('Ext.ux.colorpick.Button', {
@@ -82,7 +82,8 @@ Ext.define('Ext.ux.colorpick.Button', {
      * @event change
      * Fires when a color is selected.
      * @param {Ext.ux.colorpick.Selector} this
-     * @param {String} color The value of the selected color as per specified {@link #format}.
+     * @param {String} color The value of the selected color as per specified 
+     * {@link Ext.ux.colorpick.Selection#format format}.
      * @param {String} previousColor The previous color value.
      */
 

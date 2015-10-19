@@ -651,9 +651,28 @@ Ext.define('Ext.data.Model', {
     // Fields config and property
     /**
      * @cfg {Object[]/String[]} fields
-     * The fields for this model. This is an Array of `Ext.data.field.Field` definition
-     * objects or simply the field name. If just a name is given, the field type defaults
-     * to `auto`.
+     * An Array of `Ext.data.field.Field` config objects, simply the field 
+     * {@link Ext.data.field.Field#name name}, or a mix of config objects and strings. 
+     * If just a name is given, the field type defaults to `auto`.
+     * 
+     * In a {@link Ext.data.field.Field Field} config object you may pass the alias of 
+     * the `Ext.data.field.*` type using the `type` config option.
+     * 
+     *     // two fields are set:
+     *     // - an 'auto' field with a name of 'firstName'
+     *     // - and an Ext.data.field.Integer field with a name of 'age'
+     *     fields: ['firstName', {
+     *         type: 'int',
+     *         name: 'age'
+     *     }]
+     * 
+     * Fields will automatically be created at read time for any for any keys in the 
+     * data passed to the Model's {@link #proxy proxy's} 
+     * {@link Ext.data.reader.Reader reader} whose name is not explicitly configured in 
+     * the `fields` config.
+     * 
+     * Extending a Model class will inherit all the `fields` from the superclass / 
+     * ancestor classes.
      */
     /**
      * @property {Ext.data.field.Field[]} fields
@@ -768,10 +787,10 @@ Ext.define('Ext.data.Model', {
      * a {@link Ext.data.Model#set set} operation.
      * 
      * **Note:** Setting the config to `false` will only prevent the convert / calculate 
-     * call when the set `fieldName` param matches the field's `{@link #name}`.  In the 
-     * following example the calls to set `salary` will not execute the convert method 
-     * on `set` while the calls to set `vested` will execute the convert method on the 
-     * initial read as well as on `set`.
+     * call when the set `fieldName` param matches the field's 
+     * `{@link Ext.data.field.Field#name name}`.  In the following example the calls to 
+     * set `salary` will not execute the convert method on `set` while the calls to set 
+     * `vested` will execute the convert method on the initial read as well as on `set`.
      * 
      * Example model definition:
      * 
@@ -817,11 +836,11 @@ Ext.define('Ext.data.Model', {
      */
     /**
      * @cfg {String/Object/String[]/Object[]} hasMany
-     * One or more {@link #hasMany HasMany associations} for this model.
+     * One or more HasMany associations for this model.
      */
     /**
      * @cfg {String/Object/String[]/Object[]} belongsTo
-     * One or more {@link #belongsTo BelongsTo associations} for this model.
+     * One or more BelongsTo associations for this model.
      */
 
     /**
@@ -2195,6 +2214,8 @@ Ext.define('Ext.data.Model', {
          *
          * @protected
          * @since 5.0.0
+         * @static
+         * @inheritable
          */
         addFields: function (newFields) {
             this.replaceFields(newFields);
@@ -2216,6 +2237,8 @@ Ext.define('Ext.data.Model', {
          *
          * @protected
          * @since 5.0.0
+         * @static
+         * @inheritable
          */
         replaceFields: function (newFields, removeFields) {
             var me = this,
@@ -2289,11 +2312,18 @@ Ext.define('Ext.data.Model', {
          *
          * @protected
          * @since 5.0.0
+         * @static
+         * @inheritable
          */
         removeFields: function (removeFields) {
             this.replaceFields(null, removeFields);
         },
 
+        /**
+         * @private
+         * @static
+         * @inheritable
+         */
         getIdFromData: function(data) {
             var T = this,
                 idField = T.idField,
@@ -2302,6 +2332,11 @@ Ext.define('Ext.data.Model', {
             return id;
         },
 
+        /**
+         * @private
+         * @static
+         * @inheritable
+         */
         createWithId: function (id, data, session) {
             var d = data,
                 T = this;
@@ -2318,14 +2353,29 @@ Ext.define('Ext.data.Model', {
             return new T(d, session);
         },
         
+        /**
+         * @private
+         * @static
+         * @inheritable
+         */
         getFields: function() {
             return this.fields;    
         },
 
+        /**
+         * @private
+         * @static
+         * @inheritable
+         */
         getFieldsMap: function() {
             return this.fieldsMap;
         },
 
+        /**
+         * @private
+         * @static
+         * @inheritable
+         */
         getField: function (name) {
             return this.fieldsMap[name] || null;
         },
@@ -2713,7 +2763,7 @@ Ext.define('Ext.data.Model', {
             if (field) {
                 f = field.isField ? field : this.fieldsMap[field];
                 if (f) {
-                    return f.compare(lhs, rhs) === 0;
+                    return f.isEqual(lhs, rhs);
                 }
             }
 

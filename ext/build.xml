@@ -455,13 +455,22 @@ var Ext = Ext || {};
             </filterchain>
         </loadfile>
         
-        <for list="ext,ext-all,ext-all-rtl" param="file">
-            <sequential>
-                <x-compress-js srcfile="${build.dir}/@{file}.js"
-                               header="${file-header}"/>
-            </sequential>
-        </for>
+        <if>
+            <not><isset property="skip.post.compress"/></not>
+            <then>
+                <for list="ext,ext-all,ext-all-rtl" param="file">
+                    <sequential>
+                        <x-compress-js srcfile="${build.dir}/@{file}.js"
+                                    header="${file-header}"/>
+                    </sequential>
+                </for>
+            </then>
+        </if>
 
+    </target>
+
+    <target name="perf">
+        <property name="skip.post.compress" value="1"/>
     </target>
 
     <target name="-before-js" depends="bootstrap"/>

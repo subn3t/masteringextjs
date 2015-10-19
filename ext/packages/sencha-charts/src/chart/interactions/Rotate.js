@@ -67,7 +67,8 @@ Ext.define('Ext.chart.interactions.Rotate', {
         gesture: 'rotate',
 
         /**
-         * @inheritdoc
+         * @cfg {Object} gestures
+         * Defines the gestures that should trigger the rotate interaction.
          */
         gestures: {
             rotate: 'onRotate',

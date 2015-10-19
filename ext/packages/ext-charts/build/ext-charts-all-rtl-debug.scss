@@ -1,4 +1,4 @@
-$image-search-path: '/home/teamcity/buildAgent/work/3cebfbfc7c03d949/sencha/ext/packages/ext-charts/build/resources' !default;
+$image-search-path: '/home/teamcity/buildAgent/work/3de63363c66b85ec/sencha/ext/packages/ext-charts/build/resources' !default;
 $theme-name:  'ext-charts' !default;
 $include-ext-abstractcomponent: false;
 $include-ext-abstractcontainer: false;
@@ -104,14 +104,6 @@ $include-ext-app-bind-rootstub: false;
 $include-ext-app-bind-stub: false;
 $include-ext-app-bind-template: false;
 $include-ext-app-bind-templatebinding: false;
-$include-ext-app-bindinspector-componentdetail: false;
-$include-ext-app-bindinspector-componentlist: false;
-$include-ext-app-bindinspector-container: false;
-$include-ext-app-bindinspector-environment: false;
-$include-ext-app-bindinspector-inspector: false;
-$include-ext-app-bindinspector-util: false;
-$include-ext-app-bindinspector-viewmodeldetail: false;
-$include-ext-app-bindinspector-noconflict-basemodel: false;
 $include-ext-app-domain-component: false;
 $include-ext-app-domain-controller: false;
 $include-ext-app-domain-direct: false;
@@ -724,6 +716,7 @@ $include-ext-rtl-grid-celleditor: false;
 $include-ext-rtl-grid-columnlayout: false;
 $include-ext-rtl-grid-navigationmodel: false;
 $include-ext-rtl-grid-column-column: false;
+$include-ext-rtl-grid-plugin-bufferedrenderer: false;
 $include-ext-rtl-grid-plugin-headerresizer: false;
 $include-ext-rtl-grid-plugin-rowediting: false;
 $include-ext-rtl-layout-contextitem: false;
@@ -747,6 +740,7 @@ $include-ext-rtl-scroll-indicator: false;
 $include-ext-rtl-scroll-scroller: false;
 $include-ext-rtl-scroll-touchscroller: false;
 $include-ext-rtl-slider-multi: false;
+$include-ext-rtl-slider-widget: false;
 $include-ext-rtl-tab-bar: false;
 $include-ext-rtl-tip-quicktipmanager: false;
 $include-ext-rtl-tree-column: false;
@@ -901,11 +895,36 @@ $include-ext-view-view: false;
 $include-ext-window-messagebox: false;
 $include-ext-window-toast: false;
 $include-ext-window-window: false;
+
+
+/* ======================== ETC ======================== */
+
 /* including package ext-theme-base */
+$ext-theme-base-resource-root: 'ext-theme-base' !default;
+$ext-theme-base-resource-path: 'ext-theme-base/images' !default;
+$current-package: 'ext-theme-base';
+$current-resource-root: $ext-theme-base-resource-root;
+$relative-image-path-for-uis: $ext-theme-base-resource-path;
 @import '../../ext-theme-base/sass/etc/all';
+
+
+/* ======================== VAR ======================== */
+
 /* including package ext-theme-base */
+$ext-theme-base-resource-root: 'ext-theme-base' !default;
+$ext-theme-base-resource-path: 'ext-theme-base/images' !default;
+$current-package: 'ext-theme-base';
+$current-resource-root: $ext-theme-base-resource-root;
+$relative-image-path-for-uis: $ext-theme-base-resource-path;
 @import '../../ext-theme-base/sass/var/Component';
+
+
+/* ======================== RULE ======================== */
+
 /* including package ext-charts */
+$ext-charts-resource-root: '' !default;
 $ext-charts-resource-path: 'images' !default;
+$current-package: 'ext-charts';
+$current-resource-root: $ext-charts-resource-root;
 $relative-image-path-for-uis: $ext-charts-resource-path;
 @import '../sass/src/draw/Component';

@@ -681,7 +681,7 @@ Ext.define('Ext.form.field.Base', {
         me.callParent();
     },
 
-    /*
+    /**
      * @private
      * Called when some event (See the checkChangeEvents property) mutates the input field.
      * We react to changes.
@@ -692,21 +692,25 @@ Ext.define('Ext.form.field.Base', {
     onFieldMutation: function(e) {
         // When using propertychange, we want to skip out on various values, since they won't cause
         // the underlying value to change.
+        if (!this.readOnly && !(e.type === 'propertychange' && this.ignoreChangeRe.test(e.browserEvent.propertyName))) {
+            this.startCheckChangeTask();
+        }
+    },
+
+    startCheckChangeTask: function() {
         var me = this,
             task = me.checkChangeTask;
 
-        if (!me.readOnly && !(e.type === 'propertychange' && me.ignoreChangeRe.test(e.browserEvent.propertyName))) {
-            if (!task) {
-                me.checkChangeTask = task = new Ext.util.DelayedTask(me.doCheckChangeTask, me);
-            }
-            if (!me.bindNotifyListener) {
-                // We continually create/destroy the listener as needed (see doCheckChangeTask) because we're listening
-                // to a global event, so we don't want the event to be triggered unless absolutely necessary. In this case,
-                // we only need to fix the value when we have a pending change to check.
-                me.bindNotifyListener = Ext.on('beforebindnotify', me.onBeforeNotify, me, {destroyable: true});
-            }
-            task.delay(me.checkChangeBuffer);
+        if (!task) {
+            me.checkChangeTask = task = new Ext.util.DelayedTask(me.doCheckChangeTask, me);
         }
+        if (!me.bindNotifyListener) {
+            // We continually create/destroy the listener as needed (see doCheckChangeTask) because we're listening
+            // to a global event, so we don't want the event to be triggered unless absolutely necessary. In this case,
+            // we only need to fix the value when we have a pending change to check.
+            me.bindNotifyListener = Ext.on('beforebindnotify', me.onBeforeNotify, me, {destroyable: true});
+        }
+        task.delay(me.checkChangeBuffer);
     },
 
     doCheckChangeTask: function() {
@@ -864,6 +868,7 @@ Ext.define('Ext.form.field.Base', {
             task.cancel();
         }
         me.checkChangeTask = me.bindNotifyListener = Ext.destroy(me.bindNotifyListener);
+        me.cleanupField();
         me.callParent();
     },
 

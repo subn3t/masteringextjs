@@ -118,5 +118,21 @@ Ext.define('Ext.draw.sprite.Composite', {
         for (i = 0, ln = this.sprites.length; i < ln; i++) {
             surface.renderSprite(this.sprites[i], rect);
         }
+    },
+
+    destroy: function () {
+        var me = this,
+            sprites = me.sprites,
+            ln = sprites.length,
+            i;
+
+        me.callParent();
+
+        for (i = 0; i < ln; i++) {
+            sprites[i].destroy();
+        }
+
+        sprites.length = 0;
     }
+
 });

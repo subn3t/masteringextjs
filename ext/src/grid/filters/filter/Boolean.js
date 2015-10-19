@@ -55,7 +55,7 @@ Ext.define('Ext.grid.filters.filter.Boolean', {
 
     type: 'boolean',
 
-    operator: '=',
+    operator: '==',
 
     /**
      * @cfg {Boolean} defaultValue
@@ -139,3 +139,4 @@ Ext.define('Ext.grid.filters.filter.Boolean', {
     // This is supposed to be just a stub.
     activateMenu: Ext.emptyFn
 });
+

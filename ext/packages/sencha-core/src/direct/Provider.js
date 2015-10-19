@@ -162,6 +162,8 @@ Ext.define('Ext.direct.Provider', {
          * @param {Object} config
          *
          * @return {Boolean} `true` if config is sufficient, `false` otherwise.
+         * @static
+         * @inheritable
          */
         checkConfig: Ext.returnFalse
     },

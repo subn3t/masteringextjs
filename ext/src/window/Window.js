@@ -228,10 +228,8 @@ Ext.define('Ext.window.Window', {
      */
     maximizable: false,
 
-    // inherit docs
     minHeight: 50,
 
-    // inherit docs
     minWidth: 50,
 
     /**
@@ -241,7 +239,6 @@ Ext.define('Ext.window.Window', {
      */
     expandOnShow: true,
 
-    // inherited docs, same default
     collapsible: false,
 
     /**
@@ -284,8 +281,24 @@ Ext.define('Ext.window.Window', {
      */
     hideMode: 'offsets',
 
-    // Windows are always floating.
+    /**
+     * @cfg {Boolean} [floating=true]
+     * @inheritdoc Ext.Component
+     */
     floating: true,
+
+    /**
+     * @cfg stateEvents
+     * @inheritdoc Ext.state.Stateful#cfg-stateEvents
+     * @localdoc By default the following stateEvents are added:
+     * 
+     *  - {@link #event-resize} - _(added by Ext.Component)_
+     *  - {@link #event-collapse} - _(added by Ext.panel.Panel)_
+     *  - {@link #event-expand} - _(added by Ext.panel.Panel)_
+     *  - {@link #event-maximize}
+     *  - {@link #event-restore}
+     *  - {@link #event-resize}
+     */
 
     itemCls: Ext.baseCSSPrefix + 'window-item',
 
@@ -308,6 +321,7 @@ Ext.define('Ext.window.Window', {
     isWindow: true,
 
     ariaRole: 'dialog',
+    focusable: true,
 
     /**
      * @event activate

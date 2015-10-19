@@ -247,7 +247,8 @@ Ext.define('Ext.event.Event', {
         // mac metaKey behaves like ctrlKey
         me.ctrlKey = event.ctrlKey || event.metaKey || false;
         me.altKey = event.altKey;
-        me.charCode = event.charCode;
+        // IE8 will default charCode to undefined, force it to 0.
+        me.charCode = event.charCode || 0;
         me.keyCode = event.keyCode;
 
         me.buttons = event.buttons;
@@ -513,10 +514,12 @@ Ext.define('Ext.event.Event', {
      */
     isNavKeyPress: function(scrollableOnly) {
         var me = this,
-            k = me.keyCode;
+            k = me.keyCode,
+            isKeyPress = me.type === 'keypress';
 
-       return (k >= 33 && k <= 40) ||  // Page Up/Down, End, Home, Left, Up, Right, Down
-              (!scrollableOnly &&
+        // See specs for description of behaviour
+        return ((!isKeyPress || Ext.isGecko) && k >= 33 && k <= 40) ||  // Page Up/Down, End, Home, Left, Up, Right, Down
+               (!scrollableOnly &&
                (k === me.RETURN ||
                 k === me.TAB ||
                 k === me.ESC));
@@ -547,15 +550,21 @@ Ext.define('Ext.event.Event', {
      *  - Print Screen
      *  - Insert
      *
-     * @return {Boolean} `true` if the press is a special keypress
+     * @return {Boolean} `true` if the key for this event is special
      */
-    isSpecialKey: function(){
-        var k = this.keyCode;
-        return (this.type === 'keypress' && this.ctrlKey) ||
-        this.isNavKeyPress() ||
-        (k === this.BACKSPACE) || // Backspace
-        (k >= 16 && k <= 20) ||   // Shift, Ctrl, Alt, Pause, Caps Lock
-        (k >= 44 && k <= 46);     // Print Screen, Insert, Delete
+    isSpecialKey: function() {
+        var me = this,
+            k = me.keyCode,
+            isGecko = Ext.isGecko,
+            isKeyPress = me.type === 'keypress';
+        
+        // See specs for description of behaviour
+        return (isGecko && isKeyPress && me.charCode === 0) ||
+               (this.isNavKeyPress()) ||
+               (k === me.BACKSPACE) ||
+               (k === me.ENTER) ||
+               (k >= 16 && k <= 20) ||              // Shift, Ctrl, Alt, Pause, Caps Lock
+               ((!isKeyPress || isGecko) && k >= 44 && k <= 46); // Print Screen, Insert, Delete
     },
 
     makeUnpreventable: function() {

@@ -1,5 +1,5 @@
 /*
-This file is part of Ext JS 5.1.1.451
+This file is part of Ext JS 5.1.2.748
 
 Copyright (c) 2011-2015 Sencha Inc
 
@@ -13,7 +13,7 @@ terms contained in a written agreement between you and Sencha.
 If you are unsure which license is appropriate for your use, please contact the sales department
 at http://www.sencha.com/contact.
 
-Version: 5.1.1.451 Build date: 2015-05-06 21:52:01 (130b7b8a6334f33aee5c2952cefb768cadb3bf78)
+Version: 5.1.2.748 Build date: 2015-10-06 10:27:46 (85b7819f4d615017f22dba125d5f43f61272389b)
 
 */
 
@@ -27,18 +27,7 @@ var Ext = Ext || {};
 Ext.Boot = Ext.Boot || (function (emptyFn) {
 
     var doc = document,
-        apply = function (dest, src, defaults) {
-            if (defaults) {
-                apply(dest, defaults);
-            }
-
-            if (dest && src && typeof src == 'object') {
-                for (var key in src) {
-                    dest[key] = src[key];
-                }
-            }
-            return dest;
-        },
+        _emptyArray = [],
         _config = {
             
             disableCaching: (/[?&](?:cache|disableCacheBuster)\b/i.test(location.search) ||
@@ -56,8 +45,10 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
             preserveScripts: true,
 
             
-            charset: undefined
+            charset: 'UTF-8'
         },
+
+        _assetConfig= {},
 
         cssRe = /\.css(?:\?|$)/i,
         resolverEl = doc.createElement('a'),
@@ -65,7 +56,7 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
         _environment = {
             browser: isBrowser,
             node: !isBrowser && (typeof require === 'function'),
-            phantom: (typeof phantom !== 'undefined' && phantom.fs)
+            phantom: (window && (window._phantom || window.callPhantom)) || /PhantomJS/.test(window.navigator.userAgent)
         },
         _tags = (Ext.platformTags = {}),
 
@@ -85,12 +76,56 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
             }
             return object;
         },
+        _merge = function() {
+            var lowerCase = false,
+                obj = Array.prototype.shift.call(arguments),
+                index, i, len, value;
+
+            if (typeof arguments[arguments.length - 1] === 'boolean') {
+                lowerCase = Array.prototype.pop.call(arguments);
+            }
+
+            len = arguments.length;
+            for (index = 0; index < len; index++) {
+                value = arguments[index];
+                if (typeof value === 'object') {
+                    for (i in value) {
+                        obj[lowerCase ? i.toLowerCase() : i] = value[i];
+                    }
+                }
+            }
+
+            return obj;
+        },
+        _getKeys = (typeof Object.keys == 'function') ?
+            function(object){
+                if (!object) {
+                    return [];
+                }
+                return Object.keys(object);
+            } :
+            function(object) {
+                var keys = [],
+                    property;
+
+                for (property in object) {
+                    if (object.hasOwnProperty(property)) {
+                        keys.push(property);
+                    }
+                }
+
+                return keys;
+            },
     
         Boot = {
             loading: 0,
             loaded: 0,
+            apply: _apply,
             env: _environment,
             config: _config,
+
+            
+            assetConfig: _assetConfig,
 
             
             
@@ -121,31 +156,104 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
 
             Entry: Entry,
 
+            allowMultipleBrowsers: false,
+
+            browserNames: {
+                ie: 'IE',
+                firefox: 'Firefox',
+                safari: 'Safari',
+                chrome: 'Chrome',
+                opera: 'Opera',
+                dolfin: 'Dolfin',
+                edge: 'Edge',
+                webosbrowser: 'webOSBrowser',
+                chromeMobile: 'ChromeMobile',
+                chromeiOS: 'ChromeiOS',
+                silk: 'Silk',
+                other: 'Other'
+            },
+
+            osNames: {
+                ios: 'iOS',
+                android: 'Android',
+                windowsPhone: 'WindowsPhone',
+                webos: 'webOS',
+                blackberry: 'BlackBerry',
+                rimTablet: 'RIMTablet',
+                mac: 'MacOS',
+                win: 'Windows',
+                tizen: 'Tizen',
+                linux: 'Linux',
+                bada: 'Bada',
+                chromeOS: 'ChromeOS',
+                other: 'Other'
+            },
+
+            browserPrefixes: {
+                ie: 'MSIE ',
+                edge: 'Edge/',
+                firefox: 'Firefox/',
+                chrome: 'Chrome/',
+                safari: 'Version/',
+                opera: 'OPR/',
+                dolfin: 'Dolfin/',
+                webosbrowser: 'wOSBrowser/',
+                chromeMobile: 'CrMo/',
+                chromeiOS: 'CriOS/',
+                silk: 'Silk/'
+            },
+
+            
+            
+            browserPriority: [
+                'edge',
+                'opera',
+                'dolfin',
+                'webosbrowser',
+                'silk',
+                'chromeiOS',
+                'chromeMobile',
+                'ie',
+                'firefox',
+                'safari',
+                'chrome'
+            ],
+
+            osPrefixes: {
+                tizen: '(Tizen )',
+                ios: 'i(?:Pad|Phone|Pod)(?:.*)CPU(?: iPhone)? OS ',
+                android: '(Android |HTC_|Silk/)', 
+                
+                windowsPhone: 'Windows Phone ',
+                blackberry: '(?:BlackBerry|BB)(?:.*)Version\/',
+                rimTablet: 'RIM Tablet OS ',
+                webos: '(?:webOS|hpwOS)\/',
+                bada: 'Bada\/',
+                chromeOS: 'CrOS '
+            },
+
+            fallbackOSPrefixes: {
+                windows: 'win',
+                mac: 'mac',
+                linux: 'linux'
+            },
+
+            devicePrefixes: {
+                iPhone: 'iPhone',
+                iPod: 'iPod',
+                iPad: 'iPad'
+            },
+
+            maxIEVersion: 12,
+
+
             
             detectPlatformTags: function () {
-                var ua = navigator.userAgent,
-                    isMobile = _tags.isMobile = /Mobile(\/|\s)/.test(ua),
-                    isPhone, isDesktop, isTablet, touchSupported, isIE10, isBlackberry,
+                var me = this,
+                    ua = navigator.userAgent,
+                    isMobile = /Mobile(\/|\s)/.test(ua),
                     element = document.createElement('div'),
-                    uaTagChecks = [
-                        'iPhone',
-                        'iPod',
-                        'Android',
-                        'Silk',
-                        'Android 2',
-                        'BlackBerry',
-                        'BB',
-                        'iPad',
-                        'RIM Tablet OS',
-                        'MSIE 10',
-                        'Trident',
-                        'Chrome',
-                        'Tizen',
-                        'Firefox',
-                        'Safari',
-                        'Windows Phone'
-                    ],
-                    isEventSupported = function(name, tag) {
+                    isEventSupported = function (name, tag) {
                         if (tag === undefined) {
                             tag = window;
                         }
@@ -168,30 +276,142 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
 
                         return isSupported;
                     },
-                    uaTags = {},
-                    len = uaTagChecks.length, check, c;
 
-                for (c = 0; c < len; c++) {
-                    check = uaTagChecks[c];
-                    uaTags[check] = new RegExp(check).test(ua);
-                }
+                    
+                    getBrowsers = function () {
+                        var browsers = {},
+                            maxIEVersion, prefix,
+                            value, key, index, len, match, version, matched;
 
-                isPhone =
-                    (uaTags.iPhone || uaTags.iPod) ||
-                    (!uaTags.Silk && (uaTags.Android && (uaTags['Android 2'] || isMobile))) ||
-                    ((uaTags.BlackBerry || uaTags.BB) && uaTags.isMobile) ||
-                    (uaTags['Windows Phone']);
+                        
+                        
+                        
+                        len = me.browserPriority.length;
+                        for (index = 0; index < len; index++) {
+                            key = me.browserPriority[index];
+                            if (!matched) {
+                                value = me.browserPrefixes[key];
+                                match = ua.match(new RegExp('(' + value + ')([\\w\\._]+)'));
+                                version = match && match.length > 1 ? parseInt(match[2]) : 0;
+                                if (version) {
+                                    matched = true;
+                                }
+                            } else {
+                                version = 0;
+                            }
+                            browsers[key] = version;
+                        }
 
-                isTablet =
-                    (!_tags.isPhone) && (
-                    uaTags.iPad ||
-                    uaTags.Android ||
-                    uaTags.Silk ||
-                    uaTags['RIM Tablet OS'] ||
-                    (uaTags['MSIE 10'] && /; Touch/.test(ua))
-                    );
+                        
+                        if (browsers.ie) {
+                            var mode = document.documentMode;
 
-                touchSupported =
+                            if (mode >= 8) {
+                                browsers.ie = mode;
+                            }
+                        }
+
+                        
+                        version = browsers.ie || false;
+                        maxIEVersion = Math.max(version, me.maxIEVersion);
+
+                        for (index = 8; index <= maxIEVersion; ++index) {
+                            prefix = 'ie' + index;
+                            browsers[prefix + 'm'] = version ? version <= index : 0;
+                            browsers[prefix] = version ? version === index : 0;
+                            browsers[prefix + 'p'] = version ? version >= index : 0;
+                        }
+
+                        return browsers;
+                    },
+
+                    
+                    getOperatingSystems = function () {
+                        var systems = {},
+                            value, key, keys, index, len, match, matched, version, activeCount;
+
+                        keys = _getKeys(me.osPrefixes);
+                        len = keys.length;
+                        for (index = 0, activeCount = 0; index < len; index++) {
+                            key = keys[index];
+                            value = me.osPrefixes[key];
+                            match = ua.match(new RegExp('(' + value + ')([^\\s;]+)'));
+                            matched = match ? match[1] : null;
+
+                            
+                            
+                            if (matched && (matched === 'HTC_' || matched === 'Silk/')) {
+                                version = 2.3;
+                            } else {
+                                version = match && match.length > 1 ? parseFloat(match[match.length - 1]) : 0;
+                            }
+
+                            if (version) {
+                                activeCount++;
+                            }
+                            systems[key] = version;
+                        }
+
+                        keys = _getKeys(me.fallbackOSPrefixes);
+
+                        
+                        
+                        len = keys.length;
+                        for (index = 0; index < len; index++) {
+                            key = keys[index];
+
+                            
+                            if (activeCount === 0) {
+                                value = me.fallbackOSPrefixes[key];
+                                match = ua.toLowerCase().match(new RegExp(value));
+                                systems[key] = match ? true : 0;
+                            } else {
+                                systems[key] = 0;
+                            }
+                        }
+
+                        return systems;
+                    },
+
+                    
+                    getDevices = function () {
+                        var devices = {},
+                            value, key, keys, index, len, match;
+
+                        keys = _getKeys(me.devicePrefixes);
+                        len = keys.length;
+                        for (index = 0; index < len; index++) {
+                            key = keys[index];
+                            value = me.devicePrefixes[key];
+                            match = ua.match(new RegExp(value));
+                            devices[key] = match ? true : 0;
+                        }
+
+                        return devices;
+                    },
+                    browsers = getBrowsers(),
+                    systems = getOperatingSystems(),
+                    devices = getDevices(),
+                    platformParams = Boot.loadPlatformsParam();
+
+                
+                
+                _merge(_tags, browsers, systems, devices, platformParams, true);
+
+                _tags.phone = !!((_tags.iphone || _tags.ipod) ||
+                    (!_tags.silk && (_tags.android && (_tags.android < 3 || isMobile))) ||
+                    (_tags.blackberry && isMobile) ||
+                    (_tags.windowsphone));
+
+                _tags.tablet = !!(!_tags.phone && (
+                        _tags.ipad ||
+                        _tags.android ||
+                        _tags.silk ||
+                        _tags.rimtablet ||
+                        (_tags.ie10 && /; Touch/.test(ua))
+                    ));
+
+                _tags.touch =
                     
                     
                     isEventSupported('touchend') ||
@@ -202,25 +422,13 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
                     
                     navigator.msMaxTouchPoints;
 
-                isDesktop = !isPhone && !isTablet;
-                isIE10 = uaTags['MSIE 10'];
-                isBlackberry = uaTags.Blackberry || uaTags.BB;
+                _tags.desktop = !_tags.phone && !_tags.tablet;
+                _tags.cordova = _tags.phonegap = !!(window.PhoneGap || window.Cordova || window.cordova);
+                _tags.webview = /(iPhone|iPod|iPad).*AppleWebKit(?!.*Safari)(?!.*FBAN)/i.test(ua);
+                _tags.androidstock = (_tags.android <= 4.3) && (_tags.safari || _tags.silk);
 
-                apply(_tags, Boot.loadPlatformsParam(), {
-                    phone: isPhone,
-                    tablet: isTablet,
-                    desktop: isDesktop,
-                    touch: touchSupported,
-                    ios: (uaTags.iPad || uaTags.iPhone || uaTags.iPod),
-                    android: uaTags.Android || uaTags.Silk,
-                    blackberry: isBlackberry,
-                    safari: uaTags.Safari && !isBlackberry,
-                    chrome: uaTags.Chrome,
-                    ie10: isIE10,
-                    windows: isIE10 || uaTags.Trident,
-                    tizen: uaTags.Tizen,
-                    firefox: uaTags.Firefox
-                });
+                
+                _merge(_tags, platformParams, true);
             },
 
             
@@ -238,35 +446,43 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
                 }
 
                 if (params.platformTags) {
-                    tmpArray = params.platform.split(/\W/);
+                    tmpArray = params.platformTags.split(",");
                     for (tmplen = tmpArray.length, i = 0; i < tmplen; i++) {
                         platform = tmpArray[i].split(":");
                         name = platform[0];
+                        enabled=true;
                         if (platform.length > 1) {
                             enabled = platform[1];
                             if (enabled === 'false' || enabled === '0') {
                                 enabled = false;
-                            } else {
-                                enabled = true;
                             }
                         }
                         platforms[name] = enabled;
                     }
                 }
-                return platform;
+                return platforms;
             },
 
-            filterPlatform: function (platform) {
-                platform = [].concat(platform);
-                var len, p, tag;
+            filterPlatform: function (platform, excludes) {
+                platform = _emptyArray.concat(platform || _emptyArray);
+                excludes = _emptyArray.concat(excludes || _emptyArray);
 
-                for (len = platform.length, p = 0; p < len; p++) {
-                    tag = platform[p];
-                    if (_tags.hasOwnProperty(tag)) {
-                        return !!_tags[tag];
-                    }
+                var plen = platform.length,
+                    elen = excludes.length,
+                    include = (!plen && elen), 
+                    i, tag;
+
+                for (i = 0; i < plen && !include; i++) {
+                    tag = platform[i];
+                    include = !!_tags[tag];
                 }
-                return false;
+
+                for (i = 0; i < elen && include; i++) {
+                    tag = excludes[i];
+                    include = !_tags[tag];
+                }
+
+                return include;
             },
 
             init: function () {
@@ -391,6 +607,16 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
                     entry = Boot.create(url, key, cfg);
                 }
                 return entry;
+            },
+
+            registerContent: function (url, type, content) {
+                var cfg = {
+                    content: content,
+                    loaded: true,
+                    css: type === 'css'
+                };
+
+                return Boot.getEntry(url, cfg);
             },
 
             processRequest: function(request, sync) {
@@ -904,20 +1130,22 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
             cache = (cfg.cache !== undefined) ? cfg.cache : (loader && loader.cache),
             buster, busterParam;
 
-        if(cache === undefined) {
-            cache = !Boot.config.disableCaching;
-        }
+        if (Boot.config.disableCaching) {
+            if (cache === undefined) {
+                cache = !Boot.config.disableCaching;
+            }
 
-        if(cache === false) {
-            buster = +new Date();
-        } else if(cache !== true) {
-            buster = cache;
-        }
+            if (cache === false) {
+                buster = +new Date();
+            } else if (cache !== true) {
+                buster = cache;
+            }
 
-        if(buster) {
-            busterParam = (loader && loader.cacheParam) || Boot.config.disableCachingParam;
-            buster = busterParam + "=" + buster;
-        };
+            if (buster) {
+                busterParam = (loader && loader.cacheParam) || Boot.config.disableCachingParam;
+                buster = busterParam + "=" + buster;
+            }
+        }
 
         _apply(cfg, {
             charset: charset,
@@ -946,7 +1174,12 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
         isCss: function () {
             var me = this;
             if (me.css === undefined) {
-                me.css = me.url && cssRe.test(me.url);
+                if (me.url) {
+                    var assetConfig = Boot.assetConfig[me.url];
+                    me.css = assetConfig ? assetConfig.type === "css" : cssRe.test(me.url);
+                } else {
+                    me.css = false;
+                }
             }
             return this.css;
         },
@@ -973,6 +1206,11 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
                     el = doc.createElement(tag);
                     el.type = 'text/javascript';
                     me.prop = 'src';
+
+                    if (me.charset) {
+                        el.charset = me.charset;
+                    }
+
                     if (Boot.hasAsync) {
                         el.async = false;
                     }
@@ -1130,21 +1368,14 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
                     me.loaded = me.evaluated = me.done = true;
                     me.notifyRequests();
                 };
-            if(me.isCss()) {
-                me.createLoadElement();
-                me.evaluateLoadElement();
+            me.createLoadElement(function(){
                 complete();
-            } else {
-                me.createLoadElement(function(){
-                    complete();
-                });
-                me.evaluateLoadElement();
-                
-                
-                
-                return false;
-            }
-            return true;
+            });
+            me.evaluateLoadElement();
+            
+            
+            
+            return false;
         },
 
         loadElement: function() {
@@ -1153,14 +1384,10 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
                     me.loaded = me.evaluated = me.done = true;
                     me.notifyRequests();
                 };
-            if(me.isCss()) {
-                return me.loadCrossDomain();
-            } else {
-                me.createLoadElement(function(){
-                    complete();
-                });
-                me.evaluateLoadElement();
-            }
+            me.createLoadElement(function(){
+                complete();
+            });
+            me.evaluateLoadElement();
             return true;
         },
 
@@ -1208,7 +1435,9 @@ Ext.Boot = Ext.Boot || (function (emptyFn) {
                         });
                     }
 
-                    else if(Boot.useElements) {
+                    else if(Boot.useElements &&
+                        
+                        !(me.isCss() && _environment.phantom)) {
                         return me.loadElement();
                     }
                     
@@ -1398,6 +1627,49 @@ if (!Function.prototype.bind) {
 
 
 
+Ext.setResourcePath = function (poolName, path) {
+    var manifest = Ext.manifest || (Ext.manifest = {}),
+        paths = manifest.resources || (manifest.resources = {});
+
+    if (manifest) {
+        if (typeof poolName !== 'string') {
+            Ext.apply(paths, poolName);
+        } else {
+            paths[poolName] = path;
+        }
+        manifest.resources = paths;
+    }
+};
+
+Ext.getResourcePath = function (path, poolName, packageName) {
+    if (typeof path !== 'string') {
+        poolName = path.pool;
+        packageName = path.packageName;
+        path = path.path;
+    }
+    var manifest = Ext.manifest,
+        paths = manifest && manifest.resources,
+        poolPath = paths[poolName],
+        output = [];
+
+    if (poolPath == null) {
+        poolPath = paths.path;
+        if (poolPath == null) {
+            poolPath = 'resources';
+        }
+    }
+
+    if (poolPath) {
+        output.push(poolPath);
+    }
+
+    if (packageName) {
+        output.push(packageName);
+    }
+
+    output.push(path);
+    return output.join('/');
+};
 var Ext = Ext || {};
 (function(manifest){
     if(!Ext.manifest) {
@@ -1427,7 +1699,6 @@ var Ext = Ext || {};
     "Ext.Widget": "../packages/sencha-core/src/Widget.js",
     "Ext.XTemplate": "../packages/sencha-core/src/XTemplate.js",
     "Ext.app": "../packages/sencha-core/src/app",
-    "Ext.app.bindinspector": "../src/app/bindinspector",
     "Ext.data": "../packages/sencha-core/src/data",
     "Ext.direct": "../packages/sencha-core/src/direct",
     "Ext.dom": "../packages/sencha-core/src/dom",
@@ -2433,11 +2704,10 @@ var Ext = Ext || {};
     {
       "path": "../src/state/Stateful.js",
       "requires": [
+        50,
         106
       ],
-      "uses": [
-        50
-      ],
+      "uses": [],
       "idx": 107
     },
     {
@@ -2487,10 +2757,10 @@ var Ext = Ext || {};
         315,
         323,
         325,
-        418,
-        555,
-        566,
-        570
+        396,
+        536,
+        550,
+        554
       ],
       "idx": 109
     },
@@ -4360,7 +4630,7 @@ var Ext = Ext || {};
         311
       ],
       "uses": [
-        555
+        536
       ],
       "idx": 312
     },
@@ -4473,6 +4743,7 @@ var Ext = Ext || {};
         322
       ],
       "uses": [
+        43,
         70,
         165
       ],
@@ -4529,52 +4800,28 @@ var Ext = Ext || {};
       "idx": 328
     },
     {
-      "path": "../src/panel/Bar.js",
+      "path": "../src/dom/ButtonElement.js",
       "requires": [
-        316
+        43
       ],
       "uses": [],
       "idx": 329
     },
     {
-      "path": "../src/panel/Title.js",
-      "requires": [
-        109
-      ],
+      "path": "../src/button/Manager.js",
+      "requires": [],
       "uses": [],
       "idx": 330
     },
     {
-      "path": "../src/panel/Tool.js",
-      "requires": [
-        109
-      ],
+      "path": "../src/menu/Manager.js",
+      "requires": [],
       "uses": [
-        423
+        11,
+        109,
+        502
       ],
       "idx": 331
-    },
-    {
-      "path": "../src/panel/Header.js",
-      "requires": [
-        185,
-        325,
-        329,
-        330,
-        331
-      ],
-      "uses": [
-        11
-      ],
-      "idx": 332
-    },
-    {
-      "path": "../src/layout/container/boxOverflow/None.js",
-      "requires": [
-        84
-      ],
-      "uses": [],
-      "idx": 333
     },
     {
       "path": "../src/util/ClickRepeater.js",
@@ -4582,18 +4829,124 @@ var Ext = Ext || {};
         45
       ],
       "uses": [],
+      "idx": 332
+    },
+    {
+      "path": "../src/util/KeyMap.js",
+      "requires": [],
+      "uses": [],
+      "idx": 333
+    },
+    {
+      "path": "../src/button/Button.js",
+      "requires": [
+        109,
+        215,
+        307,
+        329,
+        330,
+        331,
+        332,
+        333
+      ],
+      "uses": [
+        26,
+        450
+      ],
       "idx": 334
+    },
+    {
+      "path": "../src/button/Split.js",
+      "requires": [
+        334
+      ],
+      "uses": [],
+      "idx": 335
+    },
+    {
+      "path": "../src/button/Cycle.js",
+      "requires": [
+        335
+      ],
+      "uses": [],
+      "idx": 336
+    },
+    {
+      "path": "../src/layout/container/SegmentedButton.js",
+      "requires": [
+        313
+      ],
+      "uses": [],
+      "idx": 337
+    },
+    {
+      "path": "../src/button/Segmented.js",
+      "requires": [
+        316,
+        334,
+        337
+      ],
+      "uses": [],
+      "idx": 338
+    },
+    {
+      "path": "../src/panel/Bar.js",
+      "requires": [
+        316
+      ],
+      "uses": [],
+      "idx": 339
+    },
+    {
+      "path": "../src/panel/Title.js",
+      "requires": [
+        109
+      ],
+      "uses": [],
+      "idx": 340
+    },
+    {
+      "path": "../src/panel/Tool.js",
+      "requires": [
+        109
+      ],
+      "uses": [
+        450
+      ],
+      "idx": 341
+    },
+    {
+      "path": "../src/panel/Header.js",
+      "requires": [
+        185,
+        325,
+        339,
+        340,
+        341
+      ],
+      "uses": [
+        11
+      ],
+      "idx": 342
+    },
+    {
+      "path": "../src/layout/container/boxOverflow/None.js",
+      "requires": [
+        84
+      ],
+      "uses": [],
+      "idx": 343
     },
     {
       "path": "../src/layout/container/boxOverflow/Scroller.js",
       "requires": [
         4,
         43,
-        333,
-        334
+        332,
+        343
       ],
       "uses": [],
-      "idx": 335
+      "idx": 344
     },
     {
       "path": "../src/dd/DragDropManager.js",
@@ -4601,10 +4954,11 @@ var Ext = Ext || {};
         24
       ],
       "uses": [
-        385,
-        423
+        43,
+        379,
+        450
       ],
-      "idx": 336
+      "idx": 345
     },
     {
       "path": "../src/resizer/Splitter.js",
@@ -4613,19 +4967,19 @@ var Ext = Ext || {};
         109
       ],
       "uses": [
-        438
+        375
       ],
-      "idx": 337
+      "idx": 346
     },
     {
       "path": "../src/layout/container/Box.js",
       "requires": [
         72,
         313,
-        333,
-        335,
-        336,
-        337
+        343,
+        344,
+        345,
+        346
       ],
       "uses": [
         84,
@@ -4633,48 +4987,42 @@ var Ext = Ext || {};
         311,
         325
       ],
-      "idx": 338
+      "idx": 347
     },
     {
       "path": "../src/layout/container/HBox.js",
       "requires": [
-        338
+        347
       ],
       "uses": [],
-      "idx": 339
+      "idx": 348
     },
     {
       "path": "../src/layout/container/VBox.js",
       "requires": [
-        338
+        347
       ],
       "uses": [],
-      "idx": 340
-    },
-    {
-      "path": "../src/util/KeyMap.js",
-      "requires": [],
-      "uses": [],
-      "idx": 341
+      "idx": 349
     },
     {
       "path": "../src/util/KeyNav.js",
       "requires": [
-        341
+        333
       ],
       "uses": [],
-      "idx": 342
+      "idx": 350
     },
     {
       "path": "../src/util/FocusableContainer.js",
       "requires": [
         0,
-        342
+        350
       ],
       "uses": [
         109
       ],
-      "idx": 343
+      "idx": 351
     },
     {
       "path": "../src/toolbar/Toolbar.js",
@@ -4682,47 +5030,47 @@ var Ext = Ext || {};
         185,
         316,
         325,
-        339,
-        340,
-        343
+        348,
+        349,
+        351
       ],
       "uses": [
-        474,
-        490,
-        595
+        432,
+        453,
+        583
       ],
-      "idx": 344
+      "idx": 352
     },
     {
       "path": "../src/dd/DragDrop.js",
       "requires": [
-        336
-      ],
-      "uses": [
-        43
-      ],
-      "idx": 345
-    },
-    {
-      "path": "../src/dd/DD.js",
-      "requires": [
-        336,
         345
       ],
       "uses": [
         43
       ],
-      "idx": 346
+      "idx": 353
+    },
+    {
+      "path": "../src/dd/DD.js",
+      "requires": [
+        345,
+        353
+      ],
+      "uses": [
+        43
+      ],
+      "idx": 354
     },
     {
       "path": "../src/dd/DDProxy.js",
       "requires": [
-        346
+        354
       ],
       "uses": [
-        336
+        345
       ],
-      "idx": 347
+      "idx": 355
     },
     {
       "path": "../src/dd/StatusProxy.js",
@@ -4730,20 +5078,20 @@ var Ext = Ext || {};
         109
       ],
       "uses": [],
-      "idx": 348
+      "idx": 356
     },
     {
       "path": "../src/dd/DragSource.js",
       "requires": [
-        336,
-        347,
-        348
+        345,
+        355,
+        356
       ],
       "uses": [
         185,
         325
       ],
-      "idx": 349
+      "idx": 357
     },
     {
       "path": "../src/panel/Proxy.js",
@@ -4751,16 +5099,16 @@ var Ext = Ext || {};
       "uses": [
         43
       ],
-      "idx": 350
+      "idx": 358
     },
     {
       "path": "../src/panel/DD.js",
       "requires": [
-        349,
-        350
+        357,
+        358
       ],
       "uses": [],
-      "idx": 351
+      "idx": 359
     },
     {
       "path": "../src/layout/component/Dock.js",
@@ -4772,13 +5120,13 @@ var Ext = Ext || {};
         43,
         311
       ],
-      "idx": 352
+      "idx": 360
     },
     {
       "path": "../src/util/Memento.js",
       "requires": [],
       "uses": [],
-      "idx": 353
+      "idx": 361
     },
     {
       "path": "../src/container/DockingContainer.js",
@@ -4791,7 +5139,7 @@ var Ext = Ext || {};
         46,
         220
       ],
-      "idx": 354
+      "idx": 362
     },
     {
       "path": "../src/panel/Panel.js",
@@ -4801,13 +5149,13 @@ var Ext = Ext || {};
         66,
         79,
         316,
-        332,
-        341,
-        344,
-        351,
+        333,
+        342,
         352,
-        353,
-        354
+        359,
+        360,
+        361,
+        362
       ],
       "uses": [
         1,
@@ -4817,11 +5165,331 @@ var Ext = Ext || {};
         185,
         314,
         325,
-        331,
-        418,
-        491
+        341,
+        396,
+        454
       ],
-      "idx": 355
+      "idx": 363
+    },
+    {
+      "path": "../src/layout/container/Table.js",
+      "requires": [
+        313
+      ],
+      "uses": [],
+      "idx": 364
+    },
+    {
+      "path": "../src/container/ButtonGroup.js",
+      "requires": [
+        363,
+        364
+      ],
+      "uses": [],
+      "idx": 365
+    },
+    {
+      "path": "../src/container/Monitor.js",
+      "requires": [],
+      "uses": [
+        49
+      ],
+      "idx": 366
+    },
+    {
+      "path": "../src/plugin/Responsive.js",
+      "requires": [
+        294
+      ],
+      "uses": [],
+      "idx": 367
+    },
+    {
+      "path": "../src/plugin/Viewport.js",
+      "requires": [
+        367
+      ],
+      "uses": [
+        43,
+        101,
+        109,
+        311
+      ],
+      "idx": 368
+    },
+    {
+      "path": "../src/container/Viewport.js",
+      "requires": [
+        294,
+        316,
+        368
+      ],
+      "uses": [],
+      "idx": 369
+    },
+    {
+      "path": "../src/layout/container/Anchor.js",
+      "requires": [
+        314
+      ],
+      "uses": [],
+      "idx": 370
+    },
+    {
+      "path": "../src/dashboard/Panel.js",
+      "requires": [
+        363
+      ],
+      "uses": [
+        11
+      ],
+      "idx": 371
+    },
+    {
+      "path": "../src/dashboard/Column.js",
+      "requires": [
+        316,
+        370,
+        371
+      ],
+      "uses": [],
+      "idx": 372
+    },
+    {
+      "path": "../src/layout/container/Column.js",
+      "requires": [
+        314
+      ],
+      "uses": [],
+      "idx": 373
+    },
+    {
+      "path": "../src/dd/DragTracker.js",
+      "requires": [
+        45
+      ],
+      "uses": [
+        24,
+        350
+      ],
+      "idx": 374
+    },
+    {
+      "path": "../src/resizer/SplitterTracker.js",
+      "requires": [
+        24,
+        374
+      ],
+      "uses": [
+        43,
+        90
+      ],
+      "idx": 375
+    },
+    {
+      "path": "../src/layout/container/ColumnSplitterTracker.js",
+      "requires": [
+        375
+      ],
+      "uses": [],
+      "idx": 376
+    },
+    {
+      "path": "../src/layout/container/ColumnSplitter.js",
+      "requires": [
+        346,
+        376
+      ],
+      "uses": [],
+      "idx": 377
+    },
+    {
+      "path": "../src/layout/container/Dashboard.js",
+      "requires": [
+        373,
+        377
+      ],
+      "uses": [
+        185,
+        325
+      ],
+      "idx": 378
+    },
+    {
+      "path": "../src/dd/DDTarget.js",
+      "requires": [
+        353
+      ],
+      "uses": [],
+      "idx": 379
+    },
+    {
+      "path": "../src/dd/ScrollManager.js",
+      "requires": [
+        345
+      ],
+      "uses": [],
+      "idx": 380
+    },
+    {
+      "path": "../src/dd/DropTarget.js",
+      "requires": [
+        379,
+        380
+      ],
+      "uses": [],
+      "idx": 381
+    },
+    {
+      "path": "../src/dashboard/DropZone.js",
+      "requires": [
+        381
+      ],
+      "uses": [],
+      "idx": 382
+    },
+    {
+      "path": "../src/dashboard/Part.js",
+      "requires": [
+        3,
+        84,
+        118
+      ],
+      "uses": [],
+      "idx": 383
+    },
+    {
+      "path": "../src/dashboard/Dashboard.js",
+      "requires": [
+        363,
+        372,
+        378,
+        382,
+        383
+      ],
+      "uses": [
+        84,
+        106,
+        117
+      ],
+      "idx": 384
+    },
+    {
+      "path": "../src/dd/DragZone.js",
+      "requires": [
+        357
+      ],
+      "uses": [
+        380,
+        386
+      ],
+      "idx": 385
+    },
+    {
+      "path": "../src/dd/Registry.js",
+      "requires": [],
+      "uses": [],
+      "idx": 386
+    },
+    {
+      "path": "../src/dd/DropZone.js",
+      "requires": [
+        381,
+        386
+      ],
+      "uses": [
+        345
+      ],
+      "idx": 387
+    },
+    {
+      "path": "../src/dom/Layer.js",
+      "requires": [
+        43
+      ],
+      "uses": [
+        220
+      ],
+      "idx": 388
+    },
+    {
+      "path": "../src/enums.js",
+      "requires": [],
+      "uses": [],
+      "idx": 389
+    },
+    {
+      "path": "../src/event/publisher/MouseEnterLeave.js",
+      "requires": [
+        27
+      ],
+      "uses": [],
+      "idx": 390
+    },
+    {
+      "path": "../src/flash/Component.js",
+      "requires": [
+        109
+      ],
+      "uses": [],
+      "idx": 391
+    },
+    {
+      "path": "../src/form/action/Action.js",
+      "requires": [],
+      "uses": [],
+      "idx": 392
+    },
+    {
+      "path": "../src/form/action/Load.js",
+      "requires": [
+        8,
+        392
+      ],
+      "uses": [
+        9
+      ],
+      "idx": 393
+    },
+    {
+      "path": "../src/form/action/Submit.js",
+      "requires": [
+        392
+      ],
+      "uses": [
+        9,
+        220
+      ],
+      "idx": 394
+    },
+    {
+      "path": "../src/form/action/StandardSubmit.js",
+      "requires": [
+        394
+      ],
+      "uses": [],
+      "idx": 395
+    },
+    {
+      "path": "../src/util/ComponentDragger.js",
+      "requires": [
+        374
+      ],
+      "uses": [
+        24,
+        43
+      ],
+      "idx": 396
+    },
+    {
+      "path": "../src/window/Window.js",
+      "requires": [
+        24,
+        363,
+        396
+      ],
+      "uses": [],
+      "idx": 397
     },
     {
       "path": "../src/form/Labelable.js",
@@ -4831,15 +5499,15 @@ var Ext = Ext || {};
       ],
       "uses": [
         43,
-        422
+        449
       ],
-      "idx": 356
+      "idx": 398
     },
     {
       "path": "../src/form/field/Field.js",
       "requires": [],
       "uses": [],
-      "idx": 357
+      "idx": 399
     },
     {
       "path": "../src/form/field/Base.js",
@@ -4847,51 +5515,275 @@ var Ext = Ext || {};
         1,
         79,
         109,
-        356,
-        357
+        398,
+        399
       ],
       "uses": [
         220
       ],
-      "idx": 358
+      "idx": 400
     },
     {
-      "path": "../src/form/field/Display.js",
+      "path": "../src/form/field/VTypes.js",
+      "requires": [],
+      "uses": [],
+      "idx": 401
+    },
+    {
+      "path": "../src/form/trigger/Trigger.js",
       "requires": [
+        84,
+        332
+      ],
+      "uses": [
+        43,
+        79
+      ],
+      "idx": 402
+    },
+    {
+      "path": "../src/form/field/Text.js",
+      "requires": [
+        307,
+        400,
+        401,
+        402
+      ],
+      "uses": [
         72,
+        73,
+        83
+      ],
+      "idx": 403
+    },
+    {
+      "path": "../src/form/field/TextArea.js",
+      "requires": [
+        1,
         79,
-        358
+        403
+      ],
+      "uses": [
+        72,
+        307
+      ],
+      "idx": 404
+    },
+    {
+      "path": "../src/window/MessageBox.js",
+      "requires": [
+        327,
+        334,
+        348,
+        352,
+        370,
+        397,
+        403,
+        404
+      ],
+      "uses": [
+        109,
+        185,
+        316,
+        325,
+        326,
+        454
+      ],
+      "idx": 405
+    },
+    {
+      "path": "../src/form/Basic.js",
+      "requires": [
+        1,
+        45,
+        49,
+        129,
+        393,
+        394,
+        395,
+        405
+      ],
+      "uses": [
+        366
+      ],
+      "idx": 406
+    },
+    {
+      "path": "../src/form/FieldAncestor.js",
+      "requires": [
+        0,
+        366
       ],
       "uses": [],
-      "idx": 359
+      "idx": 407
     },
     {
-      "path": "../src/layout/container/Fit.js",
+      "path": "../src/layout/component/field/FieldContainer.js",
+      "requires": [
+        325
+      ],
+      "uses": [],
+      "idx": 408
+    },
+    {
+      "path": "../src/form/FieldContainer.js",
+      "requires": [
+        316,
+        398,
+        407,
+        408
+      ],
+      "uses": [],
+      "idx": 409
+    },
+    {
+      "path": "../src/layout/container/CheckboxGroup.js",
       "requires": [
         313
       ],
-      "uses": [],
-      "idx": 360
+      "uses": [
+        220
+      ],
+      "idx": 410
     },
     {
-      "path": "../src/panel/Table.js",
+      "path": "../src/form/CheckboxManager.js",
       "requires": [
-        355,
-        360
+        49
+      ],
+      "uses": [],
+      "idx": 411
+    },
+    {
+      "path": "../src/form/field/Checkbox.js",
+      "requires": [
+        79,
+        400,
+        411
+      ],
+      "uses": [],
+      "idx": 412
+    },
+    {
+      "path": "../src/form/CheckboxGroup.js",
+      "requires": [
+        399,
+        400,
+        409,
+        410,
+        412
+      ],
+      "uses": [],
+      "idx": 413
+    },
+    {
+      "path": "../src/form/FieldSet.js",
+      "requires": [
+        316,
+        407
       ],
       "uses": [
-        1,
-        165,
+        43,
+        82,
+        109,
+        185,
         220,
-        378,
-        392,
-        396,
-        534,
-        535,
-        571,
-        572
+        313,
+        325,
+        341,
+        370,
+        412,
+        539
       ],
-      "idx": 361
+      "idx": 414
+    },
+    {
+      "path": "../src/form/Label.js",
+      "requires": [
+        72,
+        109
+      ],
+      "uses": [],
+      "idx": 415
+    },
+    {
+      "path": "../src/form/Panel.js",
+      "requires": [
+        50,
+        363,
+        406,
+        407
+      ],
+      "uses": [],
+      "idx": 416
+    },
+    {
+      "path": "../src/form/RadioManager.js",
+      "requires": [
+        49
+      ],
+      "uses": [],
+      "idx": 417
+    },
+    {
+      "path": "../src/form/field/Radio.js",
+      "requires": [
+        412,
+        417
+      ],
+      "uses": [],
+      "idx": 418
+    },
+    {
+      "path": "../src/form/RadioGroup.js",
+      "requires": [
+        351,
+        413,
+        418
+      ],
+      "uses": [
+        417
+      ],
+      "idx": 419
+    },
+    {
+      "path": "../src/form/action/DirectAction.js",
+      "requires": [
+        0
+      ],
+      "uses": [
+        200
+      ],
+      "idx": 420
+    },
+    {
+      "path": "../src/form/action/DirectLoad.js",
+      "requires": [
+        200,
+        393,
+        420
+      ],
+      "uses": [],
+      "idx": 421
+    },
+    {
+      "path": "../src/form/action/DirectSubmit.js",
+      "requires": [
+        200,
+        394,
+        420
+      ],
+      "uses": [],
+      "idx": 422
+    },
+    {
+      "path": "../src/form/field/Picker.js",
+      "requires": [
+        350,
+        403
+      ],
+      "uses": [],
+      "idx": 423
     },
     {
       "path": "../src/selection/Model.js",
@@ -4903,16 +5795,16 @@ var Ext = Ext || {};
       "uses": [
         117
       ],
-      "idx": 362
+      "idx": 424
     },
     {
       "path": "../src/selection/DataViewModel.js",
       "requires": [
-        342,
-        362
+        350,
+        424
       ],
       "uses": [],
-      "idx": 363
+      "idx": 425
     },
     {
       "path": "../src/view/NavigationModel.js",
@@ -4921,9 +5813,9 @@ var Ext = Ext || {};
         84
       ],
       "uses": [
-        342
+        350
       ],
-      "idx": 364
+      "idx": 426
     },
     {
       "path": "../src/view/AbstractView.js",
@@ -4932,8 +5824,8 @@ var Ext = Ext || {};
         109,
         322,
         323,
-        363,
-        364
+        425,
+        426
       ],
       "uses": [
         10,
@@ -4944,1159 +5836,26 @@ var Ext = Ext || {};
         220,
         306
       ],
-      "idx": 365
+      "idx": 427
     },
     {
       "path": "../src/view/View.js",
       "requires": [
-        365
-      ],
-      "uses": [],
-      "idx": 366
-    },
-    {
-      "path": "../src/grid/CellContext.js",
-      "requires": [],
-      "uses": [],
-      "idx": 367
-    },
-    {
-      "path": "../src/view/TableLayout.js",
-      "requires": [
-        325
-      ],
-      "uses": [],
-      "idx": 368
-    },
-    {
-      "path": "../src/grid/locking/RowSynchronizer.js",
-      "requires": [],
-      "uses": [],
-      "idx": 369
-    },
-    {
-      "path": "../src/view/NodeCache.js",
-      "requires": [
-        69
-      ],
-      "uses": [
-        43,
-        68
-      ],
-      "idx": 370
-    },
-    {
-      "path": "../src/view/Table.js",
-      "requires": [
-        1,
-        49,
-        366,
-        367,
-        368,
-        369,
-        370
-      ],
-      "uses": [
-        68,
-        79,
-        84,
-        109,
-        145,
-        392
-      ],
-      "idx": 371
-    },
-    {
-      "path": "../src/grid/Panel.js",
-      "requires": [
-        361,
-        371
-      ],
-      "uses": [],
-      "idx": 372
-    },
-    {
-      "path": "../src/form/CheckboxManager.js",
-      "requires": [
-        49
-      ],
-      "uses": [],
-      "idx": 373
-    },
-    {
-      "path": "../src/form/field/Checkbox.js",
-      "requires": [
-        79,
-        358,
-        373
-      ],
-      "uses": [],
-      "idx": 374
-    },
-    {
-      "path": "../src/app/bindinspector/Util.js",
-      "requires": [],
-      "uses": [
-        73
-      ],
-      "idx": 375
-    },
-    {
-      "path": "../src/app/bindinspector/ComponentDetail.js",
-      "requires": [
-        109,
-        185,
-        316,
-        325,
-        339,
-        340,
-        355,
-        359,
-        372,
-        374,
-        375
-      ],
-      "uses": [
-        73,
-        344,
-        352,
-        360,
-        409,
-        415,
-        491,
-        595
-      ],
-      "idx": 376
-    },
-    {
-      "path": "../src/tree/View.js",
-      "requires": [
-        371
-      ],
-      "uses": [
-        43,
-        79
-      ],
-      "idx": 377
-    },
-    {
-      "path": "../src/selection/RowModel.js",
-      "requires": [
-        363,
-        367
-      ],
-      "uses": [],
-      "idx": 378
-    },
-    {
-      "path": "../src/selection/TreeModel.js",
-      "requires": [
-        378
-      ],
-      "uses": [],
-      "idx": 379
-    },
-    {
-      "path": "../src/grid/ColumnLayout.js",
-      "requires": [
-        339,
-        361
-      ],
-      "uses": [],
-      "idx": 380
-    },
-    {
-      "path": "../src/dd/DragTracker.js",
-      "requires": [
-        45
-      ],
-      "uses": [
-        24,
-        342
-      ],
-      "idx": 381
-    },
-    {
-      "path": "../src/grid/plugin/HeaderResizer.js",
-      "requires": [
-        24,
-        299,
-        381
-      ],
-      "uses": [
-        394
-      ],
-      "idx": 382
-    },
-    {
-      "path": "../src/dd/DragZone.js",
-      "requires": [
-        349
-      ],
-      "uses": [
-        386,
-        388
-      ],
-      "idx": 383
-    },
-    {
-      "path": "../src/grid/header/DragZone.js",
-      "requires": [
-        383
-      ],
-      "uses": [],
-      "idx": 384
-    },
-    {
-      "path": "../src/dd/DDTarget.js",
-      "requires": [
-        345
-      ],
-      "uses": [],
-      "idx": 385
-    },
-    {
-      "path": "../src/dd/ScrollManager.js",
-      "requires": [
-        336
-      ],
-      "uses": [],
-      "idx": 386
-    },
-    {
-      "path": "../src/dd/DropTarget.js",
-      "requires": [
-        385,
-        386
-      ],
-      "uses": [],
-      "idx": 387
-    },
-    {
-      "path": "../src/dd/Registry.js",
-      "requires": [],
-      "uses": [],
-      "idx": 388
-    },
-    {
-      "path": "../src/dd/DropZone.js",
-      "requires": [
-        387,
-        388
-      ],
-      "uses": [
-        336
-      ],
-      "idx": 389
-    },
-    {
-      "path": "../src/grid/header/DropZone.js",
-      "requires": [
-        389
-      ],
-      "uses": [
-        336
-      ],
-      "idx": 390
-    },
-    {
-      "path": "../src/grid/plugin/HeaderReorderer.js",
-      "requires": [
-        299,
-        384,
-        390
-      ],
-      "uses": [],
-      "idx": 391
-    },
-    {
-      "path": "../src/grid/header/Container.js",
-      "requires": [
-        316,
-        342,
-        343,
-        380,
-        382,
-        391
-      ],
-      "uses": [
-        1,
-        109,
-        185,
-        325,
-        335,
-        340,
-        352,
-        394,
-        498,
-        520,
-        521,
-        522
-      ],
-      "idx": 392
-    },
-    {
-      "path": "../src/grid/ColumnComponentLayout.js",
-      "requires": [
-        325
-      ],
-      "uses": [],
-      "idx": 393
-    },
-    {
-      "path": "../src/grid/column/Column.js",
-      "requires": [
-        195,
-        380,
-        392,
-        393
-      ],
-      "uses": [
-        72,
-        382
-      ],
-      "idx": 394
-    },
-    {
-      "path": "../src/tree/Column.js",
-      "requires": [
-        394
-      ],
-      "uses": [],
-      "idx": 395
-    },
-    {
-      "path": "../src/grid/NavigationModel.js",
-      "requires": [
-        364
-      ],
-      "uses": [
-        26,
-        68,
-        109,
-        342,
-        367
-      ],
-      "idx": 396
-    },
-    {
-      "path": "../src/tree/NavigationModel.js",
-      "requires": [
-        396
-      ],
-      "uses": [
-        26
-      ],
-      "idx": 397
-    },
-    {
-      "path": "../src/tree/Panel.js",
-      "requires": [
-        217,
-        361,
-        377,
-        379,
-        395,
-        397
-      ],
-      "uses": [
-        165,
-        185,
-        314,
-        393
-      ],
-      "idx": 398
-    },
-    {
-      "path": "../src/form/field/VTypes.js",
-      "requires": [],
-      "uses": [],
-      "idx": 399
-    },
-    {
-      "path": "../src/form/trigger/Trigger.js",
-      "requires": [
-        84,
-        334
-      ],
-      "uses": [
-        43,
-        79
-      ],
-      "idx": 400
-    },
-    {
-      "path": "../src/form/field/Text.js",
-      "requires": [
-        307,
-        358,
-        399,
-        400
-      ],
-      "uses": [
-        72,
-        73,
-        83
-      ],
-      "idx": 401
-    },
-    {
-      "path": "../src/app/bindinspector/ComponentList.js",
-      "requires": [
-        398,
-        401
-      ],
-      "uses": [
-        14,
-        185,
-        314,
-        325,
-        344,
-        352,
-        375,
-        393,
-        395,
-        409,
-        421,
-        491,
-        595
-      ],
-      "idx": 402
-    },
-    {
-      "path": "../src/resizer/BorderSplitter.js",
-      "requires": [
-        337
-      ],
-      "uses": [
-        567
-      ],
-      "idx": 403
-    },
-    {
-      "path": "../src/layout/container/Border.js",
-      "requires": [
-        66,
-        110,
-        313,
-        403
-      ],
-      "uses": [
-        72,
-        185,
-        325
-      ],
-      "idx": 404
-    },
-    {
-      "path": "../src/layout/container/Card.js",
-      "requires": [
-        360
-      ],
-      "uses": [
-        43
-      ],
-      "idx": 405
-    },
-    {
-      "path": "../src/dom/ButtonElement.js",
-      "requires": [
-        43
-      ],
-      "uses": [],
-      "idx": 406
-    },
-    {
-      "path": "../src/button/Manager.js",
-      "requires": [],
-      "uses": [],
-      "idx": 407
-    },
-    {
-      "path": "../src/menu/Manager.js",
-      "requires": [],
-      "uses": [
-        11,
-        522
-      ],
-      "idx": 408
-    },
-    {
-      "path": "../src/button/Button.js",
-      "requires": [
-        109,
-        215,
-        307,
-        334,
-        341,
-        406,
-        407,
-        408
-      ],
-      "uses": [
-        26,
-        423
-      ],
-      "idx": 409
-    },
-    {
-      "path": "../src/tab/Tab.js",
-      "requires": [
-        342,
-        409
-      ],
-      "uses": [],
-      "idx": 410
-    },
-    {
-      "path": "../src/layout/component/Body.js",
-      "requires": [
-        325
-      ],
-      "uses": [],
-      "idx": 411
-    },
-    {
-      "path": "../src/tab/Bar.js",
-      "requires": [
-        25,
-        329,
-        343,
-        410,
-        411
-      ],
-      "uses": [
-        24
-      ],
-      "idx": 412
-    },
-    {
-      "path": "../src/tab/Panel.js",
-      "requires": [
-        355,
-        405,
-        412
-      ],
-      "uses": [
-        185,
-        325,
-        410
-      ],
-      "idx": 413
-    },
-    {
-      "path": "../src/app/bindinspector/Environment.js",
-      "requires": [
-        117
-      ],
-      "uses": [
-        11,
-        453
-      ],
-      "idx": 414
-    },
-    {
-      "path": "../src/app/bindinspector/ViewModelDetail.js",
-      "requires": [
-        398
-      ],
-      "uses": [
-        73,
-        185,
-        314,
-        375,
-        393,
-        395
-      ],
-      "idx": 415
-    },
-    {
-      "path": "../src/app/bindinspector/noconflict/BaseModel.js",
-      "requires": [
-        145
-      ],
-      "uses": [],
-      "idx": 416
-    },
-    {
-      "path": "../src/app/bindinspector/Container.js",
-      "requires": [
-        109,
-        185,
-        316,
-        325,
-        339,
-        375,
-        376,
-        402,
-        404,
-        413,
-        414,
-        415,
-        416
-      ],
-      "uses": [
-        126,
-        314,
-        352,
-        355,
-        360,
-        412
-      ],
-      "idx": 417
-    },
-    {
-      "path": "../src/util/ComponentDragger.js",
-      "requires": [
-        381
-      ],
-      "uses": [
-        24,
-        43
-      ],
-      "idx": 418
-    },
-    {
-      "path": "../src/window/Window.js",
-      "requires": [
-        24,
-        355,
-        418
-      ],
-      "uses": [],
-      "idx": 419
-    },
-    {
-      "path": "../src/tip/Tip.js",
-      "requires": [
-        355
-      ],
-      "uses": [
-        109
-      ],
-      "idx": 420
-    },
-    {
-      "path": "../src/tip/ToolTip.js",
-      "requires": [
-        420
-      ],
-      "uses": [
-        43
-      ],
-      "idx": 421
-    },
-    {
-      "path": "../src/tip/QuickTip.js",
-      "requires": [
-        421
-      ],
-      "uses": [],
-      "idx": 422
-    },
-    {
-      "path": "../src/tip/QuickTipManager.js",
-      "requires": [
-        422
-      ],
-      "uses": [],
-      "idx": 423
-    },
-    {
-      "path": "../src/app/bindinspector/Inspector.js",
-      "requires": [
-        360,
-        417,
-        419,
-        423
-      ],
-      "uses": [
-        185,
-        325,
-        404,
-        414
-      ],
-      "idx": 424
-    },
-    {
-      "path": "../src/button/Split.js",
-      "requires": [
-        409
-      ],
-      "uses": [],
-      "idx": 425
-    },
-    {
-      "path": "../src/button/Cycle.js",
-      "requires": [
-        425
-      ],
-      "uses": [],
-      "idx": 426
-    },
-    {
-      "path": "../src/button/Segmented.js",
-      "requires": [
-        316,
-        409
-      ],
-      "uses": [],
-      "idx": 427
-    },
-    {
-      "path": "../src/layout/container/Table.js",
-      "requires": [
-        313
+        427
       ],
       "uses": [],
       "idx": 428
     },
     {
-      "path": "../src/container/ButtonGroup.js",
-      "requires": [
-        355,
-        428
-      ],
-      "uses": [],
-      "idx": 429
-    },
-    {
-      "path": "../src/container/Monitor.js",
-      "requires": [],
-      "uses": [
-        49
-      ],
-      "idx": 430
-    },
-    {
-      "path": "../src/plugin/Responsive.js",
-      "requires": [
-        294
-      ],
-      "uses": [],
-      "idx": 431
-    },
-    {
-      "path": "../src/plugin/Viewport.js",
-      "requires": [
-        431
-      ],
-      "uses": [
-        43,
-        109,
-        311
-      ],
-      "idx": 432
-    },
-    {
-      "path": "../src/container/Viewport.js",
-      "requires": [
-        294,
-        316,
-        432
-      ],
-      "uses": [],
-      "idx": 433
-    },
-    {
-      "path": "../src/layout/container/Anchor.js",
-      "requires": [
-        314
-      ],
-      "uses": [],
-      "idx": 434
-    },
-    {
-      "path": "../src/dashboard/Panel.js",
-      "requires": [
-        355
-      ],
-      "uses": [
-        11
-      ],
-      "idx": 435
-    },
-    {
-      "path": "../src/dashboard/Column.js",
-      "requires": [
-        316,
-        434,
-        435
-      ],
-      "uses": [],
-      "idx": 436
-    },
-    {
-      "path": "../src/layout/container/Column.js",
-      "requires": [
-        314
-      ],
-      "uses": [],
-      "idx": 437
-    },
-    {
-      "path": "../src/resizer/SplitterTracker.js",
-      "requires": [
-        24,
-        381
-      ],
-      "uses": [
-        43,
-        90
-      ],
-      "idx": 438
-    },
-    {
-      "path": "../src/layout/container/ColumnSplitterTracker.js",
-      "requires": [
-        438
-      ],
-      "uses": [],
-      "idx": 439
-    },
-    {
-      "path": "../src/layout/container/ColumnSplitter.js",
-      "requires": [
-        337,
-        439
-      ],
-      "uses": [],
-      "idx": 440
-    },
-    {
-      "path": "../src/layout/container/Dashboard.js",
-      "requires": [
-        437,
-        440
-      ],
-      "uses": [
-        185,
-        325
-      ],
-      "idx": 441
-    },
-    {
-      "path": "../src/dashboard/DropZone.js",
-      "requires": [
-        387
-      ],
-      "uses": [],
-      "idx": 442
-    },
-    {
-      "path": "../src/dashboard/Part.js",
-      "requires": [
-        3,
-        84,
-        118
-      ],
-      "uses": [],
-      "idx": 443
-    },
-    {
-      "path": "../src/dashboard/Dashboard.js",
-      "requires": [
-        355,
-        436,
-        441,
-        442,
-        443
-      ],
-      "uses": [
-        84,
-        106,
-        117
-      ],
-      "idx": 444
-    },
-    {
-      "path": "../src/dom/Layer.js",
-      "requires": [
-        43
-      ],
-      "uses": [
-        220
-      ],
-      "idx": 445
-    },
-    {
-      "path": "../src/enums.js",
-      "requires": [],
-      "uses": [],
-      "idx": 446
-    },
-    {
-      "path": "../src/event/publisher/MouseEnterLeave.js",
-      "requires": [
-        27
-      ],
-      "uses": [],
-      "idx": 447
-    },
-    {
-      "path": "../src/flash/Component.js",
-      "requires": [
-        109
-      ],
-      "uses": [],
-      "idx": 448
-    },
-    {
-      "path": "../src/form/action/Action.js",
-      "requires": [],
-      "uses": [],
-      "idx": 449
-    },
-    {
-      "path": "../src/form/action/Load.js",
-      "requires": [
-        8,
-        449
-      ],
-      "uses": [
-        9
-      ],
-      "idx": 450
-    },
-    {
-      "path": "../src/form/action/Submit.js",
-      "requires": [
-        449
-      ],
-      "uses": [
-        9,
-        220
-      ],
-      "idx": 451
-    },
-    {
-      "path": "../src/form/field/TextArea.js",
-      "requires": [
-        1,
-        79,
-        401
-      ],
-      "uses": [
-        72,
-        307
-      ],
-      "idx": 452
-    },
-    {
-      "path": "../src/window/MessageBox.js",
-      "requires": [
-        327,
-        339,
-        344,
-        401,
-        409,
-        419,
-        434,
-        452
-      ],
-      "uses": [
-        109,
-        185,
-        316,
-        325,
-        326,
-        491
-      ],
-      "idx": 453
-    },
-    {
-      "path": "../src/form/Basic.js",
-      "requires": [
-        1,
-        45,
-        49,
-        129,
-        450,
-        451,
-        453
-      ],
-      "uses": [
-        430
-      ],
-      "idx": 454
-    },
-    {
-      "path": "../src/form/FieldAncestor.js",
-      "requires": [
-        0,
-        430
-      ],
-      "uses": [],
-      "idx": 455
-    },
-    {
-      "path": "../src/layout/component/field/FieldContainer.js",
-      "requires": [
-        325
-      ],
-      "uses": [],
-      "idx": 456
-    },
-    {
-      "path": "../src/form/FieldContainer.js",
-      "requires": [
-        316,
-        356,
-        455,
-        456
-      ],
-      "uses": [],
-      "idx": 457
-    },
-    {
-      "path": "../src/layout/container/CheckboxGroup.js",
-      "requires": [
-        313
-      ],
-      "uses": [
-        220
-      ],
-      "idx": 458
-    },
-    {
-      "path": "../src/form/CheckboxGroup.js",
-      "requires": [
-        357,
-        358,
-        374,
-        457,
-        458
-      ],
-      "uses": [],
-      "idx": 459
-    },
-    {
-      "path": "../src/form/FieldSet.js",
-      "requires": [
-        316,
-        455
-      ],
-      "uses": [
-        43,
-        82,
-        109,
-        185,
-        220,
-        313,
-        325,
-        331,
-        374,
-        434,
-        557
-      ],
-      "idx": 460
-    },
-    {
-      "path": "../src/form/Label.js",
-      "requires": [
-        72,
-        109
-      ],
-      "uses": [],
-      "idx": 461
-    },
-    {
-      "path": "../src/form/Panel.js",
-      "requires": [
-        50,
-        355,
-        454,
-        455
-      ],
-      "uses": [],
-      "idx": 462
-    },
-    {
-      "path": "../src/form/RadioManager.js",
-      "requires": [
-        49
-      ],
-      "uses": [],
-      "idx": 463
-    },
-    {
-      "path": "../src/form/field/Radio.js",
-      "requires": [
-        374,
-        463
-      ],
-      "uses": [],
-      "idx": 464
-    },
-    {
-      "path": "../src/form/RadioGroup.js",
-      "requires": [
-        343,
-        459,
-        464
-      ],
-      "uses": [
-        463
-      ],
-      "idx": 465
-    },
-    {
-      "path": "../src/form/action/DirectAction.js",
-      "requires": [
-        0
-      ],
-      "uses": [
-        200
-      ],
-      "idx": 466
-    },
-    {
-      "path": "../src/form/action/DirectLoad.js",
-      "requires": [
-        200,
-        450,
-        466
-      ],
-      "uses": [],
-      "idx": 467
-    },
-    {
-      "path": "../src/form/action/DirectSubmit.js",
-      "requires": [
-        200,
-        451,
-        466
-      ],
-      "uses": [],
-      "idx": 468
-    },
-    {
-      "path": "../src/form/action/StandardSubmit.js",
-      "requires": [
-        451
-      ],
-      "uses": [],
-      "idx": 469
-    },
-    {
-      "path": "../src/form/field/Picker.js",
-      "requires": [
-        342,
-        401
-      ],
-      "uses": [],
-      "idx": 470
-    },
-    {
       "path": "../src/view/BoundListKeyNav.js",
       "requires": [
-        364
+        426
       ],
       "uses": [
         26,
-        342
+        350
       ],
-      "idx": 471
+      "idx": 429
     },
     {
       "path": "../src/layout/component/BoundList.js",
@@ -6104,89 +5863,89 @@ var Ext = Ext || {};
         325
       ],
       "uses": [],
-      "idx": 472
+      "idx": 430
     },
     {
       "path": "../src/toolbar/Item.js",
       "requires": [
         109,
-        344
+        352
       ],
       "uses": [],
-      "idx": 473
+      "idx": 431
     },
     {
       "path": "../src/toolbar/TextItem.js",
       "requires": [
         79,
-        344,
-        473
+        352,
+        431
       ],
       "uses": [],
-      "idx": 474
+      "idx": 432
     },
     {
       "path": "../src/form/trigger/Spinner.js",
       "requires": [
-        400
+        402
       ],
       "uses": [],
-      "idx": 475
+      "idx": 433
     },
     {
       "path": "../src/form/field/Spinner.js",
       "requires": [
-        342,
-        401,
-        475
+        350,
+        403,
+        433
       ],
       "uses": [],
-      "idx": 476
+      "idx": 434
     },
     {
       "path": "../src/form/field/Number.js",
       "requires": [
-        476
+        434
       ],
       "uses": [
         72,
         73
       ],
-      "idx": 477
+      "idx": 435
     },
     {
       "path": "../src/toolbar/Paging.js",
       "requires": [
         322,
-        344,
-        474,
-        477
+        352,
+        432,
+        435
       ],
       "uses": [
         73,
         185,
         325,
-        475
+        433
       ],
-      "idx": 478
+      "idx": 436
     },
     {
       "path": "../src/view/BoundList.js",
       "requires": [
         43,
         215,
-        366,
-        471,
-        472,
-        478
+        428,
+        429,
+        430,
+        436
       ],
       "uses": [
         79,
         185,
         325,
-        491
+        454
       ],
-      "idx": 479
+      "idx": 437
     },
     {
       "path": "../src/form/field/ComboBox.js",
@@ -6194,8 +5953,8 @@ var Ext = Ext || {};
         1,
         165,
         322,
-        470,
-        479
+        423,
+        437
       ],
       "uses": [
         26,
@@ -6207,25 +5966,25 @@ var Ext = Ext || {};
         160,
         185,
         220,
-        363,
-        471,
-        472
+        425,
+        429,
+        430
       ],
-      "idx": 480
+      "idx": 438
     },
     {
       "path": "../src/picker/Month.js",
       "requires": [
         79,
         109,
-        334,
-        409
+        332,
+        334
       ],
       "uses": [
         185,
         325
       ],
-      "idx": 481
+      "idx": 439
     },
     {
       "path": "../src/picker/Date.js",
@@ -6233,11 +5992,11 @@ var Ext = Ext || {};
         60,
         79,
         109,
+        332,
         334,
-        342,
-        409,
-        425,
-        481
+        335,
+        350,
+        439
       ],
       "uses": [
         73,
@@ -6245,59 +6004,105 @@ var Ext = Ext || {};
         220,
         325
       ],
-      "idx": 482
+      "idx": 440
     },
     {
       "path": "../src/form/field/Date.js",
       "requires": [
-        470,
-        482
+        423,
+        440
       ],
       "uses": [
         73,
         185,
         325
       ],
-      "idx": 483
+      "idx": 441
+    },
+    {
+      "path": "../src/form/field/Display.js",
+      "requires": [
+        72,
+        79,
+        400
+      ],
+      "uses": [],
+      "idx": 442
     },
     {
       "path": "../src/form/field/FileButton.js",
       "requires": [
-        409
+        334
       ],
       "uses": [
         109
       ],
-      "idx": 484
+      "idx": 443
     },
     {
       "path": "../src/form/trigger/Component.js",
       "requires": [
-        400
+        402
       ],
       "uses": [],
-      "idx": 485
+      "idx": 444
     },
     {
       "path": "../src/form/field/File.js",
       "requires": [
-        401,
-        484,
-        485
+        403,
+        443,
+        444
       ],
       "uses": [
         185,
         325
       ],
-      "idx": 486
+      "idx": 445
     },
     {
       "path": "../src/form/field/Hidden.js",
       "requires": [
-        358
+        400
       ],
       "uses": [],
-      "idx": 487
+      "idx": 446
+    },
+    {
+      "path": "../src/tip/Tip.js",
+      "requires": [
+        363
+      ],
+      "uses": [
+        109
+      ],
+      "idx": 447
+    },
+    {
+      "path": "../src/tip/ToolTip.js",
+      "requires": [
+        447
+      ],
+      "uses": [
+        43
+      ],
+      "idx": 448
+    },
+    {
+      "path": "../src/tip/QuickTip.js",
+      "requires": [
+        448
+      ],
+      "uses": [],
+      "idx": 449
+    },
+    {
+      "path": "../src/tip/QuickTipManager.js",
+      "requires": [
+        449
+      ],
+      "uses": [],
+      "idx": 450
     },
     {
       "path": "../src/picker/Color.js",
@@ -6306,57 +6111,57 @@ var Ext = Ext || {};
         109
       ],
       "uses": [],
-      "idx": 488
+      "idx": 451
     },
     {
       "path": "../src/layout/component/field/HtmlEditor.js",
       "requires": [
-        456
+        408
       ],
       "uses": [],
-      "idx": 489
+      "idx": 452
     },
     {
       "path": "../src/toolbar/Separator.js",
       "requires": [
-        344,
-        473
+        352,
+        431
       ],
       "uses": [],
-      "idx": 490
+      "idx": 453
     },
     {
       "path": "../src/layout/container/boxOverflow/Menu.js",
       "requires": [
-        333,
-        409,
-        490
+        334,
+        343,
+        453
       ],
       "uses": [
         185,
         325,
-        335,
-        340,
-        352,
-        522,
-        595
+        344,
+        349,
+        360,
+        502,
+        583
       ],
-      "idx": 491
+      "idx": 454
     },
     {
       "path": "../src/form/field/HtmlEditor.js",
       "requires": [
         72,
         306,
-        340,
-        344,
-        357,
-        423,
-        457,
-        473,
-        488,
-        489,
-        491
+        349,
+        352,
+        399,
+        409,
+        431,
+        450,
+        451,
+        452,
+        454
       ],
       "uses": [
         1,
@@ -6365,77 +6170,199 @@ var Ext = Ext || {};
         185,
         220,
         325,
-        335,
-        352,
-        522
+        344,
+        360,
+        502
       ],
-      "idx": 492
+      "idx": 455
     },
     {
       "path": "../src/form/field/Tag.js",
       "requires": [
         162,
         197,
-        362,
-        480
+        424,
+        438
       ],
       "uses": [
         44,
         79
       ],
-      "idx": 493
+      "idx": 456
     },
     {
       "path": "../src/picker/Time.js",
       "requires": [
         162,
-        479
+        437
       ],
       "uses": [
         44
       ],
-      "idx": 494
+      "idx": 457
     },
     {
       "path": "../src/form/field/Time.js",
       "requires": [
-        471,
-        480,
-        483,
-        494
+        429,
+        438,
+        441,
+        457
       ],
       "uses": [
         73,
         79,
         185,
-        363,
-        472
+        425,
+        430
       ],
-      "idx": 495
+      "idx": 458
     },
     {
       "path": "../src/form/field/Trigger.js",
       "requires": [
         220,
-        334,
-        401
+        332,
+        403
       ],
       "uses": [],
-      "idx": 496
+      "idx": 459
+    },
+    {
+      "path": "../src/grid/CellContext.js",
+      "requires": [],
+      "uses": [],
+      "idx": 460
     },
     {
       "path": "../src/grid/CellEditor.js",
       "requires": [
         318
       ],
+      "uses": [
+        43
+      ],
+      "idx": 461
+    },
+    {
+      "path": "../src/grid/ColumnComponentLayout.js",
+      "requires": [
+        325
+      ],
       "uses": [],
-      "idx": 497
+      "idx": 462
+    },
+    {
+      "path": "../src/layout/container/Fit.js",
+      "requires": [
+        313
+      ],
+      "uses": [],
+      "idx": 463
+    },
+    {
+      "path": "../src/panel/Table.js",
+      "requires": [
+        363,
+        463
+      ],
+      "uses": [
+        1,
+        165,
+        220,
+        467,
+        482,
+        514,
+        515,
+        532,
+        555,
+        556
+      ],
+      "idx": 464
+    },
+    {
+      "path": "../src/grid/ColumnLayout.js",
+      "requires": [
+        348,
+        464
+      ],
+      "uses": [],
+      "idx": 465
     },
     {
       "path": "../src/grid/ColumnManager.js",
       "requires": [],
       "uses": [],
-      "idx": 498
+      "idx": 466
+    },
+    {
+      "path": "../src/grid/NavigationModel.js",
+      "requires": [
+        426
+      ],
+      "uses": [
+        26,
+        68,
+        109,
+        350,
+        460
+      ],
+      "idx": 467
+    },
+    {
+      "path": "../src/view/TableLayout.js",
+      "requires": [
+        325
+      ],
+      "uses": [],
+      "idx": 468
+    },
+    {
+      "path": "../src/grid/locking/RowSynchronizer.js",
+      "requires": [],
+      "uses": [],
+      "idx": 469
+    },
+    {
+      "path": "../src/view/NodeCache.js",
+      "requires": [
+        69
+      ],
+      "uses": [
+        43,
+        68
+      ],
+      "idx": 470
+    },
+    {
+      "path": "../src/view/Table.js",
+      "requires": [
+        1,
+        49,
+        428,
+        460,
+        468,
+        469,
+        470
+      ],
+      "uses": [
+        68,
+        79,
+        84,
+        109,
+        145,
+        482
+      ],
+      "idx": 471
+    },
+    {
+      "path": "../src/grid/Panel.js",
+      "requires": [
+        464,
+        471
+      ],
+      "uses": [],
+      "idx": 472
     },
     {
       "path": "../src/grid/RowEditorButtons.js",
@@ -6445,18 +6372,18 @@ var Ext = Ext || {};
       "uses": [
         185,
         325,
-        355,
-        409
+        334,
+        363
       ],
-      "idx": 499
+      "idx": 473
     },
     {
       "path": "../src/grid/RowEditor.js",
       "requires": [
-        342,
-        421,
-        462,
-        499
+        350,
+        416,
+        448,
+        473
       ],
       "uses": [
         43,
@@ -6465,106 +6392,188 @@ var Ext = Ext || {};
         314,
         316,
         325,
-        352,
-        359
+        360,
+        442
       ],
-      "idx": 500
+      "idx": 474
     },
     {
       "path": "../src/grid/Scroller.js",
       "requires": [],
       "uses": [],
-      "idx": 501
+      "idx": 475
     },
     {
       "path": "../src/view/DropZone.js",
       "requires": [
-        389
+        387
       ],
       "uses": [
         109,
         185,
         325
       ],
-      "idx": 502
+      "idx": 476
     },
     {
       "path": "../src/grid/ViewDropZone.js",
       "requires": [
-        502
+        476
       ],
       "uses": [],
-      "idx": 503
+      "idx": 477
+    },
+    {
+      "path": "../src/grid/plugin/HeaderResizer.js",
+      "requires": [
+        24,
+        299,
+        374
+      ],
+      "uses": [
+        483
+      ],
+      "idx": 478
+    },
+    {
+      "path": "../src/grid/header/DragZone.js",
+      "requires": [
+        385
+      ],
+      "uses": [],
+      "idx": 479
+    },
+    {
+      "path": "../src/grid/header/DropZone.js",
+      "requires": [
+        387
+      ],
+      "uses": [
+        345
+      ],
+      "idx": 480
+    },
+    {
+      "path": "../src/grid/plugin/HeaderReorderer.js",
+      "requires": [
+        299,
+        479,
+        480
+      ],
+      "uses": [],
+      "idx": 481
+    },
+    {
+      "path": "../src/grid/header/Container.js",
+      "requires": [
+        316,
+        350,
+        351,
+        465,
+        478,
+        481
+      ],
+      "uses": [
+        1,
+        109,
+        185,
+        325,
+        344,
+        349,
+        360,
+        466,
+        483,
+        500,
+        501,
+        502
+      ],
+      "idx": 482
+    },
+    {
+      "path": "../src/grid/column/Column.js",
+      "requires": [
+        195,
+        462,
+        465,
+        482
+      ],
+      "uses": [
+        72,
+        478
+      ],
+      "idx": 483
     },
     {
       "path": "../src/grid/column/Action.js",
       "requires": [
-        394
+        483
       ],
-      "uses": [],
-      "idx": 504
+      "uses": [
+        43
+      ],
+      "idx": 484
     },
     {
       "path": "../src/grid/column/Boolean.js",
       "requires": [
-        394
+        483
       ],
       "uses": [],
-      "idx": 505
+      "idx": 485
     },
     {
       "path": "../src/grid/column/Check.js",
       "requires": [
-        394
+        483
       ],
       "uses": [],
-      "idx": 506
+      "idx": 486
     },
     {
       "path": "../src/grid/column/Date.js",
       "requires": [
-        394
+        483
       ],
       "uses": [
         72
       ],
-      "idx": 507
+      "idx": 487
     },
     {
       "path": "../src/grid/column/Number.js",
       "requires": [
         72,
-        394
+        483
       ],
       "uses": [],
-      "idx": 508
+      "idx": 488
     },
     {
       "path": "../src/grid/column/RowNumberer.js",
       "requires": [
-        394
+        483
       ],
       "uses": [],
-      "idx": 509
+      "idx": 489
     },
     {
       "path": "../src/grid/column/Template.js",
       "requires": [
         79,
-        394
+        483
       ],
       "uses": [
-        506
+        486
       ],
-      "idx": 510
+      "idx": 490
     },
     {
       "path": "../src/grid/column/Widget.js",
       "requires": [
-        394
+        483
       ],
       "uses": [],
-      "idx": 511
+      "idx": 491
     },
     {
       "path": "../src/grid/feature/Feature.js",
@@ -6572,15 +6581,15 @@ var Ext = Ext || {};
         45
       ],
       "uses": [],
-      "idx": 512
+      "idx": 492
     },
     {
       "path": "../src/grid/feature/AbstractSummary.js",
       "requires": [
-        512
+        492
       ],
       "uses": [],
-      "idx": 513
+      "idx": 493
     },
     {
       "path": "../src/grid/feature/GroupStore.js",
@@ -6590,44 +6599,44 @@ var Ext = Ext || {};
       "uses": [
         117
       ],
-      "idx": 514
+      "idx": 494
     },
     {
       "path": "../src/grid/feature/Grouping.js",
       "requires": [
-        512,
-        513,
-        514
+        492,
+        493,
+        494
       ],
       "uses": [
         79,
         145,
-        392
+        482
       ],
-      "idx": 515
+      "idx": 495
     },
     {
       "path": "../src/grid/feature/GroupingSummary.js",
       "requires": [
-        515
+        495
       ],
       "uses": [],
-      "idx": 516
+      "idx": 496
     },
     {
       "path": "../src/grid/feature/RowBody.js",
       "requires": [
-        512
+        492
       ],
       "uses": [
         79
       ],
-      "idx": 517
+      "idx": 497
     },
     {
       "path": "../src/grid/feature/Summary.js",
       "requires": [
-        513
+        493
       ],
       "uses": [
         79,
@@ -6636,7 +6645,7 @@ var Ext = Ext || {};
         185,
         325
       ],
-      "idx": 518
+      "idx": 498
     },
     {
       "path": "../src/menu/Item.js",
@@ -6645,39 +6654,39 @@ var Ext = Ext || {};
         215
       ],
       "uses": [
-        408,
-        423
+        331,
+        450
       ],
-      "idx": 519
+      "idx": 499
     },
     {
       "path": "../src/menu/CheckItem.js",
       "requires": [
-        519
+        499
       ],
       "uses": [
-        408
+        331
       ],
-      "idx": 520
+      "idx": 500
     },
     {
       "path": "../src/menu/Separator.js",
       "requires": [
-        519
+        499
       ],
       "uses": [],
-      "idx": 521
+      "idx": 501
     },
     {
       "path": "../src/menu/Menu.js",
       "requires": [
-        340,
-        343,
-        355,
-        408,
-        519,
-        520,
-        521
+        331,
+        349,
+        351,
+        363,
+        499,
+        500,
+        501
       ],
       "uses": [
         11,
@@ -6685,124 +6694,124 @@ var Ext = Ext || {};
         185,
         325
       ],
-      "idx": 522
+      "idx": 502
     },
     {
       "path": "../src/grid/filters/filter/Base.js",
       "requires": [
         84,
         185,
-        335,
-        340,
-        352,
-        522
+        344,
+        349,
+        360,
+        502
       ],
       "uses": [
         1,
         44
       ],
-      "idx": 523
+      "idx": 503
     },
     {
       "path": "../src/grid/filters/filter/SingleFilter.js",
       "requires": [
-        523
+        503
       ],
       "uses": [],
-      "idx": 524
+      "idx": 504
     },
     {
       "path": "../src/grid/filters/filter/Boolean.js",
       "requires": [
-        524
+        504
       ],
       "uses": [],
-      "idx": 525
+      "idx": 505
     },
     {
       "path": "../src/grid/filters/filter/TriFilter.js",
       "requires": [
-        523
+        503
       ],
       "uses": [],
-      "idx": 526
+      "idx": 506
     },
     {
       "path": "../src/grid/filters/filter/Date.js",
       "requires": [
         185,
         325,
-        520,
-        526
+        500,
+        506
       ],
       "uses": [
-        482,
-        522
+        440,
+        502
       ],
-      "idx": 527
+      "idx": 507
     },
     {
       "path": "../src/grid/filters/filter/List.js",
       "requires": [
-        524
+        504
       ],
       "uses": [
         162,
         165
       ],
-      "idx": 528
+      "idx": 508
     },
     {
       "path": "../src/grid/filters/filter/Number.js",
       "requires": [
         185,
         325,
-        475,
-        526
+        433,
+        506
       ],
       "uses": [
-        477
+        435
       ],
-      "idx": 529
+      "idx": 509
     },
     {
       "path": "../src/grid/filters/filter/String.js",
       "requires": [
         185,
         325,
-        401,
-        524
+        403,
+        504
       ],
       "uses": [],
-      "idx": 530
+      "idx": 510
     },
     {
       "path": "../src/grid/filters/Filters.js",
       "requires": [
         299,
         322,
-        523,
-        524,
-        525,
-        526,
-        527,
-        528,
-        529,
-        530
+        503,
+        504,
+        505,
+        506,
+        507,
+        508,
+        509,
+        510
       ],
       "uses": [
         84
       ],
-      "idx": 531
+      "idx": 511
     },
     {
       "path": "../src/grid/locking/HeaderContainer.js",
       "requires": [
-        392,
-        498
+        466,
+        482
       ],
       "uses": [],
-      "idx": 532
+      "idx": 512
     },
     {
       "path": "../src/grid/locking/View.js",
@@ -6811,25 +6820,23 @@ var Ext = Ext || {};
         108,
         109,
         322,
-        365,
-        371
+        427,
+        471
       ],
       "uses": [
-        11,
-        323,
-        396,
-        397
+        85,
+        323
       ],
-      "idx": 533
+      "idx": 513
     },
     {
       "path": "../src/grid/locking/Lockable.js",
       "requires": [
         109,
-        371,
-        392,
-        532,
-        533
+        471,
+        482,
+        512,
+        513
       ],
       "uses": [
         1,
@@ -6837,10 +6844,10 @@ var Ext = Ext || {};
         185,
         314,
         325,
-        337,
-        338
+        346,
+        347
       ],
-      "idx": 534
+      "idx": 514
     },
     {
       "path": "../src/grid/plugin/BufferedRenderer.js",
@@ -6849,65 +6856,66 @@ var Ext = Ext || {};
       ],
       "uses": [
         1,
-        369
+        469
       ],
-      "idx": 535
+      "idx": 515
     },
     {
       "path": "../src/grid/plugin/Editing.js",
       "requires": [
         45,
         299,
-        342,
-        358,
-        371,
-        394
+        350,
+        400,
+        471,
+        483
       ],
       "uses": [
         11,
         185,
         325,
-        367
+        460
       ],
-      "idx": 536
+      "idx": 516
     },
     {
       "path": "../src/grid/plugin/CellEditing.js",
       "requires": [
         1,
-        497,
-        536
+        461,
+        516
       ],
       "uses": [
+        43,
         49,
         185,
         317,
         325
       ],
-      "idx": 537
+      "idx": 517
     },
     {
       "path": "../src/plugin/AbstractClipboard.js",
       "requires": [
         299,
-        341
+        333
       ],
       "uses": [
         43
       ],
-      "idx": 538
+      "idx": 518
     },
     {
       "path": "../src/grid/plugin/Clipboard.js",
       "requires": [
         72,
         305,
-        538
+        518
       ],
       "uses": [
-        367
+        460
       ],
-      "idx": 539
+      "idx": 519
     },
     {
       "path": "../src/grid/plugin/DragDrop.js",
@@ -6915,36 +6923,36 @@ var Ext = Ext || {};
         299
       ],
       "uses": [
-        503,
-        597
+        477,
+        589
       ],
-      "idx": 540
+      "idx": 520
     },
     {
       "path": "../src/grid/plugin/RowEditing.js",
       "requires": [
-        500,
-        536
+        474,
+        516
       ],
       "uses": [],
-      "idx": 541
+      "idx": 521
     },
     {
       "path": "../src/grid/plugin/RowExpander.js",
       "requires": [
         299,
-        517
+        497
       ],
       "uses": [
         79,
-        394
+        483
       ],
-      "idx": 542
+      "idx": 522
     },
     {
       "path": "../src/grid/property/Grid.js",
       "requires": [
-        372
+        472
       ],
       "uses": [
         11,
@@ -6953,28 +6961,28 @@ var Ext = Ext || {};
         185,
         317,
         325,
-        358,
-        371,
-        401,
-        475,
-        477,
-        480,
-        483,
-        497,
-        537,
-        544,
-        547
+        400,
+        403,
+        433,
+        435,
+        438,
+        441,
+        461,
+        471,
+        517,
+        524,
+        527
       ],
-      "idx": 543
+      "idx": 523
     },
     {
       "path": "../src/grid/property/HeaderContainer.js",
       "requires": [
         72,
-        392
+        482
       ],
       "uses": [],
-      "idx": 544
+      "idx": 524
     },
     {
       "path": "../src/grid/property/Property.js",
@@ -6982,7 +6990,7 @@ var Ext = Ext || {};
         145
       ],
       "uses": [],
-      "idx": 545
+      "idx": 525
     },
     {
       "path": "../src/grid/property/Reader.js",
@@ -6992,82 +7000,92 @@ var Ext = Ext || {};
       "uses": [
         146
       ],
-      "idx": 546
+      "idx": 526
     },
     {
       "path": "../src/grid/property/Store.js",
       "requires": [
         151,
         162,
-        545,
-        546
+        525,
+        526
       ],
       "uses": [
         157
       ],
-      "idx": 547
+      "idx": 527
     },
     {
       "path": "../src/grid/selection/Selection.js",
       "requires": [],
       "uses": [],
-      "idx": 548
+      "idx": 528
     },
     {
       "path": "../src/grid/selection/Cells.js",
       "requires": [
-        548
+        528
       ],
       "uses": [
-        367
+        460
       ],
-      "idx": 549
+      "idx": 529
     },
     {
       "path": "../src/grid/selection/Columns.js",
       "requires": [
-        548
+        528
       ],
       "uses": [
-        367
+        460
       ],
-      "idx": 550
+      "idx": 530
     },
     {
       "path": "../src/grid/selection/Rows.js",
       "requires": [
         117,
-        548
+        528
       ],
       "uses": [
-        367
+        460
       ],
-      "idx": 551
+      "idx": 531
+    },
+    {
+      "path": "../src/selection/RowModel.js",
+      "requires": [
+        425,
+        460
+      ],
+      "uses": [],
+      "idx": 532
     },
     {
       "path": "../src/grid/selection/SpreadsheetModel.js",
       "requires": [
-        362,
-        509,
-        548,
-        549,
-        550,
-        551
+        424,
+        489,
+        528,
+        529,
+        530,
+        531,
+        532
       ],
       "uses": [
         185,
         314,
-        367,
-        386,
-        393
+        380,
+        460,
+        462
       ],
-      "idx": 552
+      "idx": 533
     },
     {
       "path": "../src/util/Queue.js",
       "requires": [],
       "uses": [],
-      "idx": 553
+      "idx": 534
     },
     {
       "path": "../src/layout/ContextItem.js",
@@ -7078,7 +7096,7 @@ var Ext = Ext || {};
         66,
         311
       ],
-      "idx": 554
+      "idx": 535
     },
     {
       "path": "../src/layout/Context.js",
@@ -7087,49 +7105,92 @@ var Ext = Ext || {};
         66,
         298,
         312,
-        553,
-        554
+        534,
+        535
       ],
       "uses": [],
-      "idx": 555
+      "idx": 536
     },
     {
       "path": "../src/layout/SizePolicy.js",
       "requires": [],
       "uses": [],
-      "idx": 556
+      "idx": 537
+    },
+    {
+      "path": "../src/layout/component/Body.js",
+      "requires": [
+        325
+      ],
+      "uses": [],
+      "idx": 538
     },
     {
       "path": "../src/layout/component/FieldSet.js",
       "requires": [
-        411
+        538
       ],
       "uses": [],
-      "idx": 557
+      "idx": 539
     },
     {
       "path": "../src/layout/container/Absolute.js",
       "requires": [
-        434
+        370
       ],
       "uses": [],
-      "idx": 558
+      "idx": 540
     },
     {
       "path": "../src/layout/container/Accordion.js",
       "requires": [
-        340
+        349
       ],
       "uses": [],
-      "idx": 559
+      "idx": 541
+    },
+    {
+      "path": "../src/resizer/BorderSplitter.js",
+      "requires": [
+        346
+      ],
+      "uses": [
+        551
+      ],
+      "idx": 542
+    },
+    {
+      "path": "../src/layout/container/Border.js",
+      "requires": [
+        66,
+        110,
+        313,
+        542
+      ],
+      "uses": [
+        72,
+        185,
+        325
+      ],
+      "idx": 543
+    },
+    {
+      "path": "../src/layout/container/Card.js",
+      "requires": [
+        463
+      ],
+      "uses": [
+        43
+      ],
+      "idx": 544
     },
     {
       "path": "../src/layout/container/Center.js",
       "requires": [
-        360
+        463
       ],
       "uses": [],
-      "idx": 560
+      "idx": 545
     },
     {
       "path": "../src/layout/container/Form.js",
@@ -7137,41 +7198,33 @@ var Ext = Ext || {};
         314
       ],
       "uses": [],
-      "idx": 561
-    },
-    {
-      "path": "../src/layout/container/SegmentedButton.js",
-      "requires": [
-        313
-      ],
-      "uses": [],
-      "idx": 562
+      "idx": 546
     },
     {
       "path": "../src/menu/ColorPicker.js",
       "requires": [
-        488,
-        522
+        451,
+        502
       ],
       "uses": [
         185,
         325,
-        408
+        331
       ],
-      "idx": 563
+      "idx": 547
     },
     {
       "path": "../src/menu/DatePicker.js",
       "requires": [
-        482,
-        522
+        440,
+        502
       ],
       "uses": [
         185,
         325,
-        408
+        331
       ],
-      "idx": 564
+      "idx": 548
     },
     {
       "path": "../src/panel/Pinnable.js",
@@ -7181,24 +7234,24 @@ var Ext = Ext || {};
       "uses": [
         185,
         325,
-        331
+        341
       ],
-      "idx": 565
+      "idx": 549
     },
     {
       "path": "../src/plugin/Manager.js",
       "requires": [],
       "uses": [],
-      "idx": 566
+      "idx": 550
     },
     {
       "path": "../src/resizer/BorderSplitterTracker.js",
       "requires": [
         24,
-        438
+        375
       ],
       "uses": [],
-      "idx": 567
+      "idx": 551
     },
     {
       "path": "../src/resizer/Handle.js",
@@ -7206,15 +7259,15 @@ var Ext = Ext || {};
         109
       ],
       "uses": [],
-      "idx": 568
+      "idx": 552
     },
     {
       "path": "../src/resizer/ResizeTracker.js",
       "requires": [
-        381
+        374
       ],
       "uses": [],
-      "idx": 569
+      "idx": 553
     },
     {
       "path": "../src/resizer/Resizer.js",
@@ -7226,115 +7279,123 @@ var Ext = Ext || {};
         73,
         109,
         220,
-        569
+        553
       ],
-      "idx": 570
+      "idx": 554
     },
     {
       "path": "../src/selection/CellModel.js",
       "requires": [
-        363,
-        367
+        425,
+        460
       ],
       "uses": [],
-      "idx": 571
+      "idx": 555
     },
     {
       "path": "../src/selection/CheckboxModel.js",
       "requires": [
-        378
+        532
       ],
       "uses": [
         185,
         314,
-        367,
-        393,
-        394
+        460,
+        462,
+        483
       ],
-      "idx": 572
+      "idx": 556
+    },
+    {
+      "path": "../src/selection/TreeModel.js",
+      "requires": [
+        532
+      ],
+      "uses": [],
+      "idx": 557
     },
     {
       "path": "../src/slider/Thumb.js",
       "requires": [
         72,
-        381
+        374
       ],
       "uses": [
         66
       ],
-      "idx": 573
+      "idx": 558
     },
     {
       "path": "../src/slider/Tip.js",
       "requires": [
-        420
+        447
       ],
       "uses": [],
-      "idx": 574
+      "idx": 559
     },
     {
       "path": "../src/slider/Multi.js",
       "requires": [
         72,
         73,
-        358,
-        573,
-        574
+        400,
+        558,
+        559
       ],
       "uses": [
         220
       ],
-      "idx": 575
+      "idx": 560
     },
     {
       "path": "../src/slider/Single.js",
       "requires": [
-        575
+        560
       ],
       "uses": [],
-      "idx": 576
+      "idx": 561
     },
     {
       "path": "../src/slider/Widget.js",
       "requires": [
         76,
-        575
+        560
       ],
       "uses": [
         66,
         72
       ],
-      "idx": 577
+      "idx": 562
     },
     {
       "path": "../src/sparkline/Shape.js",
       "requires": [],
       "uses": [],
-      "idx": 578
+      "idx": 563
     },
     {
       "path": "../src/sparkline/CanvasBase.js",
       "requires": [
-        578
+        563
       ],
       "uses": [],
-      "idx": 579
+      "idx": 564
     },
     {
       "path": "../src/sparkline/CanvasCanvas.js",
       "requires": [
-        579
+        564
       ],
       "uses": [],
-      "idx": 580
+      "idx": 565
     },
     {
       "path": "../src/sparkline/VmlCanvas.js",
       "requires": [
-        579
+        564
       ],
       "uses": [],
-      "idx": 581
+      "idx": 566
     },
     {
       "path": "../src/sparkline/Base.js",
@@ -7343,93 +7404,93 @@ var Ext = Ext || {};
         79,
         185,
         314,
-        352,
-        421,
-        580,
-        581
+        360,
+        448,
+        565,
+        566
       ],
       "uses": [],
-      "idx": 582
+      "idx": 567
     },
     {
       "path": "../src/sparkline/BarBase.js",
       "requires": [
-        582
+        567
       ],
       "uses": [],
-      "idx": 583
+      "idx": 568
     },
     {
       "path": "../src/sparkline/RangeMap.js",
       "requires": [],
       "uses": [],
-      "idx": 584
+      "idx": 569
     },
     {
       "path": "../src/sparkline/Bar.js",
       "requires": [
         79,
-        583,
-        584
+        568,
+        569
       ],
       "uses": [],
-      "idx": 585
+      "idx": 570
     },
     {
       "path": "../src/sparkline/Box.js",
       "requires": [
         79,
-        582
+        567
       ],
       "uses": [],
-      "idx": 586
+      "idx": 571
     },
     {
       "path": "../src/sparkline/Bullet.js",
       "requires": [
         79,
-        582
+        567
       ],
       "uses": [],
-      "idx": 587
+      "idx": 572
     },
     {
       "path": "../src/sparkline/Discrete.js",
       "requires": [
         79,
-        583
+        568
       ],
       "uses": [],
-      "idx": 588
+      "idx": 573
     },
     {
       "path": "../src/sparkline/Line.js",
       "requires": [
         79,
-        582,
-        584
+        567,
+        569
       ],
       "uses": [],
-      "idx": 589
+      "idx": 574
     },
     {
       "path": "../src/sparkline/Pie.js",
       "requires": [
         79,
-        582
+        567
       ],
       "uses": [],
-      "idx": 590
+      "idx": 575
     },
     {
       "path": "../src/sparkline/TriState.js",
       "requires": [
         79,
-        583,
-        584
+        568,
+        569
       ],
       "uses": [],
-      "idx": 591
+      "idx": 576
     },
     {
       "path": "../src/state/CookieProvider.js",
@@ -7437,7 +7498,7 @@ var Ext = Ext || {};
         105
       ],
       "uses": [],
-      "idx": 592
+      "idx": 577
     },
     {
       "path": "../src/state/LocalStorageProvider.js",
@@ -7446,66 +7507,150 @@ var Ext = Ext || {};
         304
       ],
       "uses": [],
-      "idx": 593
+      "idx": 578
+    },
+    {
+      "path": "../src/tab/Tab.js",
+      "requires": [
+        334,
+        350
+      ],
+      "uses": [],
+      "idx": 579
+    },
+    {
+      "path": "../src/tab/Bar.js",
+      "requires": [
+        25,
+        339,
+        351,
+        538,
+        579
+      ],
+      "uses": [
+        24
+      ],
+      "idx": 580
+    },
+    {
+      "path": "../src/tab/Panel.js",
+      "requires": [
+        363,
+        544,
+        580
+      ],
+      "uses": [
+        185,
+        325,
+        579
+      ],
+      "idx": 581
     },
     {
       "path": "../src/toolbar/Breadcrumb.js",
       "requires": [
         217,
         316,
-        343,
-        425
+        335,
+        351
       ],
       "uses": [
         165
       ],
-      "idx": 594
+      "idx": 582
     },
     {
       "path": "../src/toolbar/Fill.js",
       "requires": [
         109,
-        344
+        352
       ],
       "uses": [],
-      "idx": 595
+      "idx": 583
     },
     {
       "path": "../src/toolbar/Spacer.js",
       "requires": [
         109,
-        344
+        352
       ],
       "uses": [],
-      "idx": 596
+      "idx": 584
+    },
+    {
+      "path": "../src/tree/Column.js",
+      "requires": [
+        483
+      ],
+      "uses": [],
+      "idx": 585
+    },
+    {
+      "path": "../src/tree/NavigationModel.js",
+      "requires": [
+        467
+      ],
+      "uses": [
+        26
+      ],
+      "idx": 586
+    },
+    {
+      "path": "../src/tree/View.js",
+      "requires": [
+        471
+      ],
+      "uses": [
+        43,
+        79
+      ],
+      "idx": 587
+    },
+    {
+      "path": "../src/tree/Panel.js",
+      "requires": [
+        217,
+        464,
+        557,
+        585,
+        586,
+        587
+      ],
+      "uses": [
+        165,
+        185,
+        314,
+        462
+      ],
+      "idx": 588
     },
     {
       "path": "../src/view/DragZone.js",
       "requires": [
-        383
+        385
       ],
       "uses": [
         73
       ],
-      "idx": 597
+      "idx": 589
     },
     {
       "path": "../src/tree/ViewDragZone.js",
       "requires": [
-        597
+        589
       ],
       "uses": [
         73
       ],
-      "idx": 598
+      "idx": 590
     },
     {
       "path": "../src/tree/ViewDropZone.js",
       "requires": [
-        502
+        476
       ],
       "uses": [],
-      "idx": 599
+      "idx": 591
     },
     {
       "path": "../src/tree/plugin/TreeViewDragDrop.js",
@@ -7513,10 +7658,10 @@ var Ext = Ext || {};
         299
       ],
       "uses": [
-        598,
-        599
+        590,
+        591
       ],
-      "idx": 600
+      "idx": 592
     },
     {
       "path": "../src/util/CSS.js",
@@ -7524,52 +7669,52 @@ var Ext = Ext || {};
       "uses": [
         43
       ],
-      "idx": 601
+      "idx": 593
     },
     {
       "path": "../src/util/Cookies.js",
       "requires": [],
       "uses": [],
-      "idx": 602
+      "idx": 594
     },
     {
       "path": "../src/view/MultiSelectorSearch.js",
       "requires": [
-        355
+        363
       ],
       "uses": [
         44,
         165,
         185,
         325,
-        352,
         360,
-        372,
-        401
+        403,
+        463,
+        472
       ],
-      "idx": 603
+      "idx": 595
     },
     {
       "path": "../src/view/MultiSelector.js",
       "requires": [
         185,
-        352,
         360,
-        372,
-        603
+        463,
+        472,
+        595
       ],
       "uses": [],
-      "idx": 604
+      "idx": 596
     },
     {
       "path": "../src/window/Toast.js",
       "requires": [
-        419
+        397
       ],
       "uses": [
         1
       ],
-      "idx": 605
+      "idx": 597
     }
   ],
   "classes": {
@@ -7818,54 +7963,6 @@ var Ext = Ext || {};
       "alias": [],
       "alternates": []
     },
-    "Ext.app.bindinspector.ComponentDetail": {
-      "idx": 376,
-      "alias": [
-        "widget.bindinspector-componentdetail"
-      ],
-      "alternates": []
-    },
-    "Ext.app.bindinspector.ComponentList": {
-      "idx": 402,
-      "alias": [
-        "widget.bindinspector-componentlist"
-      ],
-      "alternates": []
-    },
-    "Ext.app.bindinspector.Container": {
-      "idx": 417,
-      "alias": [
-        "widget.bindinspector-container"
-      ],
-      "alternates": []
-    },
-    "Ext.app.bindinspector.Environment": {
-      "idx": 414,
-      "alias": [],
-      "alternates": []
-    },
-    "Ext.app.bindinspector.Inspector": {
-      "idx": 424,
-      "alias": [],
-      "alternates": []
-    },
-    "Ext.app.bindinspector.Util": {
-      "idx": 375,
-      "alias": [],
-      "alternates": []
-    },
-    "Ext.app.bindinspector.ViewModelDetail": {
-      "idx": 415,
-      "alias": [
-        "widget.bindinspector-viewmodeldetail"
-      ],
-      "alternates": []
-    },
-    "Ext.app.bindinspector.noconflict.BaseModel": {
-      "idx": 416,
-      "alias": [],
-      "alternates": []
-    },
     "Ext.app.domain.Component": {
       "idx": 81,
       "alias": [],
@@ -7912,7 +8009,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.button.Button": {
-      "idx": 409,
+      "idx": 334,
       "alias": [
         "widget.button"
       ],
@@ -7921,7 +8018,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.button.Cycle": {
-      "idx": 426,
+      "idx": 336,
       "alias": [
         "widget.cycle"
       ],
@@ -7930,21 +8027,21 @@ var Ext = Ext || {};
       ]
     },
     "Ext.button.Manager": {
-      "idx": 407,
+      "idx": 330,
       "alias": [],
       "alternates": [
         "Ext.ButtonToggleManager"
       ]
     },
     "Ext.button.Segmented": {
-      "idx": 427,
+      "idx": 338,
       "alias": [
         "widget.segmentedbutton"
       ],
       "alternates": []
     },
     "Ext.button.Split": {
-      "idx": 425,
+      "idx": 335,
       "alias": [
         "widget.splitbutton"
       ],
@@ -7953,7 +8050,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.container.ButtonGroup": {
-      "idx": 429,
+      "idx": 365,
       "alias": [
         "widget.buttongroup"
       ],
@@ -7972,17 +8069,17 @@ var Ext = Ext || {};
       ]
     },
     "Ext.container.DockingContainer": {
-      "idx": 354,
+      "idx": 362,
       "alias": [],
       "alternates": []
     },
     "Ext.container.Monitor": {
-      "idx": 430,
+      "idx": 366,
       "alias": [],
       "alternates": []
     },
     "Ext.container.Viewport": {
-      "idx": 433,
+      "idx": 369,
       "alias": [
         "widget.viewport"
       ],
@@ -7991,33 +8088,33 @@ var Ext = Ext || {};
       ]
     },
     "Ext.dashboard.Column": {
-      "idx": 436,
+      "idx": 372,
       "alias": [
         "widget.dashboard-column"
       ],
       "alternates": []
     },
     "Ext.dashboard.Dashboard": {
-      "idx": 444,
+      "idx": 384,
       "alias": [
         "widget.dashboard"
       ],
       "alternates": []
     },
     "Ext.dashboard.DropZone": {
-      "idx": 442,
+      "idx": 382,
       "alias": [],
       "alternates": []
     },
     "Ext.dashboard.Panel": {
-      "idx": 435,
+      "idx": 371,
       "alias": [
         "widget.dashboard-panel"
       ],
       "alternates": []
     },
     "Ext.dashboard.Part": {
-      "idx": 443,
+      "idx": 383,
       "alias": [
         "part.part"
       ],
@@ -8623,27 +8720,27 @@ var Ext = Ext || {};
       ]
     },
     "Ext.dd.DD": {
-      "idx": 346,
+      "idx": 354,
       "alias": [],
       "alternates": []
     },
     "Ext.dd.DDProxy": {
-      "idx": 347,
+      "idx": 355,
       "alias": [],
       "alternates": []
     },
     "Ext.dd.DDTarget": {
-      "idx": 385,
+      "idx": 379,
       "alias": [],
       "alternates": []
     },
     "Ext.dd.DragDrop": {
-      "idx": 345,
+      "idx": 353,
       "alias": [],
       "alternates": []
     },
     "Ext.dd.DragDropManager": {
-      "idx": 336,
+      "idx": 345,
       "alias": [],
       "alternates": [
         "Ext.dd.DragDropMgr",
@@ -8651,42 +8748,42 @@ var Ext = Ext || {};
       ]
     },
     "Ext.dd.DragSource": {
-      "idx": 349,
+      "idx": 357,
       "alias": [],
       "alternates": []
     },
     "Ext.dd.DragTracker": {
-      "idx": 381,
+      "idx": 374,
       "alias": [],
       "alternates": []
     },
     "Ext.dd.DragZone": {
-      "idx": 383,
+      "idx": 385,
       "alias": [],
       "alternates": []
     },
     "Ext.dd.DropTarget": {
-      "idx": 387,
+      "idx": 381,
       "alias": [],
       "alternates": []
     },
     "Ext.dd.DropZone": {
-      "idx": 389,
+      "idx": 387,
       "alias": [],
       "alternates": []
     },
     "Ext.dd.Registry": {
-      "idx": 388,
-      "alias": [],
-      "alternates": []
-    },
-    "Ext.dd.ScrollManager": {
       "idx": 386,
       "alias": [],
       "alternates": []
     },
+    "Ext.dd.ScrollManager": {
+      "idx": 380,
+      "alias": [],
+      "alternates": []
+    },
     "Ext.dd.StatusProxy": {
-      "idx": 348,
+      "idx": 356,
       "alias": [],
       "alternates": []
     },
@@ -8759,7 +8856,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.dom.ButtonElement": {
-      "idx": 406,
+      "idx": 329,
       "alias": [],
       "alternates": []
     },
@@ -8810,7 +8907,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.dom.Layer": {
-      "idx": 445,
+      "idx": 388,
       "alias": [],
       "alternates": [
         "Ext.Layer"
@@ -8934,7 +9031,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.event.publisher.MouseEnterLeave": {
-      "idx": 447,
+      "idx": 390,
       "alias": [],
       "alternates": []
     },
@@ -8944,7 +9041,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.flash.Component": {
-      "idx": 448,
+      "idx": 391,
       "alias": [
         "widget.flash"
       ],
@@ -8953,57 +9050,57 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.Basic": {
-      "idx": 454,
+      "idx": 406,
       "alias": [],
       "alternates": [
         "Ext.form.BasicForm"
       ]
     },
     "Ext.form.CheckboxGroup": {
-      "idx": 459,
+      "idx": 413,
       "alias": [
         "widget.checkboxgroup"
       ],
       "alternates": []
     },
     "Ext.form.CheckboxManager": {
-      "idx": 373,
+      "idx": 411,
       "alias": [],
       "alternates": []
     },
     "Ext.form.FieldAncestor": {
-      "idx": 455,
+      "idx": 407,
       "alias": [],
       "alternates": []
     },
     "Ext.form.FieldContainer": {
-      "idx": 457,
+      "idx": 409,
       "alias": [
         "widget.fieldcontainer"
       ],
       "alternates": []
     },
     "Ext.form.FieldSet": {
-      "idx": 460,
+      "idx": 414,
       "alias": [
         "widget.fieldset"
       ],
       "alternates": []
     },
     "Ext.form.Label": {
-      "idx": 461,
+      "idx": 415,
       "alias": [
         "widget.label"
       ],
       "alternates": []
     },
     "Ext.form.Labelable": {
-      "idx": 356,
+      "idx": 398,
       "alias": [],
       "alternates": []
     },
     "Ext.form.Panel": {
-      "idx": 462,
+      "idx": 416,
       "alias": [
         "widget.form"
       ],
@@ -9013,31 +9110,31 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.RadioGroup": {
-      "idx": 465,
+      "idx": 419,
       "alias": [
         "widget.radiogroup"
       ],
       "alternates": []
     },
     "Ext.form.RadioManager": {
-      "idx": 463,
+      "idx": 417,
       "alias": [],
       "alternates": []
     },
     "Ext.form.action.Action": {
-      "idx": 449,
+      "idx": 392,
       "alias": [],
       "alternates": [
         "Ext.form.Action"
       ]
     },
     "Ext.form.action.DirectAction": {
-      "idx": 466,
+      "idx": 420,
       "alias": [],
       "alternates": []
     },
     "Ext.form.action.DirectLoad": {
-      "idx": 467,
+      "idx": 421,
       "alias": [
         "formaction.directload"
       ],
@@ -9046,7 +9143,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.action.DirectSubmit": {
-      "idx": 468,
+      "idx": 422,
       "alias": [
         "formaction.directsubmit"
       ],
@@ -9055,7 +9152,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.action.Load": {
-      "idx": 450,
+      "idx": 393,
       "alias": [
         "formaction.load"
       ],
@@ -9064,14 +9161,14 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.action.StandardSubmit": {
-      "idx": 469,
+      "idx": 395,
       "alias": [
         "formaction.standardsubmit"
       ],
       "alternates": []
     },
     "Ext.form.action.Submit": {
-      "idx": 451,
+      "idx": 394,
       "alias": [
         "formaction.submit"
       ],
@@ -9080,7 +9177,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.Base": {
-      "idx": 358,
+      "idx": 400,
       "alias": [
         "widget.field"
       ],
@@ -9090,7 +9187,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.Checkbox": {
-      "idx": 374,
+      "idx": 412,
       "alias": [
         "widget.checkbox",
         "widget.checkboxfield"
@@ -9100,7 +9197,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.ComboBox": {
-      "idx": 480,
+      "idx": 438,
       "alias": [
         "widget.combo",
         "widget.combobox"
@@ -9110,7 +9207,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.Date": {
-      "idx": 483,
+      "idx": 441,
       "alias": [
         "widget.datefield"
       ],
@@ -9120,7 +9217,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.Display": {
-      "idx": 359,
+      "idx": 442,
       "alias": [
         "widget.displayfield"
       ],
@@ -9130,12 +9227,12 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.Field": {
-      "idx": 357,
+      "idx": 399,
       "alias": [],
       "alternates": []
     },
     "Ext.form.field.File": {
-      "idx": 486,
+      "idx": 445,
       "alias": [
         "widget.filefield",
         "widget.fileuploadfield"
@@ -9147,14 +9244,14 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.FileButton": {
-      "idx": 484,
+      "idx": 443,
       "alias": [
         "widget.filebutton"
       ],
       "alternates": []
     },
     "Ext.form.field.Hidden": {
-      "idx": 487,
+      "idx": 446,
       "alias": [
         "widget.hidden",
         "widget.hiddenfield"
@@ -9164,7 +9261,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.HtmlEditor": {
-      "idx": 492,
+      "idx": 455,
       "alias": [
         "widget.htmleditor"
       ],
@@ -9173,7 +9270,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.Number": {
-      "idx": 477,
+      "idx": 435,
       "alias": [
         "widget.numberfield"
       ],
@@ -9183,7 +9280,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.Picker": {
-      "idx": 470,
+      "idx": 423,
       "alias": [
         "widget.pickerfield"
       ],
@@ -9192,7 +9289,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.Radio": {
-      "idx": 464,
+      "idx": 418,
       "alias": [
         "widget.radio",
         "widget.radiofield"
@@ -9202,7 +9299,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.Spinner": {
-      "idx": 476,
+      "idx": 434,
       "alias": [
         "widget.spinnerfield"
       ],
@@ -9211,14 +9308,14 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.Tag": {
-      "idx": 493,
+      "idx": 456,
       "alias": [
         "widget.tagfield"
       ],
       "alternates": []
     },
     "Ext.form.field.Text": {
-      "idx": 401,
+      "idx": 403,
       "alias": [
         "widget.textfield"
       ],
@@ -9228,7 +9325,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.TextArea": {
-      "idx": 452,
+      "idx": 404,
       "alias": [
         "widget.textarea",
         "widget.textareafield"
@@ -9238,7 +9335,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.Time": {
-      "idx": 495,
+      "idx": 458,
       "alias": [
         "widget.timefield"
       ],
@@ -9248,7 +9345,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.Trigger": {
-      "idx": 496,
+      "idx": 459,
       "alias": [
         "widget.trigger",
         "widget.triggerfield"
@@ -9260,28 +9357,28 @@ var Ext = Ext || {};
       ]
     },
     "Ext.form.field.VTypes": {
-      "idx": 399,
+      "idx": 401,
       "alias": [],
       "alternates": [
         "Ext.form.VTypes"
       ]
     },
     "Ext.form.trigger.Component": {
-      "idx": 485,
+      "idx": 444,
       "alias": [
         "trigger.component"
       ],
       "alternates": []
     },
     "Ext.form.trigger.Spinner": {
-      "idx": 475,
+      "idx": 433,
       "alias": [
         "trigger.spinner"
       ],
       "alternates": []
     },
     "Ext.form.trigger.Trigger": {
-      "idx": 400,
+      "idx": 402,
       "alias": [
         "trigger.trigger"
       ],
@@ -9613,45 +9710,45 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.grid.CellContext": {
-      "idx": 367,
+      "idx": 460,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.CellEditor": {
-      "idx": 497,
+      "idx": 461,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.ColumnComponentLayout": {
-      "idx": 393,
+      "idx": 462,
       "alias": [
         "layout.columncomponent"
       ],
       "alternates": []
     },
     "Ext.grid.ColumnLayout": {
-      "idx": 380,
+      "idx": 465,
       "alias": [
         "layout.gridcolumn"
       ],
       "alternates": []
     },
     "Ext.grid.ColumnManager": {
-      "idx": 498,
+      "idx": 466,
       "alias": [],
       "alternates": [
         "Ext.grid.ColumnModel"
       ]
     },
     "Ext.grid.NavigationModel": {
-      "idx": 396,
+      "idx": 467,
       "alias": [
         "view.navigation.grid"
       ],
       "alternates": []
     },
     "Ext.grid.Panel": {
-      "idx": 372,
+      "idx": 472,
       "alias": [
         "widget.grid",
         "widget.gridpanel"
@@ -9663,31 +9760,31 @@ var Ext = Ext || {};
       ]
     },
     "Ext.grid.RowEditor": {
-      "idx": 500,
+      "idx": 474,
       "alias": [
         "widget.roweditor"
       ],
       "alternates": []
     },
     "Ext.grid.RowEditorButtons": {
-      "idx": 499,
+      "idx": 473,
       "alias": [
         "widget.roweditorbuttons"
       ],
       "alternates": []
     },
     "Ext.grid.Scroller": {
-      "idx": 501,
+      "idx": 475,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.ViewDropZone": {
-      "idx": 503,
+      "idx": 477,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.column.Action": {
-      "idx": 504,
+      "idx": 484,
       "alias": [
         "widget.actioncolumn"
       ],
@@ -9696,7 +9793,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.grid.column.Boolean": {
-      "idx": 505,
+      "idx": 485,
       "alias": [
         "widget.booleancolumn"
       ],
@@ -9705,7 +9802,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.grid.column.Check": {
-      "idx": 506,
+      "idx": 486,
       "alias": [
         "widget.checkcolumn"
       ],
@@ -9715,7 +9812,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.grid.column.Column": {
-      "idx": 394,
+      "idx": 483,
       "alias": [
         "widget.gridcolumn"
       ],
@@ -9724,7 +9821,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.grid.column.Date": {
-      "idx": 507,
+      "idx": 487,
       "alias": [
         "widget.datecolumn"
       ],
@@ -9733,7 +9830,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.grid.column.Number": {
-      "idx": 508,
+      "idx": 488,
       "alias": [
         "widget.numbercolumn"
       ],
@@ -9742,7 +9839,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.grid.column.RowNumberer": {
-      "idx": 509,
+      "idx": 489,
       "alias": [
         "widget.rownumberer"
       ],
@@ -9751,7 +9848,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.grid.column.Template": {
-      "idx": 510,
+      "idx": 490,
       "alias": [
         "widget.templatecolumn"
       ],
@@ -9760,94 +9857,94 @@ var Ext = Ext || {};
       ]
     },
     "Ext.grid.column.Widget": {
-      "idx": 511,
+      "idx": 491,
       "alias": [
         "widget.widgetcolumn"
       ],
       "alternates": []
     },
     "Ext.grid.feature.AbstractSummary": {
-      "idx": 513,
+      "idx": 493,
       "alias": [
         "feature.abstractsummary"
       ],
       "alternates": []
     },
     "Ext.grid.feature.Feature": {
-      "idx": 512,
+      "idx": 492,
       "alias": [
         "feature.feature"
       ],
       "alternates": []
     },
     "Ext.grid.feature.GroupStore": {
-      "idx": 514,
+      "idx": 494,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.feature.Grouping": {
-      "idx": 515,
+      "idx": 495,
       "alias": [
         "feature.grouping"
       ],
       "alternates": []
     },
     "Ext.grid.feature.GroupingSummary": {
-      "idx": 516,
+      "idx": 496,
       "alias": [
         "feature.groupingsummary"
       ],
       "alternates": []
     },
     "Ext.grid.feature.RowBody": {
-      "idx": 517,
+      "idx": 497,
       "alias": [
         "feature.rowbody"
       ],
       "alternates": []
     },
     "Ext.grid.feature.Summary": {
-      "idx": 518,
+      "idx": 498,
       "alias": [
         "feature.summary"
       ],
       "alternates": []
     },
     "Ext.grid.filters.Filters": {
-      "idx": 531,
+      "idx": 511,
       "alias": [
         "plugin.gridfilters"
       ],
       "alternates": []
     },
     "Ext.grid.filters.filter.Base": {
-      "idx": 523,
+      "idx": 503,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.filters.filter.Boolean": {
-      "idx": 525,
+      "idx": 505,
       "alias": [
         "grid.filter.boolean"
       ],
       "alternates": []
     },
     "Ext.grid.filters.filter.Date": {
-      "idx": 527,
+      "idx": 507,
       "alias": [
         "grid.filter.date"
       ],
       "alternates": []
     },
     "Ext.grid.filters.filter.List": {
-      "idx": 528,
+      "idx": 508,
       "alias": [
         "grid.filter.list"
       ],
       "alternates": []
     },
     "Ext.grid.filters.filter.Number": {
-      "idx": 529,
+      "idx": 509,
       "alias": [
         "grid.filter.number",
         "grid.filter.numeric"
@@ -9855,128 +9952,128 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.grid.filters.filter.SingleFilter": {
-      "idx": 524,
+      "idx": 504,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.filters.filter.String": {
-      "idx": 530,
+      "idx": 510,
       "alias": [
         "grid.filter.string"
       ],
       "alternates": []
     },
     "Ext.grid.filters.filter.TriFilter": {
-      "idx": 526,
+      "idx": 506,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.header.Container": {
-      "idx": 392,
+      "idx": 482,
       "alias": [
         "widget.headercontainer"
       ],
       "alternates": []
     },
     "Ext.grid.header.DragZone": {
-      "idx": 384,
+      "idx": 479,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.header.DropZone": {
-      "idx": 390,
+      "idx": 480,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.locking.HeaderContainer": {
-      "idx": 532,
+      "idx": 512,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.locking.Lockable": {
-      "idx": 534,
+      "idx": 514,
       "alias": [],
       "alternates": [
         "Ext.grid.Lockable"
       ]
     },
     "Ext.grid.locking.RowSynchronizer": {
-      "idx": 369,
+      "idx": 469,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.locking.View": {
-      "idx": 533,
+      "idx": 513,
       "alias": [],
       "alternates": [
         "Ext.grid.LockingView"
       ]
     },
     "Ext.grid.plugin.BufferedRenderer": {
-      "idx": 535,
+      "idx": 515,
       "alias": [
         "plugin.bufferedrenderer"
       ],
       "alternates": []
     },
     "Ext.grid.plugin.CellEditing": {
-      "idx": 537,
+      "idx": 517,
       "alias": [
         "plugin.cellediting"
       ],
       "alternates": []
     },
     "Ext.grid.plugin.Clipboard": {
-      "idx": 539,
+      "idx": 519,
       "alias": [
         "plugin.clipboard"
       ],
       "alternates": []
     },
     "Ext.grid.plugin.DragDrop": {
-      "idx": 540,
+      "idx": 520,
       "alias": [
         "plugin.gridviewdragdrop"
       ],
       "alternates": []
     },
     "Ext.grid.plugin.Editing": {
-      "idx": 536,
+      "idx": 516,
       "alias": [
         "editing.editing"
       ],
       "alternates": []
     },
     "Ext.grid.plugin.HeaderReorderer": {
-      "idx": 391,
+      "idx": 481,
       "alias": [
         "plugin.gridheaderreorderer"
       ],
       "alternates": []
     },
     "Ext.grid.plugin.HeaderResizer": {
-      "idx": 382,
+      "idx": 478,
       "alias": [
         "plugin.gridheaderresizer"
       ],
       "alternates": []
     },
     "Ext.grid.plugin.RowEditing": {
-      "idx": 541,
+      "idx": 521,
       "alias": [
         "plugin.rowediting"
       ],
       "alternates": []
     },
     "Ext.grid.plugin.RowExpander": {
-      "idx": 542,
+      "idx": 522,
       "alias": [
         "plugin.rowexpander"
       ],
       "alternates": []
     },
     "Ext.grid.property.Grid": {
-      "idx": 543,
+      "idx": 523,
       "alias": [
         "widget.propertygrid"
       ],
@@ -9985,65 +10082,65 @@ var Ext = Ext || {};
       ]
     },
     "Ext.grid.property.HeaderContainer": {
-      "idx": 544,
+      "idx": 524,
       "alias": [],
       "alternates": [
         "Ext.grid.PropertyColumnModel"
       ]
     },
     "Ext.grid.property.Property": {
-      "idx": 545,
+      "idx": 525,
       "alias": [],
       "alternates": [
         "Ext.PropGridProperty"
       ]
     },
     "Ext.grid.property.Reader": {
-      "idx": 546,
+      "idx": 526,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.property.Store": {
-      "idx": 547,
+      "idx": 527,
       "alias": [],
       "alternates": [
         "Ext.grid.PropertyStore"
       ]
     },
     "Ext.grid.selection.Cells": {
-      "idx": 549,
+      "idx": 529,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.selection.Columns": {
-      "idx": 550,
+      "idx": 530,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.selection.Rows": {
-      "idx": 551,
+      "idx": 531,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.selection.Selection": {
-      "idx": 548,
+      "idx": 528,
       "alias": [],
       "alternates": []
     },
     "Ext.grid.selection.SpreadsheetModel": {
-      "idx": 552,
+      "idx": 533,
       "alias": [
         "selection.spreadsheet"
       ],
       "alternates": []
     },
     "Ext.layout.Context": {
-      "idx": 555,
+      "idx": 536,
       "alias": [],
       "alternates": []
     },
     "Ext.layout.ContextItem": {
-      "idx": 554,
+      "idx": 535,
       "alias": [],
       "alternates": []
     },
@@ -10065,14 +10162,14 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.layout.component.Body": {
-      "idx": 411,
+      "idx": 538,
       "alias": [
         "layout.body"
       ],
       "alternates": []
     },
     "Ext.layout.component.BoundList": {
-      "idx": 472,
+      "idx": 430,
       "alias": [
         "layout.boundlist"
       ],
@@ -10084,7 +10181,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.layout.component.Dock": {
-      "idx": 352,
+      "idx": 360,
       "alias": [
         "layout.dock"
       ],
@@ -10093,7 +10190,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.component.FieldSet": {
-      "idx": 557,
+      "idx": 539,
       "alias": [
         "layout.fieldset"
       ],
@@ -10107,21 +10204,21 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.layout.component.field.FieldContainer": {
-      "idx": 456,
+      "idx": 408,
       "alias": [
         "layout.fieldcontainer"
       ],
       "alternates": []
     },
     "Ext.layout.component.field.HtmlEditor": {
-      "idx": 489,
+      "idx": 452,
       "alias": [
         "layout.htmleditor"
       ],
       "alternates": []
     },
     "Ext.layout.container.Absolute": {
-      "idx": 558,
+      "idx": 540,
       "alias": [
         "layout.absolute"
       ],
@@ -10130,7 +10227,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.Accordion": {
-      "idx": 559,
+      "idx": 541,
       "alias": [
         "layout.accordion"
       ],
@@ -10139,7 +10236,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.Anchor": {
-      "idx": 434,
+      "idx": 370,
       "alias": [
         "layout.anchor"
       ],
@@ -10156,7 +10253,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.layout.container.Border": {
-      "idx": 404,
+      "idx": 543,
       "alias": [
         "layout.border"
       ],
@@ -10165,7 +10262,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.Box": {
-      "idx": 338,
+      "idx": 347,
       "alias": [
         "layout.box"
       ],
@@ -10174,7 +10271,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.Card": {
-      "idx": 405,
+      "idx": 544,
       "alias": [
         "layout.card"
       ],
@@ -10183,7 +10280,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.Center": {
-      "idx": 560,
+      "idx": 545,
       "alias": [
         "layout.center",
         "layout.ux.center"
@@ -10193,14 +10290,14 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.CheckboxGroup": {
-      "idx": 458,
+      "idx": 410,
       "alias": [
         "layout.checkboxgroup"
       ],
       "alternates": []
     },
     "Ext.layout.container.Column": {
-      "idx": 437,
+      "idx": 373,
       "alias": [
         "layout.column"
       ],
@@ -10209,14 +10306,14 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.ColumnSplitter": {
-      "idx": 440,
+      "idx": 377,
       "alias": [
         "widget.columnsplitter"
       ],
       "alternates": []
     },
     "Ext.layout.container.ColumnSplitterTracker": {
-      "idx": 439,
+      "idx": 376,
       "alias": [],
       "alternates": []
     },
@@ -10230,7 +10327,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.Dashboard": {
-      "idx": 441,
+      "idx": 378,
       "alias": [
         "layout.dashboard"
       ],
@@ -10244,7 +10341,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.layout.container.Fit": {
-      "idx": 360,
+      "idx": 463,
       "alias": [
         "layout.fit"
       ],
@@ -10253,7 +10350,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.Form": {
-      "idx": 561,
+      "idx": 546,
       "alias": [
         "layout.form"
       ],
@@ -10262,7 +10359,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.HBox": {
-      "idx": 339,
+      "idx": 348,
       "alias": [
         "layout.hbox"
       ],
@@ -10271,14 +10368,14 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.SegmentedButton": {
-      "idx": 562,
+      "idx": 337,
       "alias": [
         "layout.segmentedbutton"
       ],
       "alternates": []
     },
     "Ext.layout.container.Table": {
-      "idx": 428,
+      "idx": 364,
       "alias": [
         "layout.table"
       ],
@@ -10287,7 +10384,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.VBox": {
-      "idx": 340,
+      "idx": 349,
       "alias": [
         "layout.vbox"
       ],
@@ -10301,7 +10398,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.layout.container.boxOverflow.Menu": {
-      "idx": 491,
+      "idx": 454,
       "alias": [
         "box.overflow.Menu",
         "box.overflow.menu"
@@ -10311,7 +10408,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.boxOverflow.None": {
-      "idx": 333,
+      "idx": 343,
       "alias": [
         "box.overflow.None",
         "box.overflow.none"
@@ -10321,7 +10418,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.layout.container.boxOverflow.Scroller": {
-      "idx": 335,
+      "idx": 344,
       "alias": [
         "box.overflow.Scroller",
         "box.overflow.scroller"
@@ -10331,28 +10428,28 @@ var Ext = Ext || {};
       ]
     },
     "Ext.menu.CheckItem": {
-      "idx": 520,
+      "idx": 500,
       "alias": [
         "widget.menucheckitem"
       ],
       "alternates": []
     },
     "Ext.menu.ColorPicker": {
-      "idx": 563,
+      "idx": 547,
       "alias": [
         "widget.colormenu"
       ],
       "alternates": []
     },
     "Ext.menu.DatePicker": {
-      "idx": 564,
+      "idx": 548,
       "alias": [
         "widget.datemenu"
       ],
       "alternates": []
     },
     "Ext.menu.Item": {
-      "idx": 519,
+      "idx": 499,
       "alias": [
         "widget.menuitem"
       ],
@@ -10361,21 +10458,21 @@ var Ext = Ext || {};
       ]
     },
     "Ext.menu.Manager": {
-      "idx": 408,
+      "idx": 331,
       "alias": [],
       "alternates": [
         "Ext.menu.MenuMgr"
       ]
     },
     "Ext.menu.Menu": {
-      "idx": 522,
+      "idx": 502,
       "alias": [
         "widget.menu"
       ],
       "alternates": []
     },
     "Ext.menu.Separator": {
-      "idx": 521,
+      "idx": 501,
       "alias": [
         "widget.menuseparator"
       ],
@@ -10442,24 +10539,24 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.panel.Bar": {
-      "idx": 329,
+      "idx": 339,
       "alias": [],
       "alternates": []
     },
     "Ext.panel.DD": {
-      "idx": 351,
+      "idx": 359,
       "alias": [],
       "alternates": []
     },
     "Ext.panel.Header": {
-      "idx": 332,
+      "idx": 342,
       "alias": [
         "widget.header"
       ],
       "alternates": []
     },
     "Ext.panel.Panel": {
-      "idx": 355,
+      "idx": 363,
       "alias": [
         "widget.panel"
       ],
@@ -10468,33 +10565,33 @@ var Ext = Ext || {};
       ]
     },
     "Ext.panel.Pinnable": {
-      "idx": 565,
+      "idx": 549,
       "alias": [],
       "alternates": []
     },
     "Ext.panel.Proxy": {
-      "idx": 350,
+      "idx": 358,
       "alias": [],
       "alternates": [
         "Ext.dd.PanelProxy"
       ]
     },
     "Ext.panel.Table": {
-      "idx": 361,
+      "idx": 464,
       "alias": [
         "widget.tablepanel"
       ],
       "alternates": []
     },
     "Ext.panel.Title": {
-      "idx": 330,
+      "idx": 340,
       "alias": [
         "widget.title"
       ],
       "alternates": []
     },
     "Ext.panel.Tool": {
-      "idx": 331,
+      "idx": 341,
       "alias": [
         "widget.tool"
       ],
@@ -10513,7 +10610,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.picker.Color": {
-      "idx": 488,
+      "idx": 451,
       "alias": [
         "widget.colorpicker"
       ],
@@ -10522,7 +10619,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.picker.Date": {
-      "idx": 482,
+      "idx": 440,
       "alias": [
         "widget.datepicker"
       ],
@@ -10531,7 +10628,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.picker.Month": {
-      "idx": 481,
+      "idx": 439,
       "alias": [
         "widget.monthpicker"
       ],
@@ -10540,7 +10637,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.picker.Time": {
-      "idx": 494,
+      "idx": 457,
       "alias": [
         "widget.timepicker"
       ],
@@ -10554,7 +10651,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.plugin.AbstractClipboard": {
-      "idx": 538,
+      "idx": 518,
       "alias": [],
       "alternates": []
     },
@@ -10566,7 +10663,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.plugin.Manager": {
-      "idx": 566,
+      "idx": 550,
       "alias": [],
       "alternates": [
         "Ext.PluginManager",
@@ -10574,57 +10671,57 @@ var Ext = Ext || {};
       ]
     },
     "Ext.plugin.Responsive": {
-      "idx": 431,
+      "idx": 367,
       "alias": [
         "plugin.responsive"
       ],
       "alternates": []
     },
     "Ext.plugin.Viewport": {
-      "idx": 432,
+      "idx": 368,
       "alias": [
         "plugin.viewport"
       ],
       "alternates": []
     },
     "Ext.resizer.BorderSplitter": {
-      "idx": 403,
+      "idx": 542,
       "alias": [
         "widget.bordersplitter"
       ],
       "alternates": []
     },
     "Ext.resizer.BorderSplitterTracker": {
-      "idx": 567,
+      "idx": 551,
       "alias": [],
       "alternates": []
     },
     "Ext.resizer.Handle": {
-      "idx": 568,
+      "idx": 552,
       "alias": [],
       "alternates": []
     },
     "Ext.resizer.ResizeTracker": {
-      "idx": 569,
+      "idx": 553,
       "alias": [],
       "alternates": []
     },
     "Ext.resizer.Resizer": {
-      "idx": 570,
+      "idx": 554,
       "alias": [],
       "alternates": [
         "Ext.Resizable"
       ]
     },
     "Ext.resizer.Splitter": {
-      "idx": 337,
+      "idx": 346,
       "alias": [
         "widget.splitter"
       ],
       "alternates": []
     },
     "Ext.resizer.SplitterTracker": {
-      "idx": 438,
+      "idx": 375,
       "alias": [],
       "alternates": []
     },
@@ -10657,28 +10754,28 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.selection.CellModel": {
-      "idx": 571,
+      "idx": 555,
       "alias": [
         "selection.cellmodel"
       ],
       "alternates": []
     },
     "Ext.selection.CheckboxModel": {
-      "idx": 572,
+      "idx": 556,
       "alias": [
         "selection.checkboxmodel"
       ],
       "alternates": []
     },
     "Ext.selection.DataViewModel": {
-      "idx": 363,
+      "idx": 425,
       "alias": [
         "selection.dataviewmodel"
       ],
       "alternates": []
     },
     "Ext.selection.Model": {
-      "idx": 362,
+      "idx": 424,
       "alias": [
         "selection.abstract"
       ],
@@ -10687,21 +10784,21 @@ var Ext = Ext || {};
       ]
     },
     "Ext.selection.RowModel": {
-      "idx": 378,
+      "idx": 532,
       "alias": [
         "selection.rowmodel"
       ],
       "alternates": []
     },
     "Ext.selection.TreeModel": {
-      "idx": 379,
+      "idx": 557,
       "alias": [
         "selection.treemodel"
       ],
       "alternates": []
     },
     "Ext.slider.Multi": {
-      "idx": 575,
+      "idx": 560,
       "alias": [
         "widget.multislider"
       ],
@@ -10710,7 +10807,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.slider.Single": {
-      "idx": 576,
+      "idx": 561,
       "alias": [
         "widget.slider",
         "widget.sliderfield"
@@ -10723,115 +10820,115 @@ var Ext = Ext || {};
       ]
     },
     "Ext.slider.Thumb": {
-      "idx": 573,
+      "idx": 558,
       "alias": [],
       "alternates": []
     },
     "Ext.slider.Tip": {
-      "idx": 574,
+      "idx": 559,
       "alias": [
         "widget.slidertip"
       ],
       "alternates": []
     },
     "Ext.slider.Widget": {
-      "idx": 577,
+      "idx": 562,
       "alias": [
         "widget.sliderwidget"
       ],
       "alternates": []
     },
     "Ext.sparkline.Bar": {
-      "idx": 585,
+      "idx": 570,
       "alias": [
         "widget.sparklinebar"
       ],
       "alternates": []
     },
     "Ext.sparkline.BarBase": {
-      "idx": 583,
+      "idx": 568,
       "alias": [],
       "alternates": []
     },
     "Ext.sparkline.Base": {
-      "idx": 582,
+      "idx": 567,
       "alias": [],
       "alternates": []
     },
     "Ext.sparkline.Box": {
-      "idx": 586,
+      "idx": 571,
       "alias": [
         "widget.sparklinebox"
       ],
       "alternates": []
     },
     "Ext.sparkline.Bullet": {
-      "idx": 587,
+      "idx": 572,
       "alias": [
         "widget.sparklinebullet"
       ],
       "alternates": []
     },
     "Ext.sparkline.CanvasBase": {
-      "idx": 579,
+      "idx": 564,
       "alias": [],
       "alternates": []
     },
     "Ext.sparkline.CanvasCanvas": {
-      "idx": 580,
+      "idx": 565,
       "alias": [],
       "alternates": []
     },
     "Ext.sparkline.Discrete": {
-      "idx": 588,
+      "idx": 573,
       "alias": [
         "widget.sparklinediscrete"
       ],
       "alternates": []
     },
     "Ext.sparkline.Line": {
-      "idx": 589,
+      "idx": 574,
       "alias": [
         "widget.sparklineline"
       ],
       "alternates": []
     },
     "Ext.sparkline.Pie": {
-      "idx": 590,
+      "idx": 575,
       "alias": [
         "widget.sparklinepie"
       ],
       "alternates": []
     },
     "Ext.sparkline.RangeMap": {
-      "idx": 584,
+      "idx": 569,
       "alias": [],
       "alternates": []
     },
     "Ext.sparkline.Shape": {
-      "idx": 578,
+      "idx": 563,
       "alias": [],
       "alternates": []
     },
     "Ext.sparkline.TriState": {
-      "idx": 591,
+      "idx": 576,
       "alias": [
         "widget.sparklinetristate"
       ],
       "alternates": []
     },
     "Ext.sparkline.VmlCanvas": {
-      "idx": 581,
+      "idx": 566,
       "alias": [],
       "alternates": []
     },
     "Ext.state.CookieProvider": {
-      "idx": 592,
+      "idx": 577,
       "alias": [],
       "alternates": []
     },
     "Ext.state.LocalStorageProvider": {
-      "idx": 593,
+      "idx": 578,
       "alias": [
         "state.localstorage"
       ],
@@ -10853,14 +10950,14 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.tab.Bar": {
-      "idx": 412,
+      "idx": 580,
       "alias": [
         "widget.tabbar"
       ],
       "alternates": []
     },
     "Ext.tab.Panel": {
-      "idx": 413,
+      "idx": 581,
       "alias": [
         "widget.tabpanel"
       ],
@@ -10869,14 +10966,14 @@ var Ext = Ext || {};
       ]
     },
     "Ext.tab.Tab": {
-      "idx": 410,
+      "idx": 579,
       "alias": [
         "widget.tab"
       ],
       "alternates": []
     },
     "Ext.tip.QuickTip": {
-      "idx": 422,
+      "idx": 449,
       "alias": [
         "widget.quicktip"
       ],
@@ -10885,14 +10982,14 @@ var Ext = Ext || {};
       ]
     },
     "Ext.tip.QuickTipManager": {
-      "idx": 423,
+      "idx": 450,
       "alias": [],
       "alternates": [
         "Ext.QuickTips"
       ]
     },
     "Ext.tip.Tip": {
-      "idx": 420,
+      "idx": 447,
       "alias": [
         "widget.tip"
       ],
@@ -10901,7 +10998,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.tip.ToolTip": {
-      "idx": 421,
+      "idx": 448,
       "alias": [
         "widget.tooltip"
       ],
@@ -10910,14 +11007,14 @@ var Ext = Ext || {};
       ]
     },
     "Ext.toolbar.Breadcrumb": {
-      "idx": 594,
+      "idx": 582,
       "alias": [
         "widget.breadcrumb"
       ],
       "alternates": []
     },
     "Ext.toolbar.Fill": {
-      "idx": 595,
+      "idx": 583,
       "alias": [
         "widget.tbfill"
       ],
@@ -10926,7 +11023,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.toolbar.Item": {
-      "idx": 473,
+      "idx": 431,
       "alias": [
         "widget.tbitem"
       ],
@@ -10935,7 +11032,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.toolbar.Paging": {
-      "idx": 478,
+      "idx": 436,
       "alias": [
         "widget.pagingtoolbar"
       ],
@@ -10944,7 +11041,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.toolbar.Separator": {
-      "idx": 490,
+      "idx": 453,
       "alias": [
         "widget.tbseparator"
       ],
@@ -10953,7 +11050,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.toolbar.Spacer": {
-      "idx": 596,
+      "idx": 584,
       "alias": [
         "widget.tbspacer"
       ],
@@ -10962,7 +11059,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.toolbar.TextItem": {
-      "idx": 474,
+      "idx": 432,
       "alias": [
         "widget.tbtext"
       ],
@@ -10971,7 +11068,7 @@ var Ext = Ext || {};
       ]
     },
     "Ext.toolbar.Toolbar": {
-      "idx": 344,
+      "idx": 352,
       "alias": [
         "widget.toolbar"
       ],
@@ -10980,21 +11077,21 @@ var Ext = Ext || {};
       ]
     },
     "Ext.tree.Column": {
-      "idx": 395,
+      "idx": 585,
       "alias": [
         "widget.treecolumn"
       ],
       "alternates": []
     },
     "Ext.tree.NavigationModel": {
-      "idx": 397,
+      "idx": 586,
       "alias": [
         "view.navigation.tree"
       ],
       "alternates": []
     },
     "Ext.tree.Panel": {
-      "idx": 398,
+      "idx": 588,
       "alias": [
         "widget.treepanel"
       ],
@@ -11004,24 +11101,24 @@ var Ext = Ext || {};
       ]
     },
     "Ext.tree.View": {
-      "idx": 377,
+      "idx": 587,
       "alias": [
         "widget.treeview"
       ],
       "alternates": []
     },
     "Ext.tree.ViewDragZone": {
-      "idx": 598,
+      "idx": 590,
       "alias": [],
       "alternates": []
     },
     "Ext.tree.ViewDropZone": {
-      "idx": 599,
+      "idx": 591,
       "alias": [],
       "alternates": []
     },
     "Ext.tree.plugin.TreeViewDragDrop": {
-      "idx": 600,
+      "idx": 592,
       "alias": [
         "plugin.treeviewdragdrop"
       ],
@@ -11048,7 +11145,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.util.CSS": {
-      "idx": 601,
+      "idx": 593,
       "alias": [],
       "alternates": []
     },
@@ -11058,7 +11155,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.util.ClickRepeater": {
-      "idx": 334,
+      "idx": 332,
       "alias": [],
       "alternates": []
     },
@@ -11073,12 +11170,12 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.util.ComponentDragger": {
-      "idx": 418,
+      "idx": 396,
       "alias": [],
       "alternates": []
     },
     "Ext.util.Cookies": {
-      "idx": 602,
+      "idx": 594,
       "alias": [],
       "alternates": []
     },
@@ -11118,7 +11215,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.util.FocusableContainer": {
-      "idx": 343,
+      "idx": 351,
       "alias": [],
       "alternates": []
     },
@@ -11160,14 +11257,14 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.util.KeyMap": {
-      "idx": 341,
+      "idx": 333,
       "alias": [],
       "alternates": [
         "Ext.KeyMap"
       ]
     },
     "Ext.util.KeyNav": {
-      "idx": 342,
+      "idx": 350,
       "alias": [],
       "alternates": [
         "Ext.KeyNav"
@@ -11184,7 +11281,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.util.Memento": {
-      "idx": 353,
+      "idx": 361,
       "alias": [],
       "alternates": []
     },
@@ -11229,7 +11326,7 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.util.Queue": {
-      "idx": 553,
+      "idx": 534,
       "alias": [],
       "alternates": []
     },
@@ -11381,12 +11478,12 @@ var Ext = Ext || {};
       "alternates": []
     },
     "Ext.view.AbstractView": {
-      "idx": 365,
+      "idx": 427,
       "alias": [],
       "alternates": []
     },
     "Ext.view.BoundList": {
-      "idx": 479,
+      "idx": 437,
       "alias": [
         "widget.boundlist"
       ],
@@ -11395,50 +11492,50 @@ var Ext = Ext || {};
       ]
     },
     "Ext.view.BoundListKeyNav": {
-      "idx": 471,
+      "idx": 429,
       "alias": [
         "view.navigation.boundlist"
       ],
       "alternates": []
     },
     "Ext.view.DragZone": {
-      "idx": 597,
+      "idx": 589,
       "alias": [],
       "alternates": []
     },
     "Ext.view.DropZone": {
-      "idx": 502,
+      "idx": 476,
       "alias": [],
       "alternates": []
     },
     "Ext.view.MultiSelector": {
-      "idx": 604,
+      "idx": 596,
       "alias": [
         "widget.multiselector"
       ],
       "alternates": []
     },
     "Ext.view.MultiSelectorSearch": {
-      "idx": 603,
+      "idx": 595,
       "alias": [
         "widget.multiselector-search"
       ],
       "alternates": []
     },
     "Ext.view.NavigationModel": {
-      "idx": 364,
+      "idx": 426,
       "alias": [
         "view.navigation.default"
       ],
       "alternates": []
     },
     "Ext.view.NodeCache": {
-      "idx": 370,
+      "idx": 470,
       "alias": [],
       "alternates": []
     },
     "Ext.view.Table": {
-      "idx": 371,
+      "idx": 471,
       "alias": [
         "widget.gridview",
         "widget.tableview"
@@ -11448,14 +11545,14 @@ var Ext = Ext || {};
       ]
     },
     "Ext.view.TableLayout": {
-      "idx": 368,
+      "idx": 468,
       "alias": [
         "layout.tableview"
       ],
       "alternates": []
     },
     "Ext.view.View": {
-      "idx": 366,
+      "idx": 428,
       "alias": [
         "widget.dataview"
       ],
@@ -11464,21 +11561,21 @@ var Ext = Ext || {};
       ]
     },
     "Ext.window.MessageBox": {
-      "idx": 453,
+      "idx": 405,
       "alias": [
         "widget.messagebox"
       ],
       "alternates": []
     },
     "Ext.window.Toast": {
-      "idx": 605,
+      "idx": 597,
       "alias": [
         "widget.toast"
       ],
       "alternates": []
     },
     "Ext.window.Window": {
-      "idx": 419,
+      "idx": 397,
       "alias": [
         "widget.window"
       ],
@@ -11488,9 +11585,12 @@ var Ext = Ext || {};
     }
   },
   "packages": {
+    "cmd": {
+      "version": "6.0.2.14"
+    },
     "ext": {
       "creator": "Sencha",
-      "output": "${package.dir}/build",
+      "license": "commercial",
       "requires": [
         "sencha-core",
         "ext",
@@ -11501,11 +11601,10 @@ var Ext = Ext || {};
         "ext"
       ],
       "type": "framework",
-      "version": "5.1.1.451"
+      "version": "5.1.2.748"
     },
     "sencha-core": {
       "creator": "Sencha",
-      "output": "${package.dir}/build",
       "requires": [],
       "slicer": {
         "js": []
@@ -11523,17 +11622,7 @@ var Ext = Ext || {};
 
 Ext.Boot = Ext.Boot || (function(emptyFn) {
     var doc = document,
-        apply = function(dest, src, defaults) {
-            if (defaults) {
-                apply(dest, defaults);
-            }
-            if (dest && src && typeof src == 'object') {
-                for (var key in src) {
-                    dest[key] = src[key];
-                }
-            }
-            return dest;
-        },
+        _emptyArray = [],
         _config = {
             
             disableCaching: (/[?&](?:cache|disableCacheBuster)\b/i.test(location.search) || !(/http[s]?\:/i.test(location.href)) || /(^|[ ;])ext-cache=1/.test(doc.cookie)) ? false : true,
@@ -11544,15 +11633,16 @@ Ext.Boot = Ext.Boot || (function(emptyFn) {
             
             preserveScripts: true,
             
-            charset: undefined
+            charset: 'UTF-8'
         },
+        _assetConfig = {},
         cssRe = /\.css(?:\?|$)/i,
         resolverEl = doc.createElement('a'),
         isBrowser = typeof window !== 'undefined',
         _environment = {
             browser: isBrowser,
             node: !isBrowser && (typeof require === 'function'),
-            phantom: (typeof phantom !== 'undefined' && phantom.fs)
+            phantom: (window && (window._phantom || window.callPhantom)) || /PhantomJS/.test(window.navigator.userAgent)
         },
         _tags = (Ext.platformTags = {}),
         _debug = function(message) {},
@@ -11568,12 +11658,48 @@ Ext.Boot = Ext.Boot || (function(emptyFn) {
             }
             return object;
         },
+        _merge = function() {
+            var lowerCase = false,
+                obj = Array.prototype.shift.call(arguments),
+                index, i, len, value;
+            if (typeof arguments[arguments.length - 1] === 'boolean') {
+                lowerCase = Array.prototype.pop.call(arguments);
+            }
+            len = arguments.length;
+            for (index = 0; index < len; index++) {
+                value = arguments[index];
+                if (typeof value === 'object') {
+                    for (i in value) {
+                        obj[lowerCase ? i.toLowerCase() : i] = value[i];
+                    }
+                }
+            }
+            return obj;
+        },
+        _getKeys = (typeof Object.keys == 'function') ? function(object) {
+            if (!object) {
+                return [];
+            }
+            return Object.keys(object);
+        } : function(object) {
+            var keys = [],
+                property;
+            for (property in object) {
+                if (object.hasOwnProperty(property)) {
+                    keys.push(property);
+                }
+            }
+            return keys;
+        },
         
         Boot = {
             loading: 0,
             loaded: 0,
+            apply: _apply,
             env: _environment,
             config: _config,
+            
+            assetConfig: _assetConfig,
             
             
             scripts: {},
@@ -11592,30 +11718,94 @@ Ext.Boot = Ext.Boot || (function(emptyFn) {
             listeners: [],
             Request: Request,
             Entry: Entry,
+            allowMultipleBrowsers: false,
+            browserNames: {
+                ie: 'IE',
+                firefox: 'Firefox',
+                safari: 'Safari',
+                chrome: 'Chrome',
+                opera: 'Opera',
+                dolfin: 'Dolfin',
+                edge: 'Edge',
+                webosbrowser: 'webOSBrowser',
+                chromeMobile: 'ChromeMobile',
+                chromeiOS: 'ChromeiOS',
+                silk: 'Silk',
+                other: 'Other'
+            },
+            osNames: {
+                ios: 'iOS',
+                android: 'Android',
+                windowsPhone: 'WindowsPhone',
+                webos: 'webOS',
+                blackberry: 'BlackBerry',
+                rimTablet: 'RIMTablet',
+                mac: 'MacOS',
+                win: 'Windows',
+                tizen: 'Tizen',
+                linux: 'Linux',
+                bada: 'Bada',
+                chromeOS: 'ChromeOS',
+                other: 'Other'
+            },
+            browserPrefixes: {
+                ie: 'MSIE ',
+                edge: 'Edge/',
+                firefox: 'Firefox/',
+                chrome: 'Chrome/',
+                safari: 'Version/',
+                opera: 'OPR/',
+                dolfin: 'Dolfin/',
+                webosbrowser: 'wOSBrowser/',
+                chromeMobile: 'CrMo/',
+                chromeiOS: 'CriOS/',
+                silk: 'Silk/'
+            },
+            
+            
+            browserPriority: [
+                'edge',
+                'opera',
+                'dolfin',
+                'webosbrowser',
+                'silk',
+                'chromeiOS',
+                'chromeMobile',
+                'ie',
+                'firefox',
+                'safari',
+                'chrome'
+            ],
+            osPrefixes: {
+                tizen: '(Tizen )',
+                ios: 'i(?:Pad|Phone|Pod)(?:.*)CPU(?: iPhone)? OS ',
+                android: '(Android |HTC_|Silk/)',
+                
+                
+                windowsPhone: 'Windows Phone ',
+                blackberry: '(?:BlackBerry|BB)(?:.*)Version/',
+                rimTablet: 'RIM Tablet OS ',
+                webos: '(?:webOS|hpwOS)/',
+                bada: 'Bada/',
+                chromeOS: 'CrOS '
+            },
+            fallbackOSPrefixes: {
+                windows: 'win',
+                mac: 'mac',
+                linux: 'linux'
+            },
+            devicePrefixes: {
+                iPhone: 'iPhone',
+                iPod: 'iPod',
+                iPad: 'iPad'
+            },
+            maxIEVersion: 12,
             
             detectPlatformTags: function() {
-                var ua = navigator.userAgent,
-                    isMobile = _tags.isMobile = /Mobile(\/|\s)/.test(ua),
-                    isPhone, isDesktop, isTablet, touchSupported, isIE10, isBlackberry,
+                var me = this,
+                    ua = navigator.userAgent,
+                    isMobile = /Mobile(\/|\s)/.test(ua),
                     element = document.createElement('div'),
-                    uaTagChecks = [
-                        'iPhone',
-                        'iPod',
-                        'Android',
-                        'Silk',
-                        'Android 2',
-                        'BlackBerry',
-                        'BB',
-                        'iPad',
-                        'RIM Tablet OS',
-                        'MSIE 10',
-                        'Trident',
-                        'Chrome',
-                        'Tizen',
-                        'Firefox',
-                        'Safari',
-                        'Windows Phone'
-                    ],
                     isEventSupported = function(name, tag) {
                         if (tag === undefined) {
                             tag = window;
@@ -11634,40 +11824,122 @@ Ext.Boot = Ext.Boot || (function(emptyFn) {
                         }
                         return isSupported;
                     },
-                    uaTags = {},
-                    len = uaTagChecks.length,
-                    check, c;
-                for (c = 0; c < len; c++) {
-                    check = uaTagChecks[c];
-                    uaTags[check] = new RegExp(check).test(ua);
-                }
-                isPhone = (uaTags.iPhone || uaTags.iPod) || (!uaTags.Silk && (uaTags.Android && (uaTags['Android 2'] || isMobile))) || ((uaTags.BlackBerry || uaTags.BB) && uaTags.isMobile) || (uaTags['Windows Phone']);
-                isTablet = (!_tags.isPhone) && (uaTags.iPad || uaTags.Android || uaTags.Silk || uaTags['RIM Tablet OS'] || (uaTags['MSIE 10'] && /; Touch/.test(ua)));
-                touchSupported = 
+                    
+                    getBrowsers = function() {
+                        var browsers = {},
+                            maxIEVersion, prefix, value, key, index, len, match, version, matched;
+                        
+                        
+                        
+                        len = me.browserPriority.length;
+                        for (index = 0; index < len; index++) {
+                            key = me.browserPriority[index];
+                            if (!matched) {
+                                value = me.browserPrefixes[key];
+                                match = ua.match(new RegExp('(' + value + ')([\\w\\._]+)'));
+                                version = match && match.length > 1 ? parseInt(match[2]) : 0;
+                                if (version) {
+                                    matched = true;
+                                }
+                            } else {
+                                version = 0;
+                            }
+                            browsers[key] = version;
+                        }
+                        
+                        if (browsers.ie) {
+                            var mode = document.documentMode;
+                            if (mode >= 8) {
+                                browsers.ie = mode;
+                            }
+                        }
+                        
+                        version = browsers.ie || false;
+                        maxIEVersion = Math.max(version, me.maxIEVersion);
+                        for (index = 8; index <= maxIEVersion; ++index) {
+                            prefix = 'ie' + index;
+                            browsers[prefix + 'm'] = version ? version <= index : 0;
+                            browsers[prefix] = version ? version === index : 0;
+                            browsers[prefix + 'p'] = version ? version >= index : 0;
+                        }
+                        return browsers;
+                    },
+                    
+                    getOperatingSystems = function() {
+                        var systems = {},
+                            value, key, keys, index, len, match, matched, version, activeCount;
+                        keys = _getKeys(me.osPrefixes);
+                        len = keys.length;
+                        for (index = 0 , activeCount = 0; index < len; index++) {
+                            key = keys[index];
+                            value = me.osPrefixes[key];
+                            match = ua.match(new RegExp('(' + value + ')([^\\s;]+)'));
+                            matched = match ? match[1] : null;
+                            
+                            
+                            if (matched && (matched === 'HTC_' || matched === 'Silk/')) {
+                                version = 2.3;
+                            } else {
+                                version = match && match.length > 1 ? parseFloat(match[match.length - 1]) : 0;
+                            }
+                            if (version) {
+                                activeCount++;
+                            }
+                            systems[key] = version;
+                        }
+                        keys = _getKeys(me.fallbackOSPrefixes);
+                        
+                        
+                        len = keys.length;
+                        for (index = 0; index < len; index++) {
+                            key = keys[index];
+                            
+                            if (activeCount === 0) {
+                                value = me.fallbackOSPrefixes[key];
+                                match = ua.toLowerCase().match(new RegExp(value));
+                                systems[key] = match ? true : 0;
+                            } else {
+                                systems[key] = 0;
+                            }
+                        }
+                        return systems;
+                    },
+                    
+                    getDevices = function() {
+                        var devices = {},
+                            value, key, keys, index, len, match;
+                        keys = _getKeys(me.devicePrefixes);
+                        len = keys.length;
+                        for (index = 0; index < len; index++) {
+                            key = keys[index];
+                            value = me.devicePrefixes[key];
+                            match = ua.match(new RegExp(value));
+                            devices[key] = match ? true : 0;
+                        }
+                        return devices;
+                    },
+                    browsers = getBrowsers(),
+                    systems = getOperatingSystems(),
+                    devices = getDevices(),
+                    platformParams = Boot.loadPlatformsParam();
+                
+                
+                _merge(_tags, browsers, systems, devices, platformParams, true);
+                _tags.phone = !!((_tags.iphone || _tags.ipod) || (!_tags.silk && (_tags.android && (_tags.android < 3 || isMobile))) || (_tags.blackberry && isMobile) || (_tags.windowsphone));
+                _tags.tablet = !!(!_tags.phone && (_tags.ipad || _tags.android || _tags.silk || _tags.rimtablet || (_tags.ie10 && /; Touch/.test(ua))));
+                _tags.touch = 
                 
                 isEventSupported('touchend') || 
                 
                 
                 navigator.maxTouchPoints || 
                 navigator.msMaxTouchPoints;
-                isDesktop = !isPhone && !isTablet;
-                isIE10 = uaTags['MSIE 10'];
-                isBlackberry = uaTags.Blackberry || uaTags.BB;
-                apply(_tags, Boot.loadPlatformsParam(), {
-                    phone: isPhone,
-                    tablet: isTablet,
-                    desktop: isDesktop,
-                    touch: touchSupported,
-                    ios: (uaTags.iPad || uaTags.iPhone || uaTags.iPod),
-                    android: uaTags.Android || uaTags.Silk,
-                    blackberry: isBlackberry,
-                    safari: uaTags.Safari && !isBlackberry,
-                    chrome: uaTags.Chrome,
-                    ie10: isIE10,
-                    windows: isIE10 || uaTags.Trident,
-                    tizen: uaTags.Tizen,
-                    firefox: uaTags.Firefox
-                });
+                _tags.desktop = !_tags.phone && !_tags.tablet;
+                _tags.cordova = _tags.phonegap = !!(window.PhoneGap || window.Cordova || window.cordova);
+                _tags.webview = /(iPhone|iPod|iPad).*AppleWebKit(?!.*Safari)(?!.*FBAN)/i.test(ua);
+                _tags.androidstock = (_tags.android <= 4.3) && (_tags.safari || _tags.silk);
+                
+                _merge(_tags, platformParams, true);
             },
             
             loadPlatformsParam: function() {
@@ -11683,33 +11955,39 @@ Ext.Boot = Ext.Boot || (function(emptyFn) {
                     params[tmpArray[0]] = tmpArray[1];
                 }
                 if (params.platformTags) {
-                    tmpArray = params.platform.split(/\W/);
+                    tmpArray = params.platformTags.split(",");
                     for (tmplen = tmpArray.length , i = 0; i < tmplen; i++) {
                         platform = tmpArray[i].split(":");
                         name = platform[0];
+                        enabled = true;
                         if (platform.length > 1) {
                             enabled = platform[1];
                             if (enabled === 'false' || enabled === '0') {
                                 enabled = false;
-                            } else {
-                                enabled = true;
                             }
                         }
                         platforms[name] = enabled;
                     }
                 }
-                return platform;
+                return platforms;
             },
-            filterPlatform: function(platform) {
-                platform = [].concat(platform);
-                var len, p, tag;
-                for (len = platform.length , p = 0; p < len; p++) {
-                    tag = platform[p];
-                    if (_tags.hasOwnProperty(tag)) {
-                        return !!_tags[tag];
-                    }
+            filterPlatform: function(platform, excludes) {
+                platform = _emptyArray.concat(platform || _emptyArray);
+                excludes = _emptyArray.concat(excludes || _emptyArray);
+                var plen = platform.length,
+                    elen = excludes.length,
+                    include = (!plen && elen),
+                    
+                    i, tag;
+                for (i = 0; i < plen && !include; i++) {
+                    tag = platform[i];
+                    include = !!_tags[tag];
                 }
-                return false;
+                for (i = 0; i < elen && include; i++) {
+                    tag = excludes[i];
+                    include = !_tags[tag];
+                }
+                return include;
             },
             init: function() {
                 var scriptEls = doc.getElementsByTagName('script'),
@@ -11814,6 +12092,14 @@ Ext.Boot = Ext.Boot || (function(emptyFn) {
                     entry = Boot.create(url, key, cfg);
                 }
                 return entry;
+            },
+            registerContent: function(url, type, content) {
+                var cfg = {
+                        content: content,
+                        loaded: true,
+                        css: type === 'css'
+                    };
+                return Boot.getEntry(url, cfg);
             },
             processRequest: function(request, sync) {
                 request.loadEntries(sync);
@@ -12245,19 +12531,20 @@ Ext.Boot = Ext.Boot || (function(emptyFn) {
             loader = manifest && manifest.loader,
             cache = (cfg.cache !== undefined) ? cfg.cache : (loader && loader.cache),
             buster, busterParam;
-        if (cache === undefined) {
-            cache = !Boot.config.disableCaching;
+        if (Boot.config.disableCaching) {
+            if (cache === undefined) {
+                cache = !Boot.config.disableCaching;
+            }
+            if (cache === false) {
+                buster = +new Date();
+            } else if (cache !== true) {
+                buster = cache;
+            }
+            if (buster) {
+                busterParam = (loader && loader.cacheParam) || Boot.config.disableCachingParam;
+                buster = busterParam + "=" + buster;
+            }
         }
-        if (cache === false) {
-            buster = +new Date();
-        } else if (cache !== true) {
-            buster = cache;
-        }
-        if (buster) {
-            busterParam = (loader && loader.cacheParam) || Boot.config.disableCachingParam;
-            buster = busterParam + "=" + buster;
-        }
-        
         _apply(cfg, {
             charset: charset,
             buster: buster,
@@ -12282,7 +12569,12 @@ Ext.Boot = Ext.Boot || (function(emptyFn) {
         isCss: function() {
             var me = this;
             if (me.css === undefined) {
-                me.css = me.url && cssRe.test(me.url);
+                if (me.url) {
+                    var assetConfig = Boot.assetConfig[me.url];
+                    me.css = assetConfig ? assetConfig.type === "css" : cssRe.test(me.url);
+                } else {
+                    me.css = false;
+                }
             }
             return this.css;
         },
@@ -12306,6 +12598,9 @@ Ext.Boot = Ext.Boot || (function(emptyFn) {
                     el = doc.createElement(tag);
                     el.type = 'text/javascript';
                     me.prop = 'src';
+                    if (me.charset) {
+                        el.charset = me.charset;
+                    }
                     if (Boot.hasAsync) {
                         el.async = false;
                     }
@@ -12426,21 +12721,14 @@ Ext.Boot = Ext.Boot || (function(emptyFn) {
                     me.loaded = me.evaluated = me.done = true;
                     me.notifyRequests();
                 };
-            if (me.isCss()) {
-                me.createLoadElement();
-                me.evaluateLoadElement();
+            me.createLoadElement(function() {
                 complete();
-            } else {
-                me.createLoadElement(function() {
-                    complete();
-                });
-                me.evaluateLoadElement();
-                
-                
-                
-                return false;
-            }
-            return true;
+            });
+            me.evaluateLoadElement();
+            
+            
+            
+            return false;
         },
         loadElement: function() {
             var me = this,
@@ -12448,14 +12736,10 @@ Ext.Boot = Ext.Boot || (function(emptyFn) {
                     me.loaded = me.evaluated = me.done = true;
                     me.notifyRequests();
                 };
-            if (me.isCss()) {
-                return me.loadCrossDomain();
-            } else {
-                me.createLoadElement(function() {
-                    complete();
-                });
-                me.evaluateLoadElement();
-            }
+            me.createLoadElement(function() {
+                complete();
+            });
+            me.evaluateLoadElement();
             return true;
         },
         loadSync: function() {
@@ -12498,7 +12782,8 @@ Ext.Boot = Ext.Boot || (function(emptyFn) {
                             me.loaded = true;
                             me.notifyRequests();
                         });
-                    } else if (Boot.useElements) {
+                    } else if (Boot.useElements && 
+                    !(me.isCss() && _environment.phantom)) {
                         return me.loadElement();
                     } else 
                     
@@ -12653,6 +12938,43 @@ if (!Function.prototype.bind) {
 }
 
 
+Ext.setResourcePath = function(poolName, path) {
+    var manifest = Ext.manifest || (Ext.manifest = {}),
+        paths = manifest.resources || (manifest.resources = {});
+    if (manifest) {
+        if (typeof poolName !== 'string') {
+            Ext.apply(paths, poolName);
+        } else {
+            paths[poolName] = path;
+        }
+        manifest.resources = paths;
+    }
+};
+Ext.getResourcePath = function(path, poolName, packageName) {
+    if (typeof path !== 'string') {
+        poolName = path.pool;
+        packageName = path.packageName;
+        path = path.path;
+    }
+    var manifest = Ext.manifest,
+        paths = manifest && manifest.resources,
+        poolPath = paths[poolName],
+        output = [];
+    if (poolPath == null) {
+        poolPath = paths.path;
+        if (poolPath == null) {
+            poolPath = 'resources';
+        }
+    }
+    if (poolPath) {
+        output.push(poolPath);
+    }
+    if (packageName) {
+        output.push(packageName);
+    }
+    output.push(path);
+    return output.join('/');
+};
 
 
 
@@ -12723,6 +13045,26 @@ Ext._startTime = Date.now ? Date.now() : (+new Date());
         }
         return object;
     };
+    
+    function addInstanceOverrides(target, owner, overrides) {
+        var name, value;
+        for (name in overrides) {
+            if (overrides.hasOwnProperty(name)) {
+                value = overrides[name];
+                if (typeof value === 'function') {
+                    if (owner.$className) {
+                        value.name = owner.$className + '#' + name;
+                    }
+                    value.$name = name;
+                    value.$owner = owner;
+                    value.$previous = target.hasOwnProperty(name) ? target[name] : 
+                    callOverrideParent;
+                }
+                
+                target[name] = value;
+            }
+        }
+    }
     Ext.buildSettings = Ext.apply({
         baseCSSPrefix: 'x-'
     }, Ext.buildSettings || {});
@@ -12733,7 +13075,6 @@ Ext._startTime = Date.now ? Date.now() : (+new Date());
         idPrefix: 'ext-',
         
         isSecure: /^https/i.test(window.location.protocol),
-        
         enableGarbageCollector: false,
         
         enableListenerCollection: true,
@@ -12794,7 +13135,7 @@ Ext._startTime = Date.now ? Date.now() : (+new Date());
         $eventNameMap: {},
         
         
-        $vendorEventRe: /^(Moz.+|MS.+|webkit.+)/,
+        $vendorEventRe: /^(DOMMouse|Moz.+|MS.+|webkit.+)/,
         
         
         
@@ -12857,25 +13198,16 @@ Ext._startTime = Date.now ? Date.now() : (+new Date());
                 Ext.apply(target.prototype, overrides);
             } else {
                 var owner = target.self,
-                    name, value;
+                    privates;
                 if (owner && owner.$isClass) {
                     
-                    for (name in overrides) {
-                        if (overrides.hasOwnProperty(name)) {
-                            value = overrides[name];
-                            if (typeof value === 'function') {
-                                if (owner.$className) {
-                                    value.name = owner.$className + '#' + name;
-                                }
-                                value.$name = name;
-                                value.$owner = owner;
-                                value.$previous = target.hasOwnProperty(name) ? target[name] : 
-                                callOverrideParent;
-                            }
-                            
-                            target[name] = value;
-                        }
+                    privates = overrides.privates;
+                    if (privates) {
+                        overrides = Ext.apply({}, overrides);
+                        delete overrides.privates;
+                        addInstanceOverrides(target, owner, privates);
                     }
+                    addInstanceOverrides(target, owner, overrides);
                 } else {
                     Ext.apply(target, overrides);
                 }
@@ -15305,6 +15637,10 @@ Ext.Date = (function() {
         },
         
         clearTime: function(date, clone) {
+            
+            if (isNaN(date.getTime())) {
+                return date;
+            }
             if (clone) {
                 return utilDate.clearTime(utilDate.clone(date));
             }
@@ -16598,11 +16934,13 @@ Ext.apply(Ext, {
                 case 'number':
                     return Number(from);
                 case 'boolean':
-                    return isString && (!from || from === 'false') ? false : Boolean(from);
+                    
+                    
+                    return isString && (!from || from === 'false' || from === '0') ? false : Boolean(from);
                 case 'null':
-                    return isString && (!from || from === 'null') ? null : from;
+                    return isString && (!from || from === 'null') ? null : false;
                 case 'undefined':
-                    return isString && (!from || from === 'undefined') ? undefined : from;
+                    return isString && (!from || from === 'undefined') ? undefined : false;
                 case 'date':
                     return isString && isNaN(from) ? Ext.Date.parse(from, Ext.Date.defaultFormat) : Date(Number(from));
             }
@@ -16619,6 +16957,24 @@ Ext.apply(Ext, {
             n = names ? names.length : 0; i < n; i++) {
             name = names[i];
             if (usePrototypeKeys || source.hasOwnProperty(name)) {
+                dest[name] = source[name];
+            }
+        }
+        return dest;
+    },
+    
+    copy: function(dest, source, names, usePrototypeKeys) {
+        if (typeof names === 'string') {
+            names = names.split(Ext.propertyNameSplitRe);
+        }
+        for (var name,
+            i = 0,
+            n = names ? names.length : 0; i < n; i++) {
+            name = names[i];
+            
+            
+            
+            if (source.hasOwnProperty(name) || (usePrototypeKeys && name in source)) {
                 dest[name] = source[name];
             }
         }
@@ -16641,11 +16997,28 @@ Ext.apply(Ext, {
         return destination;
     },
     
+    copyIf: function(destination, source, names) {
+        if (typeof names === 'string') {
+            names = names.split(Ext.propertyNameSplitRe);
+        }
+        for (var name,
+            i = 0,
+            n = names ? names.length : 0; i < n; i++) {
+            name = names[i];
+            
+            if (!(name in destination) && (name in source)) {
+                destination[name] = source[name];
+            }
+        }
+        return destination;
+    },
+    
     extend: (function() {
         
         var objectConstructor = Object.prototype.constructor,
             inlineOverrides = function(o) {
-                for (var m in o) {
+                var m;
+                for (m in o) {
                     if (!o.hasOwnProperty(m)) {
                         
                         continue;
@@ -17740,7 +18113,7 @@ Ext.Config.prototype = {
                 values = me.values,
                 remaining = 0,
                 firstInstance = !initList,
-                cachedInitList, cfg, getter, needsInit, i, internalName, ln, names, name, value, isCached, valuesKey;
+                cachedInitList, cfg, getter, needsInit, i, internalName, ln, names, name, value, isCached, valuesKey, field;
             values = me.needsFork ? ExtObject.fork(values) : ExtObject.chain(values);
             if (firstInstance) {
                 
@@ -17870,9 +18243,10 @@ Ext.Config.prototype = {
                     value = instanceConfig[name];
                     cfg = configs[name];
                     if (!cfg) {
-                        if (instance.$configStrict && typeof instance.self.prototype[name] === 'function') {
+                        field = instance.self.prototype[name];
+                        if (instance.$configStrict && (typeof field === 'function') && !field.$nullFn) {
                             
-                            Ext.Error.raise("Cannot override method " + name + " on " + instance.$className + " instance.");
+                            Ext.Error.raise('Cannot override method ' + name + ' on ' + instance.$className + ' instance.');
                         }
                         
                         
@@ -17988,11 +18362,10 @@ Ext.Config.prototype = {
         reconfigure: function(instance, instanceConfig, options) {
             var currentConfig = instance.config,
                 configList = [],
-                strict = instance.$configStrict,
+                strict = instance.$configStrict && !(options && options.strict === false),
                 configs = this.configs,
                 defaults = options && options.defaults,
-                applyProps = options && options.strict === false,
-                cfg, getter, i, len, name, names, setter;
+                cfg, getter, i, len, name, names, prop;
             for (name in instanceConfig) {
                 if (defaults && instance.hasOwnProperty(name)) {
                     
@@ -18004,12 +18377,26 @@ Ext.Config.prototype = {
                     
                     
                     instance[cfg.names.get] = cfg.initGetter || cfg.getInitGetter();
-                } else if (strict) {
-                    if (name !== 'type') {
-                        Ext.log.error('No such config "' + name + '" for class ' + instance.$className);
-                    }
+                } else {
                     
-                    continue;
+                    
+                    
+                    
+                    
+                    
+                    
+                    prop = instance.self.prototype[name];
+                    if (strict) {
+                        if ((typeof prop === 'function') && !prop.$nullFn) {
+                            Ext.Error.raise("Cannot override method " + name + " on " + instance.$className + " instance.");
+                            
+                            continue;
+                        } else {
+                            if (name !== 'type') {
+                                Ext.log.warn('No such config "' + name + '" for class ' + instance.$className);
+                            }
+                        }
+                    }
                 }
                 configList.push(name);
             }
@@ -18032,15 +18419,9 @@ Ext.Config.prototype = {
                     names = cfg.names;
                     if (instance[names.set]) {
                         instance[names.set](instanceConfig[name]);
-                    } else if (applyProps) {
-                        if (instance.$configStrict && typeof instance.self.prototype[name] === 'function') {
-                            
-                            Ext.Error.raise("Cannot override method " + name + " on " + instance.$className + " instance.");
-                        }
+                    } else {
                         
                         instance[name] = instanceConfig[name];
-                    } else if (name !== 'type') {
-                        Ext.Error.raise('Config "' + name + '" has no setter on class ' + instance.$className);
                     }
                 }
             }
@@ -20418,6 +20799,11 @@ Ext.ClassManager = (function(Class, alias, arraySlice, arrayFrom, global) {
         i, prefix, mode, name, maxIEVersion;
     
     me.userAgent = userAgent;
+    
+    
+    if (/Edge\//.test(userAgent)) {
+        browserMatch = userAgent.match(/(Edge\/)([\w.]+)/);
+    }
     if (browserMatch) {
         browserName = browserNames[Ext.Object.getKey(browserPrefixes, browserMatch[1])];
         if (browserName === 'Safari' && /^Opera/.test(userAgent)) {
@@ -20559,12 +20945,6 @@ Ext.ClassManager = (function(Class, alias, arraySlice, arrayFrom, global) {
         isWebView = true;
         this.setFlag('PhoneGap');
         this.setFlag('Cordova');
-    } else if (!!window.isNK) {
-        isWebView = true;
-        this.setFlag('Sencha');
-    }
-    if (/(Glass)/i.test(userAgent)) {
-        this.setFlag('GoogleGlass');
     }
     
     if (/(iPhone|iPod|iPad).*AppleWebKit(?!.*Safari)(?!.*FBAN)/i.test(userAgent)) {
@@ -20588,6 +20968,7 @@ Ext.env.Browser.prototype = {
         chrome: 'Chrome',
         opera: 'Opera',
         dolfin: 'Dolfin',
+        edge: 'Edge',
         webosbrowser: 'webOSBrowser',
         chromeMobile: 'ChromeMobile',
         chromeiOS: 'ChromeiOS',
@@ -20609,6 +20990,7 @@ Ext.env.Browser.prototype = {
     },
     browserPrefixes: {
         ie: 'MSIE ',
+        edge: 'Edge/',
         firefox: 'Firefox/',
         chrome: 'Chrome/',
         safari: 'Version/',
@@ -21051,11 +21433,10 @@ Ext.feature = {
             
             name: 'touchScroll',
             fn: function() {
-                var supports = Ext.supports,
-                    touchScroll = 0;
-                if (navigator.msMaxTouchPoints || (Ext.isWebKit && supports.TouchEvents && Ext.os.is.Desktop)) {
+                var touchScroll = 0;
+                if (Ext.os.is.Desktop && (navigator.maxTouchPoints || navigator.msMaxTouchPoints)) {
                     touchScroll = 1;
-                } else if (supports.Touch) {
+                } else if (Ext.supports.Touch) {
                     touchScroll = 2;
                 }
                 return touchScroll;
@@ -21074,7 +21455,13 @@ Ext.feature = {
                 
                 
                 
-                return (Ext.supports.TouchEvents && maxTouchPoints !== 1) || maxTouchPoints > 1;
+                
+                
+                if (Ext.browser.is.Chrome && Ext.browser.version.isLessThanOrEqual(39)) {
+                    return (Ext.supports.TouchEvents && maxTouchPoints !== 1) || maxTouchPoints > 1;
+                } else {
+                    return Ext.supports.TouchEvents || maxTouchPoints > 0;
+                }
             }
         },
         {
@@ -21444,9 +21831,14 @@ Ext.feature = {
             fn: function(doc) {
                 var body = doc.body,
                     supports = false,
-                    el = this.getTestElement(),
+                    el = doc.createElement('div'),
                     style = el.style;
                 if (el.getBoundingClientRect) {
+                    
+                    
+                    
+                    style.position = 'absolute';
+                    style.top = "0";
                     style.WebkitTransform = style.MozTransform = style.msTransform = style.OTransform = style.transform = 'rotate(90deg)';
                     style.width = '100px';
                     style.height = '30px';
@@ -23194,15 +23586,23 @@ Ext.define('Ext.overrides.event.publisher.Dom', {
                 if (dom.attachEvent) {
                     dom.attachEvent('on' + eventName, boundFn);
                 } else {
-                    me.callParent(arguments);
+                    me.callParent([
+                        eventName,
+                        element,
+                        capture
+                    ]);
                 }
             },
-            removeDirectListener: function(eventName, element) {
+            removeDirectListener: function(eventName, element, capture) {
                 var dom = element.dom;
                 if (dom.detachEvent) {
                     dom.detachEvent('on' + eventName, this.directBoundListeners[eventName][dom.id]);
                 } else {
-                    this.callParent(arguments);
+                    this.callParent([
+                        eventName,
+                        element,
+                        capture
+                    ]);
                 }
             },
             doDelegatedEvent: function(e, invokeAfter) {
@@ -23221,6 +23621,12 @@ Ext.define('Ext.overrides.event.publisher.Dom', {
         
         
         Ext.apply(prototype.directEvents, prototype.captureEvents);
+        
+        Ext.apply(prototype.directEvents, {
+            change: 1,
+            input: 1,
+            paste: 1
+        });
         prototype.captureEvents = {};
     }
 });
@@ -24419,7 +24825,7 @@ Ext.define('Ext.overrides.dom.Element', (function() {
             }
         },
         
-        setHtml: function(html, loadScripts, callback) {
+        setHtml: function(html, loadScripts, callback, scope) {
             var me = this,
                 id, dom, interval;
             if (!me.dom) {
@@ -24454,11 +24860,14 @@ Ext.define('Ext.overrides.dom.Element', (function() {
                         }
                         hd.appendChild(s);
                     } else if (match[2] && match[2].length > 0) {
-                        (WIN.execScript || WIN.eval)(match[2]);
+                        if (scope) {
+                            Ext.functionFactory(match[2]).call(scope);
+                        } else {
+                            Ext.globalEval(match[2]);
+                        }
                     }
                 }
-                
-                Ext.callback(callback, me);
+                Ext.callback(callback, scope || me);
             }, 20);
             dom.innerHTML = html.replace(replaceScriptTagRe, '');
             return me;
@@ -24859,10 +25268,12 @@ Ext.define('Ext.overrides.dom.Element', (function() {
                     var el = Ext.fly(dom, '_anim');
                     el.setStyle(originalStyles);
                     if (slideOut) {
-                        if (obj.useDisplay) {
-                            el.setDisplayed(false);
-                        } else {
-                            el.hide();
+                        if (!obj.preventHide) {
+                            if (obj.useDisplay) {
+                                el.setDisplayed(false);
+                            } else {
+                                el.hide();
+                            }
                         }
                     }
                     if (wrap.dom) {
@@ -26288,7 +26699,7 @@ Ext.define('Ext.overrides.Widget', {
             me.invalidateInheritedState();
         }
         if (me.reference) {
-            me.fixReference();
+            Ext.ComponentManager.markReferencesDirty();
         }
     },
     onRemoved: function(destroying) {
@@ -26402,19 +26813,35 @@ Ext.application = function(config) {
         config);
         
         
-        Ext.Loader.setPath(config.name, config.appFolder || 'app');
-        if (paths) {
-            for (ns in paths) {
-                if (paths.hasOwnProperty(ns)) {
-                    Ext.Loader.setPath(ns, paths[ns]);
-                }
-            }
-        }
+        Ext.app.setupPaths(config.name, config.appFolder, config.paths);
         config['paths processed'] = true;
         
         Ext.define(config.name + ".$application", config, function() {
             createApp(this);
         });
+    }
+};
+(Ext.app || (Ext.app = {})).setupPaths = function(appName, appFolder, paths) {
+    var manifestPaths = Ext.manifest,
+        ns;
+    
+    if (appName && appFolder !== null) {
+        manifestPaths = manifestPaths && manifestPaths.paths;
+        
+        
+        
+        
+        
+        if (!manifestPaths || appFolder !== undefined) {
+            Ext.Loader.setPath(appName, (appFolder === undefined) ? 'app' : appFolder);
+        }
+    }
+    if (paths) {
+        for (ns in paths) {
+            if (paths.hasOwnProperty(ns)) {
+                Ext.Loader.setPath(ns, paths[ns]);
+            }
+        }
     }
 };
 

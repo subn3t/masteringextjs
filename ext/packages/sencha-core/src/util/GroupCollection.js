@@ -187,12 +187,14 @@ Ext.define('Ext.util.GroupCollection', {
             groupKey = grouper.getGroupString(item),
             removeGroups = 0,
             index = -1,
+            findKey = itemKey,
             addGroups, group, oldGroup, oldGroupKey,
             firstIndex;
 
-        if (oldKey) {
+        if (oldKey || oldKey === 0) {
             oldGroupKey = itemGroupKeys[oldKey];
             delete itemGroupKeys[oldKey];
+            findKey = oldKey;
         } else {
             oldGroupKey = itemGroupKeys[itemKey];
         }
@@ -206,7 +208,7 @@ Ext.define('Ext.util.GroupCollection', {
 
         // This checks whether or not the item is in the collection.
         // Short optimization instead of calling contains since we already have the key here.
-        if (group.get(itemKey) !== item) {
+        if (group.get(findKey) !== item) {
             if (group.getCount() > 0 && source.getSorters().getCount() === 0) {
                 // We have items in the group & it's not sorted, so find the
                 // correct position in the group to insert.
@@ -223,7 +225,7 @@ Ext.define('Ext.util.GroupCollection', {
                 group.insert(index, item);
             }
         } else {
-            group.itemChanged(item);
+            group.itemChanged(item, null, oldKey);
         }
 
         if (groupKey !== oldGroupKey && (oldGroupKey === 0 || oldGroupKey)) {

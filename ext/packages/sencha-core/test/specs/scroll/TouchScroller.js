@@ -2057,5 +2057,72 @@ describe('Ext.scroll.TouchScroller', function() {
                 expect(scrollEnded).toBe(true);
             });
         });
+        
+        it('should fire scrollstart and scrollend', function() {
+            var scrollStartFired = 0,
+                scrollEndFired = 0;
+
+            makeScroller();
+            scroller.on({
+                scrollstart: function() {
+                    scrollStartFired++;
+                },
+                scrollend: function() {
+                    scrollEndFired++;
+                }
+            });
+            start({ x: 50, y: 50 });
+            move({ x: 50, y: 30 });
+            end({ x: 50, y: 30 });
+
+            // Wait for scroll to finish. 
+            waitsFor(function() {
+                return scrollStartFired === 1 && scrollEndFired === 1;
+            });
+            
+            // We cannot wait for anything, we're waiting for any erroneous
+            // events to fire.
+            waits(100);
+
+            // No more events should fire
+            runs(function() {
+                expect(scrollStartFired).toBe(1);
+                expect(scrollEndFired).toBe(1);
+            });
+        });
+
+        it('should fire scrollstart and scrollend when animated and scroll is terminated using a tap gesture', function() {
+            var scrollStartFired = 0,
+                scrollEndFired = 0;
+
+            makeScroller();
+            scroller.on({
+                scrollstart: function() {
+                    scrollStartFired++;
+                },
+                scrollend: function() {
+                    scrollEndFired++;
+                }
+            });
+            start({ x: 50, y: 50 });
+            move({ x: 50, y: 30 });
+            end({ x: 50, y: 30 });
+
+            // Wait for scroll animation to begin.
+            // We want to interrupt a running animation.
+            waits(10);
+            runs(function() {
+                // Scroll should have started but not ended
+                expect(scrollStartFired).toBe(1);
+                expect(scrollEndFired).toBe(0);
+
+                // tap to stop the scroll
+                jasmine.fireMouseEvent(scroller.getElement(), 'mousedown');
+                jasmine.fireMouseEvent(scroller.getElement(), 'mouseup');
+
+                // Scroll should have stopped
+                expect(scrollEndFired).toBe(1);
+            });
+        });
     });
 });

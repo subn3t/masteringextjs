@@ -155,16 +155,6 @@ Ext.define('Ext.selection.Model', {
         return selected;
     },
 
-    // On bind of a new store, we need to refresh against what is in the new store.
-    onBindStore: function(store, initial) {
-        var me = this;
-
-        me.mixins.storeholder.onBindStore.call(me, [store, initial]);
-        if (store && !me.preventRefresh) {
-            me.refresh();
-        }
-    },
-
     getStoreListeners: function() {
         var me = this;
         return {
@@ -181,11 +171,11 @@ Ext.define('Ext.selection.Model', {
             pageremove: me.onPageRemove
         };
     },
-    
+
     suspendChanges: function(){
         ++this.suspendChange;
     },
-    
+
     resumeChanges: function(){
         if (this.suspendChange) {
             --this.suspendChange;
@@ -302,7 +292,10 @@ Ext.define('Ext.selection.Model', {
      * @return {Boolean} `true` if the selection should not proceed.
      */
     vetoSelection: function(e) {
-        if (e.type !== 'keydown' && e.button !== 0) {
+        if (e.stopSelection) {
+            return true;
+        }
+        else if (e.type !== 'keydown' && e.button !== 0) {
             if (this.ignoreRightMouseSelection || this.isSelected(e.record)) {
                 return true;
             }
@@ -337,7 +330,8 @@ Ext.define('Ext.selection.Model', {
             fromIdx = e.previousRecordIndex,
             key = keyEvent.getCharCode(),
             isSpace = key === keyEvent.SPACE,
-            direction = key === keyEvent.UP || key === keyEvent.PAGE_UP ? 'up' : (key === keyEvent.DOWN || key === keyEvent.DOWN ? 'down' : null);
+            changedRec = e.record !== e.previousRecord,
+            direction = key === keyEvent.UP || key === keyEvent.PAGE_UP || key === keyEvent.HOME || (key === keyEvent.LEFT && changedRec) ? 'up' : (key === keyEvent.DOWN || key === keyEvent.PAGE_DOWN || key === keyEvent.END || (key === keyEvent.RIGHT && changedRec) ? 'down' : null);
 
         switch (me.selectionMode) {
             case 'MULTI':
@@ -407,23 +401,15 @@ Ext.define('Ext.selection.Model', {
                 }
                 break;
             case 'SINGLE':
-                // Arrow movement
-                if (direction) {
-                    // CTRL-navigation does not select
-                    if (!ctrlKey) {
+                // CTRL-navigation does not select
+                if (!ctrlKey) {
+                    // Arrow movement
+                    if (direction) {
                         me.doSelect(record, false);
                     }
-                }
-                // Space or click
-                else {
-                    if (isSelected) {
-                        // Deselect if we're allowed
-                        if (me.allowDeselect) {
-                            me.doDeselect(record);
-                        }
-                    } else {
-                        // select the record and do NOT maintain existing selections
-                        me.doSelect(record);
+                    // Space or click
+                    else if (isSpace || !key) {
+                        me.selectWithEvent(record, keyEvent);
                     }
                 }
         }
@@ -575,20 +561,28 @@ Ext.define('Ext.selection.Model', {
         var me = this,
             record;
 
-        if (me.locked) {
+        if (me.locked || records == null) {
             return;
         }
+
         if (typeof records === "number") {
             record = me.store.getAt(records);
-            // No matching record, jump out
+            // No matching record, jump out.
             if (!record) {
                 return;
             }
+
             records = [record];
         }
-        if (me.selectionMode === "SINGLE" && records) {
-            record = records.length ? records[0] : records;
-            me.doSingleSelect(record, suppressEvent);
+
+        if (me.selectionMode === "SINGLE") {
+            if (records.isModel) {
+                records = [records];
+            }
+
+            if (records.length) {
+                me.doSingleSelect(records[0], suppressEvent);
+            }
         } else {
             me.doMultiSelect(records, keepExisting, suppressEvent);
         }

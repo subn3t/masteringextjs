@@ -102,7 +102,8 @@ Ext.define('Ext.form.field.Checkbox', {
          * rendered and has a boxLabel configured.
          */
         'boxLabelEl',
-        'innerWrapEl'
+        'innerWrapEl',
+        'displayEl'
     ],
 
     // note: {id} here is really {inputId}, but {cmpId} is available
@@ -123,6 +124,8 @@ Ext.define('Ext.form.field.Checkbox', {
                 '<tpl if="disabled"> disabled="disabled"</tpl>',
                 '<tpl if="fieldStyle"> style="{fieldStyle}"</tpl>',
                 ' class="{fieldCls} {typeCls} {typeCls}-{ui} {inputCls} {inputCls}-{ui} {childElCls} {afterLabelCls}" autocomplete="off" hidefocus="true" />',
+            '<span id="{cmpId}-displayEl" data-ref="displayEl" class="{fieldCls} {typeCls} ',
+                '{typeCls}-{ui} {inputCls} {inputCls}-{ui} {childElCls} {afterLabelCls}"></span>',
             '<tpl if="!labelAlignedBefore">',
                 '{beforeBoxLabelTpl}',
                 '<label id="{cmpId}-boxLabelEl" data-ref="boxLabelEl" {boxLabelAttrTpl} class="{boxLabelCls} ',
@@ -185,11 +188,10 @@ Ext.define('Ext.form.field.Checkbox', {
          */
         'boxLabelAttrTpl',
 
-        // inherited
         'inputAttrTpl'
     ],
 
-    /*
+    /**
      * @property {Boolean} isCheckbox
      * `true` in this class to identify an object as an instantiated Checkbox, or subclass thereof.
      */
@@ -359,6 +361,13 @@ Ext.define('Ext.form.field.Checkbox', {
         me.mon(me.inputEl, 'click', me.onBoxClick, me, {
             translate: false
         });
+
+        me.displayEl.on({
+            click: 'onBoxClick',
+            mousedown: '_onDisplayElMouseDown',
+            scope: me
+        });
+
     },
     
     /**
@@ -429,10 +438,16 @@ Ext.define('Ext.form.field.Checkbox', {
     setRawValue: function(value) {
         var me = this,
             inputEl = me.inputEl,
+            displayEl = me.displayEl,
             checked = me.isChecked(value, me.inputValue);
 
         if (inputEl) {
             me[checked ? 'addCls' : 'removeCls'](me.checkedCls);
+        }
+
+        // IE8 has a bug with font icons and pseudo-elements, see below in onFocus override
+        if (Ext.isIE8 && displayEl && checked !== me.lastValue) {
+            displayEl.repaint();
         }
 
         me.checked = me.rawValue = checked;
@@ -526,13 +541,11 @@ Ext.define('Ext.form.field.Checkbox', {
         me.callParent();
     },
 
-    // inherit docs
     beforeDestroy: function(){
         this.callParent();
         this.getManager().removeAtKey(this.id);
     },
 
-    // inherit docs
     getManager: function() {
         return Ext.form.CheckboxManager;
     },
@@ -568,5 +581,20 @@ Ext.define('Ext.form.field.Checkbox', {
             }
         }
         return me.formId;
+    },
+
+    getFocusClsEl: function() {
+        return this.displayEl;
+    },
+
+    privates: {
+        _onDisplayElMouseDown: function(e) {
+            // The preventDefault here is due to an issue in iOS where the
+            // inputEl still receives tap events, which means we check, then
+            // immediately uncheck. Don't need to conditionalize this, other
+            // browsers don't receive the event on the checkbox
+            e.preventDefault();
+            this.inputEl.focus(1);
+        }
     }
 });

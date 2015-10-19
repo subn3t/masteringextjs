@@ -298,15 +298,6 @@ Ext.define('Ext.draw.engine.Canvas', {
         this.contexts.push(ctx);
     },
 
-    // Have to create canvas element here, instead of in the initElement,
-    // because otherwise the created canvas will be cached along with the
-    // surface's markup and used as a template for future surface
-    // instances.
-    afterCachedConfig: function () {
-        this.callParent();
-        this.createCanvas();
-    },
-
     updateHighPrecision: function (highPrecision) {
         var contexts = this.contexts,
             ln = contexts.length,

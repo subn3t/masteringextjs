@@ -417,10 +417,62 @@ describe("Ext.data.schema.ManyToOne", function() {
             Ext.undefine('spec.Node');
         });
 
+        describe("complete", function() {
+            it("should mark the store complete if there are records", function() {
+                definePost();
+                var store = new Ext.data.Store({
+                    model: Thread
+                });
+
+                store.loadRawData([{
+                    id: 1,
+                    posts: [{
+                        id: 101,
+                        content: 'Foo'
+                    }, {
+                        id: 102,
+                        content: 'Bar'
+                    }]
+                }]);
+
+                expect(store.first().posts().complete).toBe(true);
+            });
+
+            it("should mark the store complete if a root exists and there are no records", function() {
+                definePost();
+                var store = new Ext.data.Store({
+                    model: Thread
+                });
+
+                store.loadRawData([{
+                    id: 1,
+                    posts: []
+                }]);
+
+                expect(store.first().posts().complete).toBe(true);
+            });
+
+            it("should not mark the store complete if a root doesn't exist", function() {
+                definePost();
+                var store = new Ext.data.Store({
+                    model: Thread
+                });
+
+                store.loadRawData([{
+                    id: 1
+                }]);
+
+                expect(store.first().posts().complete).toBe(false);
+            });
+        });
+
         describe("key inference", function() {
             describe("without session", function() {
-                it("should infer the key from the parent", function() {
+                beforeEach(function() {
                     definePost();
+                });
+                
+                it("should infer the key from the parent", function() {
                     var thread = Thread.load(1);
                     complete({
                         id: 1,
@@ -431,6 +483,27 @@ describe("Ext.data.schema.ManyToOne", function() {
                         }]
                     });
                     var posts = thread.posts();
+                    expect(posts.getCount()).toBe(2);
+                    expect(posts.getAt(0).getId()).toBe(101);
+                    expect(posts.getAt(0).get('threadId')).toBe(1);
+                    expect(posts.getAt(0).dirty).toBe(false);
+                    expect(posts.getAt(1).getId()).toBe(102);
+                    expect(posts.getAt(1).get('threadId')).toBe(1);
+                    expect(posts.getAt(1).dirty).toBe(false);
+                });
+
+                it("should infer the key when loading the store, not nested", function() {
+                    var thread = Thread.load(1);
+                    complete({
+                        id: 1
+                    });
+                    var posts = thread.posts();
+                    posts.load();
+                    complete([{
+                        id: 101
+                    }, {
+                        id: 102
+                    }]);
                     expect(posts.getCount()).toBe(2);
                     expect(posts.getAt(0).getId()).toBe(101);
                     expect(posts.getAt(0).get('threadId')).toBe(1);
@@ -488,6 +561,27 @@ describe("Ext.data.schema.ManyToOne", function() {
                         }]
                     });
                     var posts = thread.posts();
+                    expect(posts.getCount()).toBe(2);
+                    expect(posts.getAt(0).getId()).toBe(101);
+                    expect(posts.getAt(0).get('threadId')).toBe(1);
+                    expect(posts.getAt(0).dirty).toBe(false);
+                    expect(posts.getAt(1).getId()).toBe(102);
+                    expect(posts.getAt(1).get('threadId')).toBe(1);
+                    expect(posts.getAt(1).dirty).toBe(false);
+                });
+
+                it("should infer the key when loading the store, not nested", function() {
+                    var thread = Thread.load(1, null, session);
+                    complete({
+                        id: 1
+                    });
+                    var posts = thread.posts();
+                    posts.load();
+                    complete([{
+                        id: 101
+                    }, {
+                        id: 102
+                    }]);
                     expect(posts.getCount()).toBe(2);
                     expect(posts.getAt(0).getId()).toBe(101);
                     expect(posts.getAt(0).get('threadId')).toBe(1);

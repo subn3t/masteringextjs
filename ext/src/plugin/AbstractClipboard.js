@@ -158,6 +158,16 @@ Ext.define('Ext.plugin.AbstractClipboard', {
     },
 
     /**
+     * Returns the element target to listen to copy/paste.
+     *
+     * @param {Ext.Component} comp The component this plugin is initialized on.
+     * @return {Ext.dom.Element} The element target.
+     */
+    getTarget: function(comp) {
+        return comp.el;
+    },
+
+    /**
      * This method returns the selected data in text format.
      * @method getTextData
      * @param {String} format The name of the format (i.e., "text").
@@ -275,7 +285,7 @@ Ext.define('Ext.plugin.AbstractClipboard', {
             var me = this;
 
             me.keyMap = new Ext.util.KeyMap({
-                target: comp.el,
+                target: me.getTarget(comp),
 
                 binding: [{
                     ctrl: true, key: 'x', fn: me.onCut, scope: me
@@ -336,33 +346,29 @@ Ext.define('Ext.plugin.AbstractClipboard', {
          * @return {Ext.dom.Element}
          */
         getHiddenTextArea: function () {
-            var shared = this.shared,
-                ret = shared.textArea;
+            var shared = this.shared;
 
-            if (!ret) {
-                shared.textArea = ret = Ext.getBody().createChild({
-                    tag: 'textarea',
-                    tabIndex: -1, // don't tab through this fellow
-                    style: {
-                        position: 'absolute',
-                        top: '-1000px',
-                        width: '1px'
-                    }
-                });
-            }
-
-            return ret;
+            return shared.textArea || (shared.textArea = Ext.getBody().createChild({
+                tag: 'textarea',
+                tabIndex: -1, // don't tab through this fellow
+                style: {
+                    position: 'absolute',
+                    top: '-1000px',
+                    width: '1px',
+                    height: '1px'
+                }
+            }));
         },
 
-        onCopy: function (event) {
+        onCopy: function (keyCode, event) {
             this.doCutCopy(event, false);
         },
 
-        onCut: function (event) {
+        onCut: function (keyCode, event) {
             this.doCutCopy(event, true);
         },
 
-        onPaste: function () {
+        onPaste: function (keyCode, event) {
             var me = this,
                 sharedData = me.shared.data,
                 source = me.getSource(),

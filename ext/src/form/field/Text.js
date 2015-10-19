@@ -172,6 +172,15 @@ Ext.define('Ext.form.field.Text', {
          */
         triggers: undefined
     },
+    
+    renderConfig: {
+        /**
+         * @cfg {Boolean} editable
+         * false to prevent the user from typing text directly into the field; the field can
+         * only have its value set programmatically or via an action invoked by a trigger.
+         */
+        editable: true
+    },
 
     /**
      * @cfg {String} vtypeText
@@ -332,7 +341,7 @@ Ext.define('Ext.form.field.Text', {
      *         }
      *     });
      *
-     * @param {Object} validator.value The current field value
+     * @cfg {Object} validator.value The current field value
      * @return {Boolean/String} response
      *
      *  - True if the value is valid
@@ -393,13 +402,6 @@ Ext.define('Ext.form.field.Text', {
     ariaRole: 'textbox',
 
     /**
-     * @cfg {Boolean} editable
-     * false to prevent the user from typing text directly into the field; the field can
-     * only have its value set programmatically or via an action invoked by a trigger.
-     */
-    editable: true,
-
-    /**
      * @cfg {Boolean} repeatTriggerClick
      * `true` to attach a {@link Ext.util.ClickRepeater click repeater} to the trigger(s).
      * Click repeating behavior can also be configured on the individual {@link #triggers
@@ -411,6 +413,15 @@ Ext.define('Ext.form.field.Text', {
     /**
      * @cfg {Boolean} readOnly
      * `true` to prevent the user from changing the field, and hide all triggers.
+     */
+
+    /**
+     * @cfg stateEvents
+     * @inheritdoc Ext.state.Stateful#cfg-stateEvents
+     * @localdoc By default the following stateEvents are added:
+     * 
+     *  - {@link #event-resize} - _(added by Ext.Component)_
+     *  - {@link #event-change}
      */
 
     /**
@@ -440,6 +451,15 @@ Ext.define('Ext.form.field.Text', {
     mimicing: false,
     
     needArrowKeys: true,
+
+    // Listener block to preventDefault on the mouseup event..
+    // Observable rejects Ext.emptyFn as a no-op and the listener does not get added so the default does not get prevented.
+    squashMouseUp: {
+        mouseup: function(){},
+        single: true,
+        preventDefault: true,
+        translate: false
+    },
 
     childEls: [
         /**
@@ -664,13 +684,12 @@ Ext.define('Ext.form.field.Text', {
     },
 
     onMouseDown: function(){
-        var me = this;
-        if(!me.hasFocus) {
+        if (!this.hasFocus) {
             // On the next mouseup, prevent default.
             // 99% of the time, it will be the mouseup of the click into the field, and 
             // We will be preventing deselection of selected text: https://code.google.com/p/chromium/issues/detail?id=4505
             // Listener is on the doc in case the pointer moves out before user lets go.
-            Ext.getDoc().on('mouseup', Ext.emptyFn, me, { single: true, preventDefault: true });
+            Ext.getDoc().on(this.squashMouseUp);
         }
     },
 
@@ -776,18 +795,8 @@ Ext.define('Ext.form.field.Text', {
         this.invokeTriggers(hideTrigger ? 'hide' : 'show');
     },
 
-    /**
-     * Sets the editable state of this field.
-     * @param {Boolean} editable True to allow the user to directly edit the field text.
-     * If false is passed, the user will only be able to modify the field using the trigger.
-     */
-    setEditable: function(editable) {
-        var me = this;
-
-        me.editable = editable;
-        if (me.rendered) {
-            me.setReadOnlyAttr(!editable || me.readOnly);
-        }
+    updateEditable: function(editable, oldEditable) {
+        this.setReadOnlyAttr(!editable || this.readOnly);
     },
 
     /**
@@ -850,9 +859,18 @@ Ext.define('Ext.form.field.Text', {
     processRawValue: function(value) {
         var me = this,
             stripRe = me.stripCharsRe,
-            newValue;
+            mod, newValue;
 
         if (stripRe) {
+            // This will force all instances that match stripRe to be removed
+            // in case the user tries to add it with copy and paste EXTJS-18621
+            if (!stripRe.global) {
+                mod = 'g';
+                mod += (stripRe.ignoreCase) ? 'i' : '';
+                mod += (stripRe.multiline) ? 'm' : '';
+                stripRe = new RegExp(stripRe.source, mod);
+            }
+
             newValue = value.replace(stripRe, '');
             if (newValue !== value) {
                 me.setRawValue(newValue);

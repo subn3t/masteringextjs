@@ -1,4 +1,4 @@
-$image-search-path: '/home/teamcity/buildAgent/work/3cebfbfc7c03d949/sencha/ext/packages/ext-ux/build/classic/resources' !default;
+$image-search-path: '/home/teamcity/buildAgent/work/3de63363c66b85ec/sencha/ext/packages/ext-ux/build/classic/resources' !default;
 $theme-name:  'ext-ux' !default;
 $include-ext-abstractcomponent: false;
 $include-ext-abstractcontainer: false;
@@ -104,14 +104,6 @@ $include-ext-app-bind-rootstub: false;
 $include-ext-app-bind-stub: false;
 $include-ext-app-bind-template: false;
 $include-ext-app-bind-templatebinding: false;
-$include-ext-app-bindinspector-componentdetail: false;
-$include-ext-app-bindinspector-componentlist: false;
-$include-ext-app-bindinspector-container: false;
-$include-ext-app-bindinspector-environment: false;
-$include-ext-app-bindinspector-inspector: false;
-$include-ext-app-bindinspector-util: false;
-$include-ext-app-bindinspector-viewmodeldetail: false;
-$include-ext-app-bindinspector-noconflict-basemodel: false;
 $include-ext-app-domain-component: false;
 $include-ext-app-domain-controller: false;
 $include-ext-app-domain-direct: false;
@@ -655,6 +647,7 @@ $include-ext-rtl-grid-celleditor: false;
 $include-ext-rtl-grid-columnlayout: false;
 $include-ext-rtl-grid-navigationmodel: false;
 $include-ext-rtl-grid-column-column: false;
+$include-ext-rtl-grid-plugin-bufferedrenderer: false;
 $include-ext-rtl-grid-plugin-headerresizer: false;
 $include-ext-rtl-grid-plugin-rowediting: false;
 $include-ext-rtl-layout-contextitem: false;
@@ -678,6 +671,7 @@ $include-ext-rtl-scroll-indicator: false;
 $include-ext-rtl-scroll-scroller: false;
 $include-ext-rtl-scroll-touchscroller: false;
 $include-ext-rtl-slider-multi: false;
+$include-ext-rtl-slider-widget: false;
 $include-ext-rtl-tab-bar: false;
 $include-ext-rtl-tip-quicktipmanager: false;
 $include-ext-rtl-tree-column: false;
@@ -853,47 +847,86 @@ $include-ext-view-view: false;
 $include-ext-window-messagebox: false;
 $include-ext-window-toast: false;
 $include-ext-window-window: false;
+
+
+/* ======================== ETC ======================== */
+
 /* including package ext-theme-base */
+$ext-theme-base-resource-root: '' !default;
+$ext-theme-base-resource-path: 'images' !default;
+$current-package: 'ext-theme-base';
+$current-resource-root: $ext-theme-base-resource-root;
+$relative-image-path-for-uis: $ext-theme-base-resource-path;
 @import '../../../ext-theme-base/sass/etc/all';
+
 /* including package ext-theme-neutral */
+$ext-theme-neutral-resource-root: '' !default;
+$ext-theme-neutral-resource-path: 'images' !default;
+$current-package: 'ext-theme-neutral';
+$current-resource-root: $ext-theme-neutral-resource-root;
+$relative-image-path-for-uis: $ext-theme-neutral-resource-path;
 @import '../../../ext-theme-neutral/sass/etc/all';
+
 /* including package ext-theme-classic */
+$ext-theme-classic-resource-root: '' !default;
+$ext-theme-classic-resource-path: 'images' !default;
+$current-package: 'ext-theme-classic';
+$current-resource-root: $ext-theme-classic-resource-root;
+$relative-image-path-for-uis: $ext-theme-classic-resource-path;
 @import '../../../ext-theme-classic/sass/etc/all';
+
 /* including package ext-ux */
+$ext-ux-resource-root: '' !default;
+$ext-ux-resource-path: 'images' !default;
+$current-package: 'ext-ux';
+$current-resource-root: $ext-ux-resource-root;
+$relative-image-path-for-uis: $ext-ux-resource-path;
 @import '../../sass/etc/all';
+
+
+/* ======================== VAR ======================== */
+
 /* including package ext-ux */
+$ext-ux-resource-root: '' !default;
+$ext-ux-resource-path: 'images' !default;
+$current-package: 'ext-ux';
+$current-resource-root: $ext-ux-resource-root;
+$relative-image-path-for-uis: $ext-ux-resource-path;
 @import '../../sass/var/rating/Picker';
+
 /* including package ext-theme-classic */
+$ext-theme-classic-resource-root: '' !default;
+$ext-theme-classic-resource-path: 'images' !default;
+$current-package: 'ext-theme-classic';
+$current-resource-root: $ext-theme-classic-resource-root;
+$relative-image-path-for-uis: $ext-theme-classic-resource-path;
 @import '../../../ext-theme-classic/sass/var/Component';
 @import '../../../ext-theme-classic/sass/var/LoadMask';
 @import '../../../ext-theme-classic/sass/var/ProgressBar';
+@import '../../../ext-theme-classic/sass/var/button/Button';
 @import '../../../ext-theme-classic/sass/var/panel/Tool';
 @import '../../../ext-theme-classic/sass/var/resizer/Splitter';
 @import '../../../ext-theme-classic/sass/var/toolbar/Toolbar';
 @import '../../../ext-theme-classic/sass/var/panel/Panel';
+@import '../../../ext-theme-classic/sass/var/container/ButtonGroup';
+@import '../../../ext-theme-classic/sass/var/window/Window';
 @import '../../../ext-theme-classic/sass/var/form/Labelable';
 @import '../../../ext-theme-classic/sass/var/form/field/Base';
-@import '../../../ext-theme-classic/sass/var/form/field/Display';
-@import '../../../ext-theme-classic/sass/var/view/Table';
-@import '../../../ext-theme-classic/sass/var/grid/header/Container';
-@import '../../../ext-theme-classic/sass/var/grid/column/Column';
 @import '../../../ext-theme-classic/sass/var/form/field/Text';
-@import '../../../ext-theme-classic/sass/var/layout/container/Border';
-@import '../../../ext-theme-classic/sass/var/button/Button';
-@import '../../../ext-theme-classic/sass/var/tab/Tab';
-@import '../../../ext-theme-classic/sass/var/tab/Bar';
-@import '../../../ext-theme-classic/sass/var/window/Window';
-@import '../../../ext-theme-classic/sass/var/tip/Tip';
-@import '../../../ext-theme-classic/sass/var/container/ButtonGroup';
 @import '../../../ext-theme-classic/sass/var/window/MessageBox';
 @import '../../../ext-theme-classic/sass/var/form/FieldSet';
 @import '../../../ext-theme-classic/sass/var/form/field/Spinner';
 @import '../../../ext-theme-classic/sass/var/view/BoundList';
 @import '../../../ext-theme-classic/sass/var/picker/Date';
+@import '../../../ext-theme-classic/sass/var/form/field/Display';
+@import '../../../ext-theme-classic/sass/var/tip/Tip';
 @import '../../../ext-theme-classic/sass/var/picker/Color';
 @import '../../../ext-theme-classic/sass/var/form/field/HtmlEditor';
 @import '../../../ext-theme-classic/sass/var/form/field/Tag';
 @import '../../../ext-theme-classic/sass/var/form/field/Trigger';
+@import '../../../ext-theme-classic/sass/var/view/Table';
+@import '../../../ext-theme-classic/sass/var/grid/header/Container';
+@import '../../../ext-theme-classic/sass/var/grid/column/Column';
 @import '../../../ext-theme-classic/sass/var/grid/column/Widget';
 @import '../../../ext-theme-classic/sass/var/grid/feature/Grouping';
 @import '../../../ext-theme-classic/sass/var/menu/Menu';
@@ -902,41 +935,46 @@ $include-ext-window-window: false;
 @import '../../../ext-theme-classic/sass/var/grid/plugin/RowExpander';
 @import '../../../ext-theme-classic/sass/var/grid/property/Grid';
 @import '../../../ext-theme-classic/sass/var/layout/container/Accordion';
+@import '../../../ext-theme-classic/sass/var/layout/container/Border';
 @import '../../../ext-theme-classic/sass/var/resizer/Resizer';
 @import '../../../ext-theme-classic/sass/var/slider/Multi';
+@import '../../../ext-theme-classic/sass/var/tab/Tab';
+@import '../../../ext-theme-classic/sass/var/tab/Bar';
+
 /* including package ext-theme-neutral */
+$ext-theme-neutral-resource-root: '' !default;
+$ext-theme-neutral-resource-path: 'images' !default;
+$current-package: 'ext-theme-neutral';
+$current-resource-root: $ext-theme-neutral-resource-root;
+$relative-image-path-for-uis: $ext-theme-neutral-resource-path;
 @import '../../../ext-theme-neutral/sass/var/scroll/Indicator';
 @import '../../../ext-theme-neutral/sass/var/Component';
 @import '../../../ext-theme-neutral/sass/var/FocusManager';
 @import '../../../ext-theme-neutral/sass/var/LoadMask';
 @import '../../../ext-theme-neutral/sass/var/ProgressBar';
+@import '../../../ext-theme-neutral/sass/var/button/Button';
 @import '../../../ext-theme-neutral/sass/var/panel/Tool';
 @import '../../../ext-theme-neutral/sass/var/panel/Header';
 @import '../../../ext-theme-neutral/sass/var/resizer/Splitter';
 @import '../../../ext-theme-neutral/sass/var/toolbar/Toolbar';
 @import '../../../ext-theme-neutral/sass/var/panel/Panel';
-@import '../../../ext-theme-neutral/sass/var/form/field/Base';
-@import '../../../ext-theme-neutral/sass/var/view/Table';
-@import '../../../ext-theme-neutral/sass/var/tree/View';
-@import '../../../ext-theme-neutral/sass/var/grid/header/DropZone';
-@import '../../../ext-theme-neutral/sass/var/grid/header/Container';
-@import '../../../ext-theme-neutral/sass/var/grid/column/Column';
-@import '../../../ext-theme-neutral/sass/var/layout/container/Border';
-@import '../../../ext-theme-neutral/sass/var/button/Button';
-@import '../../../ext-theme-neutral/sass/var/tab/Tab';
-@import '../../../ext-theme-neutral/sass/var/tab/Bar';
-@import '../../../ext-theme-neutral/sass/var/window/Window';
-@import '../../../ext-theme-neutral/sass/var/tip/Tip';
 @import '../../../ext-theme-neutral/sass/var/container/ButtonGroup';
 @import '../../../ext-theme-neutral/sass/var/dashboard/Dashboard';
+@import '../../../ext-theme-neutral/sass/var/window/Window';
+@import '../../../ext-theme-neutral/sass/var/form/field/Base';
 @import '../../../ext-theme-neutral/sass/var/window/MessageBox';
 @import '../../../ext-theme-neutral/sass/var/form/CheckboxGroup';
 @import '../../../ext-theme-neutral/sass/var/form/FieldSet';
 @import '../../../ext-theme-neutral/sass/var/toolbar/Paging';
 @import '../../../ext-theme-neutral/sass/var/view/BoundList';
 @import '../../../ext-theme-neutral/sass/var/picker/Date';
+@import '../../../ext-theme-neutral/sass/var/tip/Tip';
 @import '../../../ext-theme-neutral/sass/var/picker/Color';
 @import '../../../ext-theme-neutral/sass/var/form/field/HtmlEditor';
+@import '../../../ext-theme-neutral/sass/var/view/Table';
+@import '../../../ext-theme-neutral/sass/var/grid/header/DropZone';
+@import '../../../ext-theme-neutral/sass/var/grid/header/Container';
+@import '../../../ext-theme-neutral/sass/var/grid/column/Column';
 @import '../../../ext-theme-neutral/sass/var/grid/column/Action';
 @import '../../../ext-theme-neutral/sass/var/grid/column/Check';
 @import '../../../ext-theme-neutral/sass/var/grid/column/RowNumberer';
@@ -951,15 +989,32 @@ $include-ext-window-window: false;
 @import '../../../ext-theme-neutral/sass/var/grid/plugin/RowExpander';
 @import '../../../ext-theme-neutral/sass/var/grid/property/Grid';
 @import '../../../ext-theme-neutral/sass/var/layout/container/Accordion';
+@import '../../../ext-theme-neutral/sass/var/layout/container/Border';
 @import '../../../ext-theme-neutral/sass/var/selection/CheckboxModel';
 @import '../../../ext-theme-neutral/sass/var/slider/Multi';
+@import '../../../ext-theme-neutral/sass/var/tab/Tab';
+@import '../../../ext-theme-neutral/sass/var/tab/Bar';
 @import '../../../ext-theme-neutral/sass/var/toolbar/Breadcrumb';
+@import '../../../ext-theme-neutral/sass/var/tree/View';
 @import '../../../ext-theme-neutral/sass/var/view/MultiSelector';
 @import '../../../ext-theme-neutral/sass/var/window/Toast';
+
 /* including package ext-theme-base */
+$ext-theme-base-resource-root: '' !default;
+$ext-theme-base-resource-path: 'images' !default;
+$current-package: 'ext-theme-base';
+$current-resource-root: $ext-theme-base-resource-root;
+$relative-image-path-for-uis: $ext-theme-base-resource-path;
 @import '../../../ext-theme-base/sass/var/Component';
+
+
+/* ======================== RULE ======================== */
+
 /* including package ext-ux */
+$ext-ux-resource-root: '' !default;
 $ext-ux-resource-path: 'images' !default;
+$current-package: 'ext-ux';
+$current-resource-root: $ext-ux-resource-root;
 $relative-image-path-for-uis: $ext-ux-resource-path;
 @import '../../sass/src/colorpick/Selector';
 @import '../../sass/src/colorpick/Button';

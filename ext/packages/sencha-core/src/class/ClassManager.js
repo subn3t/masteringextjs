@@ -1018,7 +1018,7 @@ var makeCtor = Ext.Class.makeCtor,
      * Overrides members of the specified `target` class.
      * 
      * **NOTE:** the overridden class must have been defined using 
-     * {@link #define Ext.define} in order to use the `override` config.
+     * {@link Ext#define Ext.define} in order to use the `override` config.
      * 
      * Methods defined on the overriding class will not automatically call the methods of 
      * the same name in the ancestor class chain.  To call the parent's method of the 

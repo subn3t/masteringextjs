@@ -530,13 +530,19 @@ Ext.define('Ext.util.Event', function() {
     createSingle: function (handler, listener, o, scope, wrapped) {
         return function() {
             var event = listener.ev,
+                observable = event.observable,
+                fn = listener.fn,
                 fireInfo;
 
 
-            if (event.removeListener(listener.fn, scope) && event.observable) {
-                // Removing from a regular Observable-owned, named event (not an anonymous
-                // event such as Ext's readyEvent): Decrement the listeners count
-                event.observable.hasListeners[event.name]--;
+            // If we have an observable, use that to clean up because there
+            // can be special cases that need handling. For example element
+            // listeners may bind multiple events (mousemove+touchmove) and they
+            // need to act in tandem.
+            if (observable) {
+                observable.removeListener(event.name, fn, scope);
+            } else {
+                event.removeListener(fn, scope);
             }
 
             if (!wrapped) {

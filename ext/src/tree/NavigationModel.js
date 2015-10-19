@@ -107,6 +107,6 @@ Ext.define('Ext.tree.NavigationModel', {
 
     // (asterisk) on keypad expands all nodes.
     onAsterisk: function(keyEvent) {
-        this.view.ownerCt.expandAll();
+        this.view.ownerGrid.expandAll();
     }
 });

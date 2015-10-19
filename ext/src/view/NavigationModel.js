@@ -63,7 +63,6 @@ Ext.define('Ext.view.NavigationModel', {
         var me = this;
 
         return {
-            clear: me.onStoreClear,
             remove: me.onStoreRemove,
             scope: me
         };
@@ -135,10 +134,7 @@ Ext.define('Ext.view.NavigationModel', {
     },
 
     onContainerMouseDown: function(view, mousedownEvent) {
-        // If already focused, do not disturb the focus.
-        if (this.view.containsFocus) {
-            mousedownEvent.preventDefault();
-        }
+        mousedownEvent.preventDefault();
     },
 
     onItemMouseDown: function(view, record, item, index, mousedownEvent) {
@@ -182,15 +178,12 @@ Ext.define('Ext.view.NavigationModel', {
         }
     },
 
-    // Store clearing removes focus
-    onStoreClear: function() {
-        this.setPosition();
-    },
-
     // On record remove, it might have bumped the selection upwards.
     // Pass the "preventSelection" flag.
-    onStoreRemove: function() {
-        this.setPosition(this.getRecord(), null, null, true);
+    onStoreRemove: function(store, records, index, isMove) {
+        if (this.recordIndex && index + records.length - 1 <= this.recordIndex) {
+            this.setPosition(this.recordIndex - 1, null, null, true);
+        }
     },
 
     setPosition: function(recordIndex, keyEvent, suppressEvent, preventNavigation) {

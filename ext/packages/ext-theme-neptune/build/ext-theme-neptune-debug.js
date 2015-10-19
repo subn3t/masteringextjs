@@ -322,17 +322,6 @@ Ext.define('ExtThemeNeptune.panel.Panel', {
     }
 });
 
-Ext.define('ExtThemeNeptune.panel.Table', {
-    override: 'Ext.panel.Table',
-    initComponent: function() {
-        var me = this;
-        if (!me.hasOwnProperty('bodyBorder') && !me.hideHeaders) {
-            me.bodyBorder = true;
-        }
-        me.callParent();
-    }
-});
-
 Ext.define('ExtThemeNeptune.container.ButtonGroup', {
     override: 'Ext.container.ButtonGroup',
     usePlainButtons: false
@@ -361,6 +350,17 @@ Ext.define('ExtThemeNeptune.picker.Month', {
 Ext.define('ExtThemeNeptune.form.field.HtmlEditor', {
     override: 'Ext.form.field.HtmlEditor',
     defaultButtonUI: 'plain-toolbar'
+});
+
+Ext.define('ExtThemeNeptune.panel.Table', {
+    override: 'Ext.panel.Table',
+    initComponent: function() {
+        var me = this;
+        if (!me.hasOwnProperty('bodyBorder') && !me.hideHeaders) {
+            me.bodyBorder = true;
+        }
+        me.callParent();
+    }
 });
 
 Ext.define('ExtThemeNeptune.grid.RowEditor', {

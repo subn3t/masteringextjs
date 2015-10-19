@@ -119,7 +119,7 @@ Ext.define('Ext.data.BufferedStore', {
         /**
          * @inheritdoc
          */
-        trackRemoved: false       
+        trackRemoved: false
     },
 
     /**
@@ -248,6 +248,10 @@ Ext.define('Ext.data.BufferedStore', {
 
     load: function(options) {
         var me = this;
+        
+        if (me.loading) {
+            return;
+        }
         options = options || {};
 
         // Buffered stores, a load operation means kick off a clean load from page 1
@@ -271,20 +275,26 @@ Ext.define('Ext.data.BufferedStore', {
             startIdx, endIdx, startPage, endPage,
             i, waitForReload, bufferZone, records;
 
-        // Prevent re-entering the load process if we are already in a wait state for a batch of pages.
-        if (me.loading) {
-            return;
-        }
-
         if (!options) {
             options = {};
         }
 
-        // Clear cache (with initial flag so that any listening BufferedRenderer does not reset to page 1).
-        data.clear(true);
+        // Prevent re-entering the load process if we are already in a wait state for a batch of pages.
+        if (me.loading || me.fireEvent('beforeload', me, options) === false) {
+            return;
+        }
 
         waitForReload = function() {
-            if (me.rangeCached(startIdx, endIdx)) {
+            var newCount = me.totalCount,
+                oldRequestSize = endIdx - startIdx;
+
+            // If the dataset has now shrunk leaving the calculated request zone unavailable,
+            // re-evaluate the request zone. Start as close to the end as possible.
+            if (endIdx >= newCount) {
+                endIdx = newCount - 1;
+                startIdx = Math.max(endIdx - oldRequestSize, 0);
+            }
+            if (me.rangeCached(startIdx, Math.min(endIdx, me.totalCount))) {
                 me.loading = false;
                 data.un('pageadd', waitForReload);
                 records = data.getRange(startIdx, endIdx + 1);
@@ -294,15 +304,23 @@ Ext.define('Ext.data.BufferedStore', {
         };
         bufferZone = Math.ceil((me.getLeadingBufferZone() + me.getTrailingBufferZone()) / 2);
 
-        // Get our record index range in the dataset
-        if (!me.lastRequestStart) {
-            startIdx = options.start || 0;
-            endIdx = startIdx + (options.count || me.getPageSize()) - 1;
-        } else {
+        // Decide what reload means.
+        // If the View was configured preserveScrollOnReload, then it will
+        // inject that setting here. This means that reload means
+        // load the last requested range.
+        if (me.lastRequestStart && me.preserveScrollOnReload) {
             startIdx = me.lastRequestStart;
             endIdx = me.lastRequestEnd;
             lastTotal = me.getTotalCount();
         }
+        // Otherwise, reload means start from page 1
+        else {
+            startIdx = options.start || 0;
+            endIdx = startIdx + (options.count || me.getPageSize()) - 1;
+        }
+
+        // Clear page cache
+        data.clear(true);
 
         // So that prefetchPage does not consider the store to be fully loaded if the local count is equal to the total count
         delete me.totalCount;
@@ -313,17 +331,16 @@ Ext.define('Ext.data.BufferedStore', {
         startPage = me.getPageFromRecordIndex(startIdx);
         endPage = me.getPageFromRecordIndex(endIdx);
 
-        if (me.fireEvent('beforeload', me, options) !== false) {
-            me.loading = true;
+        me.loading = true;
+        options.waitForReload = waitForReload;
 
-            // Wait for the requested range to become available in the page map
-            // Load the range as soon as the whole range is available
-            data.on('pageadd', waitForReload);
+        // Wait for the requested range to become available in the page map
+        // Load the range as soon as the whole range is available
+        data.on('pageadd', waitForReload);
 
-            // Recache the page range which encapsulates our visible records
-            for (i = startPage; i <= endPage; i++) {
-                me.prefetchPage(i, options);
-            }
+        // Recache the page range which encapsulates our visible records
+        for (i = startPage; i <= endPage; i++) {
+            me.prefetchPage(i, options);
         }
     },
 
@@ -334,18 +351,7 @@ Ext.define('Ext.data.BufferedStore', {
         }
         //</debug>
 
-        // For a buffered Store, we have to clear the page cache because the dataset will change upon filtering.
-        // Then we must prefetch the new page 1, and when that arrives, reload the visible part of the Store
-        // via the guaranteedrange event
-        this.getData().clear();
-        this.callParent(arguments);
-    },
-
-    clearFilter: function() {
-        // For a buffered Store, we have to clear the page cache because the dataset will change upon filtering.
-        // Then we must prefetch the new page 1, and when that arrives, reload the visible part of the Store
-        // via the guaranteedrange event
-        this.getData().clear();
+        // Remote filtering forces a load. load clears the store's contents.
         this.callParent(arguments);
     },
 
@@ -386,7 +392,6 @@ Ext.define('Ext.data.BufferedStore', {
      * @private
      * @override
      * A BufferedStore always reports that it contains the full dataset.
-     * If it is not paged, it encapsulates the full dataset.
      * The number of records that happen to be cached at any one time is never useful.
      */
     getCount: function() {
@@ -685,6 +690,7 @@ Ext.define('Ext.data.BufferedStore', {
                 }
                 // Unsuccessful prefetch: fire a load event with success false.
                 else {
+                    me.loading = false;
                     callbackFn();
                     me.fireEvent('load', me, records, false);
                 }
@@ -704,7 +710,8 @@ Ext.define('Ext.data.BufferedStore', {
         var me = this,
             pageSize = me.getPageSize(),
             data = me.getData(),
-            operation;
+            operation,
+            existingPageRequest;
 
         // Check pageSize has not been tampered with. That would break page caching
         if (pageSize) {
@@ -731,8 +738,11 @@ Ext.define('Ext.data.BufferedStore', {
             options.limit = Math.ceil(options.limit / pageSize) * pageSize;
         }
 
-        // Currently not requesting this page, then request it...
-        if (!me.pageRequests[options.page]) {
+        // Currently not requesting this page, or the request was for the last
+        // generation of the data cache (clearing it changes generations)
+        // then request it...
+        existingPageRequest = me.pageRequests[options.page];
+        if (!existingPageRequest || existingPageRequest.getOperation().pageMapGeneration !== data.pageMapGeneration) {
             // Copy options into a new object so as not to mutate passed in objects
             options = Ext.apply({
                 action : 'read',
@@ -774,7 +784,7 @@ Ext.define('Ext.data.BufferedStore', {
             loadingFlag = me.wasLoading,
             reqs = me.pageRequests,
             data = me.getData(),
-            req, page;
+            page;
 
         // If any requests return, we no longer respond to them.
         data.clearListeners();
@@ -789,12 +799,13 @@ Ext.define('Ext.data.BufferedStore', {
         me.loading = true;
         me.totalCount = 0;
 
-        // Cancel all outstanding requests
+        // Abort all outstanding requests.
+        // onProxyPrefetch will reject them as being for the previous data generation
+        // anyway, if they do return.
+        // because of the pageMapGeneration mismatch.
         for (page in reqs) {
             if (reqs.hasOwnProperty(page)) {
-                req = reqs[page];
-                delete reqs[page];
-                delete req.callback;
+                reqs[page].getOperation().abort();
             }
         }
 
@@ -837,12 +848,19 @@ Ext.define('Ext.data.BufferedStore', {
      * @param {Ext.data.operation.Operation} operation The operation that completed
      */
     onProxyPrefetch: function(operation) {
+        if (this.destroyed) {
+            return;
+        }
+        
         var me = this,
             resultSet = operation.getResultSet(),
             records = operation.getRecords(),
             successful = operation.wasSuccessful(),
             page = operation.getPage(),
-            oldTotal = me.totalCount;
+            waitForReload = operation.waitForReload,
+            oldTotal = me.totalCount,
+            requests = me.pageRequests,
+            key, op;
 
         // Only cache the data if the operation was invoked for the current pageMapGeneration.
         // If the pageMapGeneration has changed since the request was fired off, it will have been cancelled.
@@ -867,7 +885,23 @@ Ext.define('Ext.data.BufferedStore', {
             // Add the page into the page map.
             // pageadd event may trigger the onRangeAvailable
             if (successful) {
-                me.cachePage(records, operation.getPage());
+                if (me.totalCount === 0) {
+                    if (waitForReload) {
+                        for (key in requests) {
+                            op = requests[key].getOperation();
+                            // Created in the same batch, clear the waitForReload so this
+                            // won't be run again
+                            if (op.waitForReload === waitForReload) {
+                                delete op.waitForReload;
+                            }
+                        }
+                        me.getData().un('pageadd', waitForReload);
+                        me.fireEvent('load', me, [], true);
+                        me.fireEvent('refresh', me);
+                    }
+                } else {
+                    me.cachePage(records, operation.getPage());
+                }
             }
 
             //this is a callback that would have been passed to the 'read' function and is optional
@@ -1053,6 +1087,7 @@ Ext.define('Ext.data.BufferedStore', {
 
         // Only load or sort if there are sorters
         if (sorters.length) {
+            me.fireEvent('beforesort', me, sorters);
             me.clearAndLoad({
                 callback: function() {
                     me.fireEvent('sort', me, sorters);

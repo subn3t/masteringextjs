@@ -192,7 +192,13 @@ Ext.define('Ext.grid.filters.filter.Base', {
      */
     onValueChange: function (field, e) {
         var me = this,
+            keyCode = e.getKey(),
             updateBuffer = me.updateBuffer;
+
+        // Don't process tabs!
+        if (keyCode === e.TAB) {
+            return;
+        }
 
         //<debug>
         if (!field.isFormField) {
@@ -201,7 +207,7 @@ Ext.define('Ext.grid.filters.filter.Base', {
         //</debug>
 
         if (field.isValid()) {
-            if (e.getKey() === e.RETURN) {
+            if (keyCode === e.RETURN) {
                 me.menu.hide();
                 return;
             }
@@ -310,3 +316,4 @@ Ext.define('Ext.grid.filters.filter.Base', {
         this.getGridStore().getFilters().notify('endupdate');
     }
 });
+

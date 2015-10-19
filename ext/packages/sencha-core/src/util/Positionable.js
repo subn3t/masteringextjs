@@ -136,7 +136,7 @@ Ext.define('Ext.util.Positionable', {
 
     /**
      * Sets the X position of the DOM element based on page coordinates.
-     * @param {Number} The X position
+     * @param {Number} x The X position
      * @return {Ext.util.Positionable} this
      */
     setX: function() {
@@ -155,7 +155,7 @@ Ext.define('Ext.util.Positionable', {
 
     /**
      * Sets the Y position of the DOM element based on page coordinates.
-     * @param {Number} The Y position
+     * @param {Number} y The Y position
      * @return {Ext.util.Positionable} this
      */
     setY: function() {
@@ -656,7 +656,7 @@ Ext.define('Ext.util.Positionable', {
         // Apply constraintInsets
         if (constraintInsets) {
             constraintInsets = Ext.isObject(constraintInsets) ? constraintInsets : Ext.Element.parseBox(constraintInsets);
-            constrainTo.adjust(constraintInsets.top, constraintInsets.right, constraintInsets.bottom, constraintInsets.length);
+            constrainTo.adjust(constraintInsets.top, constraintInsets.right, constraintInsets.bottom, constraintInsets.left);
         }
 
         // Shift this region to occupy the proposed position

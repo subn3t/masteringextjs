@@ -82,29 +82,29 @@ Ext.define('Ext.data.Connection', {
         password: '',
 
         /**
-        * @cfg {Boolean} disableCaching
-        * True to add a unique cache-buster param to GET requests.
-        */
+         * @cfg {Boolean} disableCaching
+         * True to add a unique cache-buster param to GET requests.
+         */
         disableCaching: true,
 
         /**
-        * @cfg {Boolean} withCredentials
-        * True to set `withCredentials = true` on the XHR object
-        */
+         * @cfg {Boolean} withCredentials
+         * True to set `withCredentials = true` on the XHR object
+         */
         withCredentials: false,
 
         /**
-        * @cfg {Boolean} binary
-        * True if the response should be treated as binary data.  If true, the binary
-        * data will be accessible as a "responseBytes" property on the response object.
-        */
+         * @cfg {Boolean} binary
+         * True if the response should be treated as binary data.  If true, the binary
+         * data will be accessible as a "responseBytes" property on the response object.
+         */
         binary: false,
 
         /**
-        * @cfg {Boolean} cors
-        * True to enable CORS support on the XHR object. Currently the only effect of this option
-        * is to use the XDomainRequest object instead of XMLHttpRequest if the browser is IE8 or above.
-        */
+         * @cfg {Boolean} cors
+         * True to enable CORS support on the XHR object. Currently the only effect of this option
+         * is to use the XDomainRequest object instead of XMLHttpRequest if the browser is IE8 or above.
+         */
         cors: false,
 
         isXdr: false,
@@ -112,43 +112,49 @@ Ext.define('Ext.data.Connection', {
         defaultXdrContentType: 'text/plain',
 
         /**
-        * @cfg {String} disableCachingParam
-        * Change the parameter which is sent went disabling caching through a cache buster.
-        */
+         * @cfg {String} disableCachingParam
+         * Change the parameter which is sent went disabling caching through a cache buster.
+         */
         disableCachingParam: '_dc',
 
         /**
-        * @cfg {Number} timeout
-        * The timeout in milliseconds to be used for requests.
-        */
+         * @cfg {Number} [timeout=30000] The timeout in milliseconds to be used for 
+         * requests.  
+         * Defaults to 30000 milliseconds (30 seconds).
+         * 
+         * When a request fails due to timeout the XMLHttpRequest response object will 
+         * contain:
+         * 
+         *     timedout: true
+         */
         timeout : 30000,
 
         /**
-        * @cfg {Object} extraParams
-        * Any parameters to be appended to the request.
-        */
-       extraParams: null,
+         * @cfg {Object} extraParams
+         * Any parameters to be appended to the request.
+         */
+        extraParams: null,
 
         /**
-        * @cfg {Boolean} [autoAbort=false]
-        * Whether this request should abort any pending requests.
-        */
-       autoAbort: false,
+         * @cfg {Boolean} [autoAbort=false]
+         * Whether this request should abort any pending requests.
+         */
+        autoAbort: false,
 
         /**
-        * @cfg {String} method
-        * The default HTTP method to be used for requests.
-        *
-        * If not set, but {@link #request} params are present, POST will be used;
-        * otherwise, GET will be used.
-        */
-       method: null,
+         * @cfg {String} method
+         * The default HTTP method to be used for requests.
+         *
+         * If not set, but {@link #request} params are present, POST will be used;
+         * otherwise, GET will be used.
+         */
+        method: null,
 
         /**
-        * @cfg {Object} defaultHeaders
-        * An object containing request headers which are added to each request made by this object.
-        */
-       defaultHeaders: null,
+         * @cfg {Object} defaultHeaders
+         * An object containing request headers which are added to each request made by this object.
+         */
+        defaultHeaders: null,
 
         /**
          * @cfg {String} defaultPostHeader
@@ -175,6 +181,7 @@ Ext.define('Ext.data.Connection', {
 
         /**
          * @event beforerequest
+         * @preventable
          * Fires before a network request is made to retrieve a data object.
          * @param {Ext.data.Connection} conn This Connection object.
          * @param {Object} options The options config object passed to the {@link #request} method.
@@ -267,8 +274,14 @@ Ext.define('Ext.data.Connection', {
      * draw values, then this also serves as the scope for those function calls. Defaults to the browser
      * window.
      *
-     * @param {Number} options.timeout The timeout in milliseconds to be used for this request.
-     * Defaults to 30 seconds.
+     * @param {Number} options.timeout The timeout in milliseconds to be used for this 
+     * request.  
+     * Defaults to 30000 milliseconds (30 seconds).
+     * 
+     * When a request fails due to timeout the XMLHttpRequest response object will 
+     * contain:
+     * 
+     *     timedout: true
      *
      * @param {Ext.Element/HTMLElement/String} options.form The `<form>` Element or the id of the `<form>`
      * to pull parameters from.

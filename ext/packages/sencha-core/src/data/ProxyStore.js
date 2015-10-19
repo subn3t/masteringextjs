@@ -47,13 +47,16 @@ Ext.define('Ext.data.ProxyStore', {
         model: undefined,
 
         /**
-         * @cfg {Object[]} fields
-         * This may be used in place of specifying a {@link #model} configuration. The fields should be a
-         * set of {@link Ext.data.Field} configuration objects. The store will automatically create a {@link Ext.data.Model}
-         * with these fields. In general this configuration option should only be used for simple stores like
-         * a two-field store of ComboBox. For anything more complicated, such as specifying a particular id property or
-         * associations, a {@link Ext.data.Model} should be defined and specified for the {@link #model}
-         * config.
+         * @cfg {Object[]/String[]} fields
+         * @inheritdoc Ext.data.Model#cfg-fields
+         * 
+         * @localdoc **Note:** In general, this configuration option should only be used 
+         * for simple stores like a two-field store of 
+         * {@link Ext.form.field.ComboBox ComboBox}. For anything more complicated, such 
+         * as specifying a particular id property or associations, a 
+         * {@link Ext.data.Model Model} should be defined and specified for the 
+         * {@link #model} config.
+         * 
          * @since 2.3.0
          */
         fields: null,
@@ -141,6 +144,8 @@ Ext.define('Ext.data.ProxyStore', {
      * @private
      */
     implicitModel: false,
+
+    implicitModelSuperCls: 'Ext.data.Model',
     
     blockLoadCounter: 0,
     loadsWhileBlocked: 0,
@@ -182,6 +187,9 @@ Ext.define('Ext.data.ProxyStore', {
          * @param {Ext.data.Store} this
          * @param {Ext.data.Model[]} records An array of records
          * @param {Boolean} successful True if the operation was successful.
+         * @param {Ext.data.operation.Read} operation The 
+         * {@link Ext.data.operation.Read Operation} object that was used in the data 
+         * load call
          * @since 1.1.0
          */
 
@@ -279,13 +287,13 @@ Ext.define('Ext.data.ProxyStore', {
         if (fields) {
             me.implicitModel = true;
             me.setModel(model = Ext.define(null, {
-                extend: 'Ext.data.Model',
+                extend: me.implicitModelSuperCls,
                 fields: fields,
                 proxy: (proxy = me.getProxy())
             }));
 
             // getProxy can call getModel, and we are in the process of creating the model here, so poke it in.
-            if (proxy && !proxy.getModel()) {
+            if (proxy) {
                 proxy.setModel(model);
             }
         }
@@ -517,9 +525,8 @@ Ext.define('Ext.data.ProxyStore', {
     },
 
     /**
-     * Returns all Model instances that are either currently a phantom (e.g. have no id), or have an ID but have not
-     * yet been saved on this Store (this happens when adding a non-phantom record from another Store into this one)
-     * @return {Ext.data.Model[]} The Model instances
+     * Returns all `{@link Ext.data.Model#property-phantom phantom}` records in this store.
+     * @return {Ext.data.Model[]} A possibly empty array of `phantom` records.
      */
     getNewRecords: function() {
         return [];
@@ -554,10 +561,13 @@ Ext.define('Ext.data.ProxyStore', {
 
     /**
      * Returns any records that have been removed from the store but not yet destroyed on the proxy.
-     * @return {Ext.data.Model[]} The removed Model instances
+     * @return {Ext.data.Model[]} The removed Model instances. Note that this is a *copy* of the store's
+     * array, so may be mutated.
      */
     getRemovedRecords: function() {
-        return this.removed;
+        var removed = this.getRawRemovedRecords();
+        // If trackRemoved: false, removed will be null
+        return removed ? Ext.Array.clone(removed) : removed;
     },
 
     /**
@@ -920,6 +930,19 @@ Ext.define('Ext.data.ProxyStore', {
     clearData: Ext.emptyFn,
 
     privates: {
+        /**
+         * @private
+         * Returns the array of records which have been removed since the last time this store was synced.
+         *
+         * This is used internally, when purging removed records after a successful sync.
+         * This is overridden by TreeStore because TreeStore accumulates deleted records on removal
+         * of child nodes from their parent, *not* on removal of records from its collection. The collection
+         * has records added on expand, and removed on collapse.
+         */
+        getRawRemovedRecords: function() {
+            return this.removed;
+        },
+
         attemptLoad: function(options) {
             if (this.isLoadBlocked()) {
                 ++this.loadsWhileBlocked;
@@ -941,7 +964,11 @@ Ext.define('Ext.data.ProxyStore', {
         },
 
         cleanRemoved: function() {
-            var removed = this.removed,
+            // Must use class-specific getRawRemovedRecords.
+            // Regular Stores add to the "removed" property on remove.
+            // TreeStores are having records removed all the time; node collapse removes.
+            // TreeStores add to the "removedNodes" property onNodeRemove
+            var removed = this.getRawRemovedRecords(),
                 len, i;
 
             if (removed) {
@@ -984,7 +1011,11 @@ Ext.define('Ext.data.ProxyStore', {
         onBeforeLoad: Ext.privateFn,
 
         removeFromRemoved: function(record) {
-            var removed = this.removed;
+            // Must use class-specific getRawRemovedRecords.
+            // Regular Stores add to the "removed" property on remove.
+            // TreeStores are having records removed all the time; node collapse removes.
+            // TreeStores add to the "removedNodes" property onNodeRemove
+            var removed = this.getRawRemovedRecords();
             if (removed) {
                 Ext.Array.remove(removed, record);
                 record.unjoin(this);

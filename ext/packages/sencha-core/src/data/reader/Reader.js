@@ -191,24 +191,73 @@ Ext.define('Ext.data.reader.Reader', {
         successProperty: 'success',
        
         /**
-         * @cfg {String} [rootProperty]
+         * @cfg {String/Function} rootProperty
          * The property that contains data items corresponding to the 
-         * Model(s) of the configured Reader. rootProperty varies by Reader type.
+         * Model(s) of the configured Reader. `rootProperty` varies by Reader type.
          * 
          * ##JSON Reader 
-         * rootProperty is a property name. It may also be a dot-separated 
-         * list of property names if the root is nested. The root JSON array will be used
-         * by default.
+         * `rootProperty` is a property name. It may also be a dot-separated 
+         * list of property names if the root is nested. The root JSON array will be 
+         * used by default.
+         * 
+         *     // rootPropety config
+         *     rootProperty: 'embedded.myresults'
+         *     
+         *     // server response
+         *     {
+         *         embedded: {
+         *             myresults: [{
+         *                 name: 'Scott',
+         *                 age: 22
+         *             }, {
+         *                 name: 'Ramona',
+         *                 age: 24
+         *             }]
+         *         },
+         *         success: true
+         *     }
          * 
          * ##XML Reader 
-         * rootProperty is a CSS selector. The root XML element will be used
+         * `rootProperty` is a CSS selector. The root XML element will be used
          * by default.
          * 
-         * ##Array Reader 
-         * rootProperty is not applicable since the data is assumed to be a
-         * single-level array of arrays.
+         *     // rootProperty config (plus record config)
+         *     rootProperty: 'myresults',
+         *     record: 'user'
+         *     
+         *     // server response
+         *     <?xml version="1.0" encoding="UTF-8"?>
+         *     <embedded>
+         *         <myresults>
+         *             <user>
+         *                 <name>Scott</name>
+         *                 <age>22</age>
+         *             </user>
+         *             <user>
+         *                 <name>Ramona</name>
+         *                 <age>24</age>
+         *             </user>
+         *         </myresults>
+         *     </embedded>
          * 
-         * **Note:** The rootProperty may also be a function that returns the root node from 
+         * ##Array Reader 
+         * `rootProperty` is not typically applicable since the data is assumed to be a
+         * single-level array of arrays.  However, if the array of records is returned 
+         * within a JSON response a `rootProperty` config may be used:
+         * 
+         *     // rootProperty config
+         *     rootProperty: 'embedded.myresults'
+         *     
+         *     // server response
+         *     {
+         *         embedded: {
+         *             myresults: [['Scott', 22], ['Ramona', 24]]
+         *         },
+         *         success: true
+         *     }
+         * 
+         * ##rootProperty as a function
+         * The `rootProperty` may also be a function that returns the root node from 
          * the dataset. For example:
          *
          *     var store = Ext.create('Ext.data.TreeStore', {
@@ -548,9 +597,18 @@ Ext.define('Ext.data.reader.Reader', {
             total,
             value,
             message,
-            transform;
-        
-        transform = this.getTransform();
+            transform,
+            meta;
+
+        // Extract the metadata to return with the ResultSet.
+        // If found reconfigure accordingly.
+        // The calling Proxy fires its metachange event if it finds metadata in the ResultSet.
+        meta = me.getMeta ? me.getMeta(data) : data.metaData;
+        if (meta) {
+            me.onMetaChange(meta);
+        }
+
+        transform = me.getTransform();
         if (transform) {
             data = transform(data);
         }
@@ -570,6 +628,10 @@ Ext.define('Ext.data.reader.Reader', {
          */
         if (me.getKeepRawData()) {
             me.rawData = data;
+        }
+        
+        if (me.hasListeners.rawdata) {
+            me.fireEventArgs('rawdata', [data]);
         }
 
         data = me.getData(data);
@@ -614,11 +676,12 @@ Ext.define('Ext.data.reader.Reader', {
         }
 
         return recordsOnly ? records : new Ext.data.ResultSet({
-            total  : total || recordCount,
-            count  : recordCount,
-            records: records,
-            success: success,
-            message: message
+            total    : total || recordCount,
+            metadata : meta,
+            count    : recordCount,
+            records  : records,
+            success  : success,
+            message  : message
         });
     },
 

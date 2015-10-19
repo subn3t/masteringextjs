@@ -180,7 +180,7 @@ Ext.define('Ext.button.Button', {
 
     /* End Definitions */
 
-    /*
+    /**
      * @property {Boolean}
      * `true` in this class to identify an object as an instantiated Button, or subclass thereof.
      */
@@ -1619,57 +1619,48 @@ Ext.define('Ext.button.Button', {
         me.fireEvent('menutriggerout', me, me.menu, e);
     },
 
-    enable: function(silent) {
+    onEnable: function() {
         var me = this,
             href = me.href,
             hrefTarget = me.hrefTarget,
-            dom;
+            dom = me.el.dom;
 
-        me.callParent(arguments);
+        me.callParent();
 
         me.removeCls(me._disabledCls);
-        if (me.rendered) {
-            dom = me.el.dom;
-            dom.setAttribute('tabindex', me.tabIndex);
+        dom.setAttribute('tabindex', me.tabIndex);
 
-            // https://sencha.jira.com/browse/EXTJS-11964
-            // Disabled links are clickable on iPad, and right clickable on desktop browsers.
-            // The only way to completely disable navigation is removing the href
-            if (href) {
-                dom.href = href;
-            }
-            if (hrefTarget) {
-                dom.target = hrefTarget;
-            }
+        // https://sencha.jira.com/browse/EXTJS-11964
+        // Disabled links are clickable on iPad, and right clickable on desktop browsers.
+        // The only way to completely disable navigation is removing the href
+        if (href) {
+            dom.href = href;
         }
-
-        return me;
+        if (hrefTarget) {
+            dom.target = hrefTarget;
+        }
     },
 
-    disable: function(silent) {
+    onDisable: function() {
         var me = this,
-            dom;
+            dom = me.el.dom;
 
-        me.callParent(arguments);
+        me.callParent();
 
         me.addCls(me._disabledCls);
         me.removeCls(me.overCls);
-        if (me.rendered) {
-            dom = me.el.dom;
-            dom.removeAttribute('tabindex');
 
-            // https://sencha.jira.com/browse/EXTJS-11964
-            // Disabled links are clickable on iPad, and right clickable on desktop browsers.
-            // The only way to completely disable navigation is clearing the href
-            if (me.href) {
-                dom.removeAttribute('href');
-            }
-            if (me.hrefTarget) {
-                dom.removeAttribute('target');
-            }
+        dom.removeAttribute('tabindex');
+
+        // https://sencha.jira.com/browse/EXTJS-11964
+        // Disabled links are clickable on iPad, and right clickable on desktop browsers.
+        // The only way to completely disable navigation is clearing the href
+        if (me.href) {
+            dom.removeAttribute('href');
         }
-
-        return me;
+        if (me.hrefTarget) {
+            dom.removeAttribute('target');
+        }
     },
 
     /**

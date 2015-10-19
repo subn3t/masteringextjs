@@ -473,21 +473,45 @@ describe("Ext.data.proxy.Server", function() {
     });
 
     describe("encoding filters", function() {
-        it("should provide a default encoded string, operator should be excluded by default", function() {
-            var filter1 = new Ext.util.Filter({
+        var filter1, filter2;
+
+        beforeEach(function() {
+            filter1 = new Ext.util.Filter({
                 property : "name",
                 value    : "Ed"
             });
 
-            var filter2 = new Ext.util.Filter({
+            filter2 = new Ext.util.Filter({
                 property : "age",
                 value    : 25,
                 operator: '>'
             });
+        });
 
+        afterEach(function() {
+            filter1 = filter2 = null;
+        });
+
+        it("should provide a default encoded string, operator should be excluded by default", function() {
             proxy = new Ext.data.proxy.Server();
             
             expect(Ext.decode(proxy.encodeFilters([filter1, filter2]))).toEqual([{
+                property: 'name',
+                value: 'Ed'
+            }, {
+                property: 'age',
+                value: 25,
+                operator: '>'
+            }]);
+        });
+
+        it("should exclude filters with a filterFn", function() {
+            var f = new Ext.util.Filter({
+                filterFn: function() {
+                    return true;
+                }
+            });
+            expect(Ext.decode(proxy.encodeFilters([filter1, f, filter2]))).toEqual([{
                 property: 'name',
                 value: 'Ed'
             }, {

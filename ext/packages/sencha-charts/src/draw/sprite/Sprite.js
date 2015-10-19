@@ -55,6 +55,13 @@ Ext.define('Ext.draw.sprite.Sprite', {
 
     isSprite: true,
 
+    statics: {
+        defaultHitTestOptions: {
+            fill: true,
+            stroke: true
+        }
+    },
+
     inheritableStatics: {
         def: {
             processors: {
@@ -470,7 +477,7 @@ Ext.define('Ext.draw.sprite.Sprite', {
             updaters = me.self.def.getUpdaters(),
             any = false,
             dirty = false,
-            flags, updater;
+            flags, updater, fn;
 
         // If updaters set sprite attributes that trigger other updaters,
         // those updaters are not called right away, but wait until all current
@@ -484,8 +491,12 @@ Ext.define('Ext.draw.sprite.Sprite', {
                 any = true;
                 flags = pendingUpdaters[updater];
                 delete pendingUpdaters[updater];
-                if (updaters[updater]) {
-                    updaters[updater].call(me, attr, flags);
+                fn = updaters[updater];
+                if (typeof fn === 'string') {
+                    fn = me[fn];
+                }
+                if (fn) {
+                    fn.call(me, attr, flags);
                 }
             }
             dirty = dirty || any;
@@ -813,15 +824,44 @@ Ext.define('Ext.draw.sprite.Sprite', {
      * exactly was hit or null if nothing was hit.
      */
     hitTest: function (point, options) {
-        var x = point[0],
-            y = point[1],
-            bbox = this.getBBox();
-        if (bbox && x >= bbox.left && x <= bbox.right && y >= bbox.top && y <= bbox.bottom) {
-            return {
-                sprite: this
+        // Meant to be overridden in subclasses for more precise hit testing.
+        // This version doesn't take any options and simply hit tests sprite's
+        // bounding box, if the sprite is visible.
+        if (this.isVisible()) {
+            var x = point[0],
+                y = point[1],
+                bbox = this.getBBox(),
+                isBBoxHit = bbox && x >= bbox.x && x <= (bbox.x + bbox.width) &&
+                    y >= bbox.y && y <= (bbox.y + bbox.height);
+            if (isBBoxHit) {
+                return {
+                    sprite: this
+                };
             }
         }
         return null;
+    },
+
+    /**
+     * @private
+     * Checks if the sprite can be seen.
+     * This includes the `hidden` attribute check, alpha/opacity checks,
+     * fill/stroke color checks and surface/parent checks.
+     * The method doesn't check if the sprite is off-screen.
+     * @return {Boolean} Returns `true`, if the sprite can be seen.
+     */
+    isVisible: function () {
+        var attr = this.attr,
+            parent = this.getParent(),
+            hasParent = parent && (parent.isSurface || parent.isVisible()),
+            isSeen = hasParent && !attr.hidden && attr.globalAlpha,
+            none1 = Ext.draw.Color.NONE,
+            none2 = Ext.draw.Color.RGBA_NONE,
+            hasFill = attr.fillOpacity && attr.fillStyle !== none1 && attr.fillStyle !== none2,
+            hasStroke = attr.strokeOpacity && attr.strokeStyle !== none1 && attr.strokeStyle !== none2,
+            result = isSeen && (hasFill || hasStroke);
+
+        return !!result;
     },
 
     repaint: function () {

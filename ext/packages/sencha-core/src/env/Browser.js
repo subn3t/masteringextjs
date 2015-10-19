@@ -35,6 +35,12 @@
      */
     me.userAgent = userAgent;
 
+    // Edge has a userAgent with All browsers so we manage it separately
+    // "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.10240"
+    if (/Edge\//.test(userAgent)) {
+        browserMatch = userAgent.match(/(Edge\/)([\w.]+)/);
+    }
+    
     if (browserMatch) {
         browserName = browserNames[Ext.Object.getKey(browserPrefixes, browserMatch[1])];
         //<feature legacyBrowser>
@@ -398,14 +404,6 @@
         this.setFlag('PhoneGap');
         this.setFlag('Cordova');
     }
-    else if (!!window.isNK) {
-        isWebView = true;
-        this.setFlag('Sencha');
-    }
-
-    if (/(Glass)/i.test(userAgent)) {
-        this.setFlag('GoogleGlass');
-    }
 
     // Check if running in UIWebView
     if (/(iPhone|iPod|iPad).*AppleWebKit(?!.*Safari)(?!.*FBAN)/i.test(userAgent)) {
@@ -441,6 +439,7 @@ Ext.env.Browser.prototype = {
         chrome: 'Chrome',
         opera: 'Opera',
         dolfin: 'Dolfin',
+        edge : 'Edge',
         webosbrowser: 'webOSBrowser',
         chromeMobile: 'ChromeMobile',
         chromeiOS: 'ChromeiOS',
@@ -462,6 +461,7 @@ Ext.env.Browser.prototype = {
     },
     browserPrefixes: {
         ie: 'MSIE ',
+        edge: 'Edge/',
         firefox: 'Firefox/',
         chrome: 'Chrome/',
         safari: 'Version/',

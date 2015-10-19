@@ -197,6 +197,61 @@
  *
  * If you add store listeners to the {@link Ext.data.Store#event-update update} event, then you will receive notification when any of this state changes.
  * You should check the array of modified field names passed to the listener to decide whether the listener should take action or ignore the event.
+ * 
+ * # Tree Grid
+ * Trees may be configured using the {@link #cfg-columns} config including a 
+ * {@link Ext.tree.Column treecolumn} to give the tree panel a hybrid tree / 
+ * {@link Ext.grid.Panel grid} structure.
+ * 
+ *     @example
+ *     Ext.create({
+ *         xtype: 'treepanel',
+ *         renderTo: Ext.getBody(),
+ *         height: 200,
+ *         width: 300,
+ *         rootVisible: false,
+ *         store: Ext.create('Ext.data.TreeStore', {
+ *             fields: ['text', 'duration', 'isLayover'],
+ *             root: {
+ *                 expanded: true,
+ *                 children: [{
+ *                     text: 'SFO  &nbsp;✈&nbsp; DFW',
+ *                     duration: '6h 55m',
+ *                     expanded: true,
+ *                     children: [{
+ *                         text: 'SFO &nbsp;✈&nbsp; PHX',
+ *                         duration: '2h 04m',
+ *                         leaf: true
+ *                     }, {
+ *                         text: 'PHX layover',
+ *                         duration: '2h 36m',
+ *                         isLayover: true,
+ *                         leaf: true
+ *                     }, {
+ *                         text: 'PHX &nbsp;✈&nbsp; DFW',
+ *                         duration: '2h 15m',
+ *                         leaf: true
+ *                     }]
+ *                 }]
+ *             }
+ *         }),
+ *         columns: [{
+ *             xtype: 'treecolumn',
+ *             text: 'Flight Endpoints',
+ *             dataIndex: 'text',
+ *             flex: 1,
+ *             renderer: function (val, meta, rec) {
+ *                 if (rec.get('isLayover')) {
+ *                     meta.tdStyle = 'color: gray; font-style: italic;';
+ *                 }
+ *                 return val;
+ *             }
+ *         }, {
+ *             text: 'Duration',
+ *             dataIndex: 'duration',
+ *             width: 100
+ *         }]
+ *     });
  */
 Ext.define('Ext.tree.Panel', {
     extend: 'Ext.panel.Table',
@@ -339,34 +394,16 @@ Ext.define('Ext.tree.Panel', {
             cls.push(me.noLinesCls);
         }
 
-        if (Ext.isString(store)) {
-            store = me.store = Ext.StoreMgr.lookup(store);
-        } else if (!store || !store.isStore) {
-            store = Ext.apply({
-                type: 'tree',
-                root: me.root,
-                fields: me.fields,
-                model: me.model,
-                proxy: 'memory',
-                folderSort: me.folderSort
-            }, store);
-            store = me.store = Ext.StoreMgr.lookup(store);
-        } else if (me.root) {
-            store = me.store = Ext.data.StoreManager.lookup(store);
-            store.setRoot(me.root);
-            if (me.folderSort !== undefined) {
-                store.folderSort = me.folderSort;
-                store.sort();
-            }
-        }
-
-        // Store must have the same idea about root visibility as us BEFORE callParent binds it.
-        store.setRootVisible(me.rootVisible);
+        store = me.applyStore(me.store);
 
         // If there is no root node defined, then create one.
         if (!store.getRoot()) {
             store.setRoot({});
         }
+
+        // Store must have the same idea about root visibility as us BEFORE callParent binds it.
+        store.setRootVisible(me.rootVisible);
+
 
         me.viewConfig = Ext.apply({
             rootVisible: me.rootVisible,
@@ -424,6 +461,63 @@ Ext.define('Ext.tree.Panel', {
         ]);
     },
 
+    applyStore: function(store) {
+        // private
+        // Note that this is not a config system applier. store is not yet a config.
+        // It just does the job of an applier and converts a config object to the true value
+        // for the setter to use.
+        var me = this;
+
+        if (Ext.isString(store)) {
+            store = me.store = Ext.StoreMgr.lookup(store);
+        } else if (!store || !store.isStore) {
+            store = Ext.apply({
+                type: 'tree',
+                proxy: 'memory'
+            }, store);
+            if (me.root) {
+                store.root = me.root;
+            }
+            if (me.fields) {
+                store.fields = me.fields;
+            } else if (me.model) {
+                store.model = me.model;
+            }
+            if (me.folderSort) {
+                store.folderSort = me.folderSort;
+            }
+            store = me.store = Ext.StoreMgr.lookup(store);
+        } else if (me.root) {
+            store = me.store = Ext.data.StoreManager.lookup(store);
+            store.setRoot(me.root);
+            if (me.folderSort !== undefined) {
+                store.folderSort = me.folderSort;
+                store.sort();
+            }
+        }
+        
+        return store;
+    },
+
+    setStore: function(store) {
+        var me = this;
+
+        store = me.applyStore(store);
+
+        // If there is no rootnode defined, then create one.
+        if (!store.getRoot()) {
+            store.setRoot({});
+        }
+
+        // Store must have the same idea about root visibility as us BEFORE callParent binds it.
+        store.setRootVisible(me.rootVisible);
+
+        if (me.view) {
+            me.view.setRootNode(store.getRootNode());
+        }
+        me.bindStore(store);
+    },
+
     // @private
     // Hook into the TreeStore.
     bindStore: function(store, initial) {
@@ -468,8 +562,49 @@ Ext.define('Ext.tree.Panel', {
             'load'
         ]);
 
+        // If rootVisible is false, we *might* need to expand the node.
+        // If store is autoLoad, that will already have been kicked off.
+        // If its already expanded, or in the process of loading, the TreeStore
+        // has started that at the end of updateRoot 
+        if (!me.rootVisible && !store.autoLoad && !(root.isExpanded() || root.isLoading())) {
+            // A hidden root must be expanded, unless it's overridden with autoLoad: false.
+            // If it's loaded, set its expanded field (silently), and skip ahead to the onNodeExpand callback.
+            if (root.isLoaded()) {
+                root.data.expanded = true;
+                store.onNodeExpand(root, root.childNodes);
+            }
+            // Root is not loaded; go through the expand mechanism to force a load
+            // unless we were told explicitly not to load the store by setting
+            // autoLoad: false. This is useful with Direct proxy in cases when
+            // Direct API is loaded dynamically and may not be available at the time
+            // when TreePanel is created.
+            else if (store.autoLoad !== false && !store.hasPendingLoad()) {
+                root.data.expanded = false;
+                root.expand();
+            }
+        }
+
+        // TreeStore must have an upward link to the TreePanel so that nodes can find their owning tree in NodeInterface.getOwnerTree
+        store.ownerTree = me;
+
+        if (!initial) {
+            me.view.setRootNode(root);
+        }
+    },
+
+    /**
+     * @private
+     */
+    addRelayers: function(newRoot) {
+        var me = this;
+
+        if (me.rootRelayers) {
+            me.rootRelayers.destroy();
+            me.rootRelayers = null;
+        }
+        
         // Relay store events with prefix. Return a Destroyable object
-        me.rootRelayers = me.mon(root, {
+        me.rootRelayers = me.mon(newRoot, {
             destroyable: true,
 
             /**
@@ -542,37 +677,9 @@ Ext.define('Ext.tree.Panel', {
              * @event beforeitemcollapse
              * @inheritdoc Ext.data.TreeStore#nodebeforecollapse
              */
-            beforecollapse: me.createRelayer('beforeitemcollapse', [0, 1])
+            beforecollapse: me.createRelayer('beforeitemcollapse', [0, 1]),
+            scope: me
         });
-
-        // If rootVisible is false, we *might* need to expand the node.
-        // If store is autoLoad, that will already have been kicked off.
-        // If its already expanded, or in the process of loading, the TreeStore
-        // has started that at the end of updateRoot 
-        if (!me.rootVisible && !store.autoLoad && !(root.isExpanded() || root.isLoading())) {
-            // A hidden root must be expanded, unless it's overridden with autoLoad: false.
-            // If it's loaded, set its expanded field (silently), and skip ahead to the onNodeExpand callback.
-            if (root.isLoaded()) {
-                root.data.expanded = true;
-                store.onNodeExpand(root, root.childNodes);
-            }
-            // Root is not loaded; go through the expand mechanism to force a load
-            // unless we were told explicitly not to load the store by setting
-            // autoLoad: false. This is useful with Direct proxy in cases when
-            // Direct API is loaded dynamically and may not be available at the time
-            // when TreePanel is created.
-            else if (store.autoLoad !== false) {
-                root.data.expanded = false;
-                root.expand();
-            }
-        }
-
-        // TreeStore must have an upward link to the TreePanel so that nodes can find their owning tree in NodeInterface.getOwnerTree
-        store.ownerTree = me;
-
-        if (!initial) {
-            me.view.setRootNode(root);
-        }
     },
 
     // @private

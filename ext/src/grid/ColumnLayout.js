@@ -258,6 +258,10 @@ Ext.define('Ext.grid.ColumnLayout', {
             view.resumeEvent('scroll');
             owner.resumeEvent('scroll');
         }
+
+        // Wipe this array because it holds component references and gets cached on the object
+        // Can cause a circular reference
+        ownerContext.props.columnsChanged = null;
     },
 
     convertWidthsToFlexes: function(ownerContext) {

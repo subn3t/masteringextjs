@@ -28,7 +28,7 @@ Ext.define('Ext.ElementLoader', {
     statics: {
         Renderer: {
             Html: function(loader, response, active){
-                loader.getTarget().setHtml(response.responseText, active.scripts === true);
+                loader.getTarget().setHtml(response.responseText, active.scripts === true, active.rendererScope);
                 return true;
             }
         }
@@ -270,8 +270,7 @@ Ext.define('Ext.ElementLoader', {
             params = Ext.apply({}, options.params),
             ajaxOptions = Ext.apply({}, options.ajaxOptions),
             callback = options.callback || me.callback,
-            scope = options.scope || me.scope || me,
-            rendererScope = options.rendererScope || me.rendererScope || me;
+            scope = options.scope || me.scope || me;
 
         Ext.applyIf(ajaxOptions, me.ajaxOptions);
         Ext.applyIf(options, ajaxOptions);
@@ -307,7 +306,6 @@ Ext.define('Ext.ElementLoader', {
             options: options,
             mask: mask,
             scope: scope,
-            rendererScope: rendererScope,
             callback: callback,
             success: options.success || me.success,
             failure: options.failure || me.failure,
@@ -324,7 +322,9 @@ Ext.define('Ext.ElementLoader', {
      * @param {Object} active The active request
      * @param {Object} options The initial options
      */
-    setOptions: Ext.emptyFn,
+    setOptions: function(active, options) {
+        active.rendererScope = options.rendererScope || this.rendererScope || this;
+    },
 
     /**
      * Parses the response after the request completes

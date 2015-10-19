@@ -447,7 +447,7 @@ Ext.define('Ext.ux.rating.Picker', {
         /**
          * This method returns the DOM text node into which glyphs are placed.
          * @param {HTMLElement} dom The DOM node parent of the text node.
-         * @return {HTMLTextNode} The text node.
+         * @return {TextNode} The text node.
          * @private
          */
         getGlyphTextNode: function (dom) {
@@ -552,7 +552,7 @@ Ext.define('Ext.ux.rating.Picker', {
 
         /**
          * Convert the coordinates of the given `Event` into a rating value.
-         * @param {Ext.Event} event The event.
+         * @param {Ext.event.Event} event The event.
          * @return {Number} The rating based on the given event coordinates.
          * @private
          */

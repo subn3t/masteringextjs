@@ -85,7 +85,10 @@ Ext.define('Ext.fx.Animator', {
      */
     delay: 0,
 
-    /* private used to track a delayed starting time */
+    /**
+     * @private
+     * used to track a delayed starting time
+     */
     delayStart: 0,
 
     /**

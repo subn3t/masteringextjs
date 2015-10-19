@@ -1476,6 +1476,10 @@ return utilDate = {
      * @return {Date} this or the clone.
      */
     clearTime : function(date, clone) {
+        // handles invalid dates preventing the browser from crashing.
+        if (isNaN(date.getTime())) { 
+            return date;
+        }
         if (clone) {
             return utilDate.clearTime(utilDate.clone(date));
         }

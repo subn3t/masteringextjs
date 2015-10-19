@@ -229,9 +229,15 @@ Ext.define('Ext.util.Renderable', {
     },
 
     /**
-     * Allows addition of behavior after rendering is complete. At this stage the Component's Element
-     * will have been styled according to the configuration, will have had any configured CSS class
-     * names added, and will be in the configured visibility and the configured enable state.
+     * Allows additional behavior after rendering is complete. At this stage, the 
+     * {@link Ext.Component Component's} {@link Ext.Component#getEl Element} will have 
+     * been styled according to the configuration, will have had any configured CSS 
+     * class names added, and will be in the configured visibility and configured enable 
+     * state.
+     * 
+     * **Note:** If the Component has a {@link Ext.Component#controller ViewController} 
+     * and the controller has an {@link Ext.app.ViewController#afterRender afterRender} 
+     * method it will be called passing the Component as the single param.
      *
      * @template
      * @protected
@@ -346,6 +352,16 @@ Ext.define('Ext.util.Renderable', {
         }
     },
 
+    /**
+     * Allows additional behavior before rendering.
+     * 
+     * **Note:** If the Component has a {@link Ext.Component#controller ViewController} 
+     * and the controller has a {@link Ext.app.ViewController#beforeRender beforeRender} 
+     * method it will be called passing the Component as the single param.
+     *
+     * @template
+     * @protected
+     */
     beforeRender: function () {
         var me = this,
             floating = me.floating,

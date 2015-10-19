@@ -564,9 +564,27 @@ describe("Ext.util.Filter", function() {
                 });
             });
 
-            describe("value coercion", function() {
-                it("should coerce the candidate value based on the value", function() {
+            describe('value coercion', function () {
+                it('should coerce the candidate value based on the value', function() {
                     expect(match('=', '10', 10)).toBe(true);
+                });
+
+                describe('when one of the operands is a boolean', function () {
+                    describe('the other operand is a string', function () {
+                        it('should coerce Boolean if the other operand is anything else', function () {
+                            expect(match('=', '0', false)).toBe(true);
+                        });
+                    });
+
+                    describe('the other operand is a number', function () {
+                        it('should coerce Boolean if the other operand is anything else', function () {
+                            expect(match('=', false, 0)).toBe(true);
+                        });
+
+                        it('should coerce Boolean if the other operand is anything else', function () {
+                            expect(match('=', 0, false)).toBe(true);
+                        });
+                    });
                 });
             });
         });
@@ -1313,3 +1331,4 @@ describe("Ext.util.Filter", function() {
         });
     });
 });
+

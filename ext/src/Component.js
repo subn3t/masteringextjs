@@ -437,7 +437,7 @@ Ext.define('Ext.Component', {
      * A Component or Element by which to position this component according to the {@link #defaultAlign}.
      * Defaults to the owning Container.
      *
-     * *Only applicable if this component is {@link #floating}*
+     * *Only applicable if this component is {@link #cfg-floating}*
      *
      * *Used upon first show*.
      */
@@ -488,9 +488,11 @@ Ext.define('Ext.Component', {
 
     /**
      * @cfg {Boolean/String/HTMLElement/Ext.dom.Element} autoRender
-     * This config is intended mainly for non-{@link #cfg-floating} Components which may or may not be shown. Instead of using
-     * {@link #renderTo} in the configuration, and rendering upon construction, this allows a Component to render itself
-     * upon first _{@link Ext.Component#method-show show}_. If {@link #cfg-floating} is `true`, the value of this config is omitted as if it is `true`.
+     * This config is intended mainly for non-{@link #cfg-floating} Components which may 
+     * or may not be shown. Instead of using {@link #renderTo} in the configuration, and 
+     * rendering upon construction, this allows a Component to render itself upon first 
+     * _{@link Ext.Component#method-show show}_. If {@link #cfg-floating} is `true`, the 
+     * value of this config is omitted as if it is `true`.
      *
      * Specify as `true` to have this Component render to the document body upon first show.
      *
@@ -511,7 +513,7 @@ Ext.define('Ext.Component', {
     /**
      * @cfg {Boolean} autoShow
      * `true` to automatically show the component upon creation. This config option may only be used for
-     * {@link #floating} components or components that use {@link #autoRender}.
+     * {@link #cfg-floating} components or components that use {@link #autoRender}.
      *
      * @since 2.3.0
      */
@@ -642,7 +644,7 @@ Ext.define('Ext.Component', {
      * The default {@link Ext.util.Positionable#getAlignToXY Ext.dom.Element#getAlignToXY} anchor position value for this component
      * relative to its {@link #alignTarget} (which defaults to its owning Container).
      *
-     * _Only applicable if this component is {@link #floating}_
+     * _Only applicable if this component is {@link #cfg-floating}_
      *
      * *Used upon first show*.
      */
@@ -693,8 +695,8 @@ Ext.define('Ext.Component', {
 
     /**
      * @cfg {Boolean/Object} [draggable=false]
-     * Specify as true to make a {@link #floating} Component draggable using the Component's encapsulating element as
-     * the drag handle.
+     * Specify as true to make a {@link #cfg-floating} Component draggable using the 
+     * Component's encapsulating element as the drag handle.
      *
      * This may also be specified as a config object for the {@link Ext.util.ComponentDragger ComponentDragger} which is
      * instantiated to perform dragging.
@@ -1181,6 +1183,14 @@ Ext.define('Ext.Component', {
     shrinkWrap: 2,
 
     /**
+     * @cfg stateEvents
+     * @inheritdoc Ext.state.Stateful#cfg-stateEvents
+     * @localdoc By default the following stateEvents are added:
+     * 
+     *  - {@link #event-resize}
+     */
+
+    /**
      * @cfg {String/Object} style
      * A custom style specification to be applied to this component's Element. Should be a valid argument to
      * {@link Ext.dom.Element#applyStyles}.
@@ -1470,7 +1480,8 @@ Ext.define('Ext.Component', {
 
     /**
      * @property {Ext.Container} floatParent
-     * **Only present for {@link #floating} Components which were inserted as child items of Containers.**
+     * **Only present for {@link #cfg-floating} Components which were inserted as child 
+     * items of Containers.**
      *
      * There are other similar relationships such as the {@link Ext.button.Button button} which activates a {@link Ext.button.Button#cfg-menu menu}, or the
      * {@link Ext.menu.Item menu item} which activated a {@link Ext.menu.Item#cfg-menu submenu}, or the
@@ -1481,7 +1492,7 @@ Ext.define('Ext.Component', {
      * Floating Components that are programmatically {@link Ext.Component#method-render rendered} will not have a `floatParent`
      * property.
      *
-     * See {@link #floating} and {@link #zIndexManager}
+     * See {@link #cfg-floating} and {@link #zIndexManager}
      * @readonly
      */
 
@@ -2197,13 +2208,32 @@ Ext.define('Ext.Component', {
      * @protected
      */
     afterComponentLayout: function(width, height, oldWidth, oldHeight) {
-        var me = this;
+        var me = this,
+            scroller;
 
         if (++me.componentLayoutCounter === 1) {
+            // Update the scroller very early in first layout so that it has the overflow element
+            // before any 'boxready', onResize, or 'resize' code gets to run.
+            scroller = me.scrollable; // initConfig has run by now
+            if (scroller) {
+                if (me.touchScroll && scroller.isTouchScroller) {
+                    scroller.setInnerElement(me.getScrollerEl());
+                }
+
+                scroller.setElement(me.getOverflowEl());
+
+                // IE browsers don't restore scroll position if the component was scrolled and
+                // then hidden and shown again, so we must do it manually.
+                // See EXTJS-16233.
+                if (Ext.isIE) {
+                    Ext.on('show', me.onGlobalShow, me);
+                }
+            }
             me.afterFirstLayout(width, height);
         }
 
         if (width !== oldWidth || height !== oldHeight) {
+            me.refreshScroll();
             me.onResize(width, height, oldWidth, oldHeight);
         }
 
@@ -2624,16 +2654,22 @@ Ext.define('Ext.Component', {
                 scrollable = Ext.scroll.Scroller.create(scrollable);
                 scrollable.component = me;
             }
-        } else if (oldScrollable) {
+        }
+        // We are disabling scrolling for this Component.
+        else if (oldScrollable) {
+            scrollable = oldScrollable;
             oldScrollable.setConfig({
                 x: false,
                 y: false
             });
-            oldScrollable.destroy();
         }
 
         if (me.rendered) {
-            me.getOverflowStyle(); // refresh the scrollFlags
+            if (scrollable) {
+                me.getOverflowStyle(); // refresh the scrollFlags
+            } else {
+                me.scrollFlags = me._scrollFlags.none;
+            }
             me.updateLayout();
         }
 
@@ -2680,7 +2716,8 @@ Ext.define('Ext.Component', {
     },
 
     /**
-     * @private Template method called before a Component is positioned.
+     * @private
+     * Template method called before a Component is positioned.
      *
      * Ensures that the position is adjusted so that the Component is constrained if so configured.
      */
@@ -2899,6 +2936,7 @@ Ext.define('Ext.Component', {
 
         if (!fromParent) {
             inherited.disabled = true;
+            me.savedDisabled = true;
         }
 
         if (me.maskOnDisable) {
@@ -2939,6 +2977,7 @@ Ext.define('Ext.Component', {
 
         if (!fromParent) {
             delete me.getInherited().disabled;
+            me.savedDisabled = false;
         }
 
         if (me.maskOnDisable) {
@@ -3008,8 +3047,38 @@ Ext.define('Ext.Component', {
 
     /**
      * Retrieves plugin from this component's collection by its `ptype`.
-     * @param {String} ptype The Plugin's ptype as specified by the class's `alias` configuration.
-     * @return {Ext.plugin.Abstract} plugin instance.
+     * 
+     *     var grid = Ext.create('Ext.grid.Panel', {
+     *         store: {
+     *             fields: ['name'],
+     *             data: [{
+     *                 name: 'Scott Pilgrim'
+     *             }]
+     *         },
+     *         columns: [{
+     *             header: 'Name',
+     *             dataIndex: 'name',
+     *             editor: 'textfield',
+     *             flex: 1
+     *         }],
+     *         selType: 'cellmodel',
+     *         plugins: {
+     *             ptype: 'cellediting',
+     *             clicksToEdit: 1,
+     *             pluginId: 'myplugin'
+     *         },
+     *         height: 200,
+     *         width: 400,
+     *         renderTo: Ext.getBody()
+     *     });
+     *     
+     *     grid.findPlugin('cellediting');  // the cellediting plugin
+     * 
+     * **Note:** See also {@link #getPlugin}
+     * 
+     * @param {String} ptype The Plugin's `ptype` as specified by the class's 
+     * {@link Ext.Class#cfg-alias alias} configuration.
+     * @return {Ext.plugin.Abstract} plugin instance or `undefined` if not found
      */
     findPlugin: function(ptype) {
         var i,
@@ -3083,6 +3152,10 @@ Ext.define('Ext.Component', {
         }
         if (me.modelValidation !== undefined) {
             inheritedState.modelValidation = me.modelValidation;
+        }
+
+        if (me.savedDisabled) {
+            inheritedState.disabled = true;
         }
 
         me.mixins.bindable.initInheritedState.call(me, inheritedState);
@@ -3167,8 +3240,37 @@ Ext.define('Ext.Component', {
 
     /**
      * Retrieves a plugin from this component's collection by its `pluginId`.
-     * @param {String} pluginId
-     * @return {Ext.plugin.Abstract} plugin instance.
+     * 
+     *     var grid = Ext.create('Ext.grid.Panel', {
+     *         store: {
+     *             fields: ['name'],
+     *             data: [{
+     *                 name: 'Scott Pilgrim'
+     *             }]
+     *         },
+     *         columns: [{
+     *             header: 'Name',
+     *             dataIndex: 'name',
+     *             editor: 'textfield',
+     *             flex: 1
+     *         }],
+     *         selType: 'cellmodel',
+     *         plugins: {
+     *             ptype: 'cellediting',
+     *             clicksToEdit: 1,
+     *             pluginId: 'myplugin'
+     *         },
+     *         height: 200,
+     *         width: 400,
+     *         renderTo: Ext.getBody()
+     *     });
+     *     
+     *     grid.getPlugin('myplugin');  // the cellediting plugin
+     * 
+     * **Note:** See also {@link #findPlugin}
+     * 
+     * @param {String} pluginId The `pluginId` set on the plugin config object
+     * @return {Ext.plugin.Abstract} plugin instance or `null` if not found
      */
     getPlugin: function(pluginId) {
         var i,
@@ -3485,9 +3587,11 @@ Ext.define('Ext.Component', {
 
     /**
      * Hides this Component, setting it to invisible using the configured {@link #hideMode}.
-     * @param {String/Ext.dom.Element/Ext.Component} [animateTarget=null] **only valid for {@link #cfg-floating} Components
-     * such as {@link Ext.window.Window Window}s or {@link Ext.tip.ToolTip ToolTip}s, or regular Components which have
-     * been configured with `floating: true`.**. The target to which the Component should animate while hiding.
+     * @param {String/Ext.dom.Element/Ext.Component} [animateTarget=null] **only valid 
+     * for {@link #cfg-floating} Components such as {@link Ext.window.Window Window}s or 
+     * {@link Ext.tip.ToolTip ToolTip}s, or regular Components which have been 
+     * configured with `floating: true`.**. The target to which the Component should 
+     * animate while hiding.
      * @param {Function} [callback] A callback function to call after the Component is hidden.
      * @param {Object} [scope] The scope (`this` reference) in which the callback is executed.
      * Defaults to this Component.
@@ -4019,7 +4123,7 @@ Ext.define('Ext.Component', {
         }
         
         if (me.reference) {
-            me.fixReference();
+            Ext.ComponentManager.markReferencesDirty();
         }
 
         if (me.hasListeners && me.hasListeners.added) {
@@ -4087,6 +4191,10 @@ Ext.define('Ext.Component', {
      *
      * This method is not called on components that use {@link #liquidLayout}, such as
      * {@link Ext.button.Button Buttons} and {@link Ext.form.field.Base Form Fields}.
+     * 
+     * **Note:** If the Component has a {@link Ext.Component#controller ViewController} 
+     * and the controller has a {@link Ext.app.ViewController#boxReady boxReady} method 
+     * it will be called passing the Component as the single param.
      *
      * @param {Number} width The width of this component
      * @param {Number} height The height of this component
@@ -4095,8 +4203,7 @@ Ext.define('Ext.Component', {
      * @protected
      */
     onBoxReady: function(width, height) {
-        var me = this,
-            scroller = me.scrollable;
+        var me = this;
 
         if (me.resizable) {
             me.initResizable(me.resizable);
@@ -4106,21 +4213,6 @@ Ext.define('Ext.Component', {
         // Because if we have to be wrapped, the resizer wrapper must be dragged as a pseudo-Component
         if (me.draggable) {
             me.initDraggable();
-        }
-
-        if (scroller) {
-            if (me.touchScroll && scroller.isTouchScroller) {
-                scroller.setInnerElement(me.getScrollerEl());
-            }
-
-            scroller.setElement(me.getOverflowEl());
-
-            // IE browsers don't restore scroll position if the component was scrolled and
-            // then hidden and shown again, so we must do it manually.
-            // See EXTJS-16233.
-            if (Ext.isIE) {
-                Ext.on('show', me.onGlobalShow, me);
-            }
         }
 
         if (me.hasListeners.boxready) {
@@ -4302,6 +4394,7 @@ Ext.define('Ext.Component', {
     },
 
     /**
+     * @method
      * Called after the component is moved, this method is empty by default but can be implemented by any
      * subclass that needs to perform custom logic after a move occurs.
      *
@@ -4329,13 +4422,6 @@ Ext.define('Ext.Component', {
         // constrain is a config on Floating
         if (me.floating && me.constrain) {
             me.doConstrain();
-        }
-
-        // check oldWidth to ensure the scroller does not get needlessly refreshed on
-        // initial component layout (oldWidth/Height are undefined when onResize is called
-        // as a result of the initial component layout)
-        if (oldWidth) {
-            me.refreshScroll();
         }
 
         if (me.hasListeners.resize) {
@@ -5039,6 +5125,27 @@ Ext.define('Ext.Component', {
 
     /**
      * Sets the style for this Component's primary element.
+     * 
+     * Styles should be a valid DOM element style property.  
+     * [Valid style property names](http://www.w3schools.com/jsref/dom_obj_style.asp) 
+     * (_along with the supported CSS version for each_)
+     * 
+     *     var name = Ext.create({
+     *         xtype: 'component',
+     *         renderTo: Ext.getBody(),
+     *         html: 'Phineas Flynn'
+     *     });
+     *     
+     *     // two-param syntax
+     *     name.setStyle('color', 'white');
+     *     
+     *     // single-param syntax
+     *     name.setStyle({
+     *         fontWeight: 'bold',
+     *         backgroundColor: 'gray',
+     *         padding: '10px'
+     *     });
+     * 
      * @param {String/Object} property The style property to be set, or an object of
      * multiple styles.
      * @param {String} [value] The value to apply to the given property, or null if an
@@ -5144,14 +5251,18 @@ Ext.define('Ext.Component', {
     },
 
     /**
-     * Shows this Component, rendering it first if {@link #autoRender} or {@link #floating} are `true`.
+     * Shows this Component, rendering it first if {@link #autoRender} or 
+     * {@link #cfg-floating} are `true`.
      *
-     * After being shown, a {@link #floating} Component (such as a {@link Ext.window.Window}), is activated it and
-     * brought to the front of its {@link #zIndexManager z-index stack}.
+     * After being shown, a {@link #cfg-floating} Component (such as a 
+     * {@link Ext.window.Window}), is activated it and brought to the front of its 
+     * {@link #zIndexManager z-index stack}.
      *
-     * @param {String/Ext.dom.Element} [animateTarget=null] **only valid for {@link #floating} Components such as {@link
-     * Ext.window.Window Window}s or {@link Ext.tip.ToolTip ToolTip}s, or regular Components which have been configured
-     * with `floating: true`.** The target from which the Component should animate from while opening.
+     * @param {String/Ext.dom.Element} [animateTarget=null] **only valid for 
+     * {@link #cfg-floating} Components such as {@link Ext.window.Window Window}s or 
+     * {@link Ext.tip.ToolTip ToolTip}s, or regular Components which have been 
+     * configured with `floating: true`.** The target from which the Component should 
+     * animate from while opening.
      * @param {Function} [callback] A callback function to call after the Component is displayed.
      * Only necessary if animation was specified.
      * @param {Object} [scope] The scope (`this` reference) in which the callback is executed.
@@ -5266,12 +5377,12 @@ Ext.define('Ext.Component', {
         } else {
             me.setPagePosition(x, y, animate);
         }
-        me.show();
+        return me.show();
     },
 
     /**
      * Shows this component by the specified {@link Ext.Component Component} or {@link Ext.dom.Element Element}.
-     * Used when this component is {@link #floating}.
+     * Used when this component is {@link #cfg-floating}.
      * @param {Ext.Component/Ext.dom.Element} component The {@link Ext.Component} or {@link Ext.dom.Element} to show the component by.
      * @param {String} [position] Alignment position as used by {@link Ext.util.Positionable#getAlignToXY}.
      * Defaults to `{@link #defaultAlign}`. See {@link #alignTo} for possible values.
@@ -5399,13 +5510,17 @@ Ext.define('Ext.Component', {
      * template. If this component was not configured with a template, the components
      * content area will be updated via Ext.Element update.
      * @param {Boolean} [loadScripts=false] Only legitimate when using the `html`
-     * configuration.
+     * configuration. Causes embedded script tags to be executed. Inline source will be executed
+     * with this Component as the scope (`this` reference).
      * @param {Function} [callback] Only legitimate when using the `html` configuration.
      * Callback to execute when scripts have finished loading.
+     * @param {Object} [scriptScope=`this`] The scope (`this` reference) in which to
+     * execute *inline* script elements content. Scripts with a `src` attribute cannot
+     * be executed with this scope.
      *
      * @since 3.4.0
      */
-    update: function(htmlOrData, loadScripts, callback) {
+    update: function(htmlOrData, loadScripts, callback, scriptScope) {
         var me = this,
             isData = (me.tpl && !Ext.isString(htmlOrData)),
             scroller = me.getScrollable(),
@@ -5434,7 +5549,7 @@ Ext.define('Ext.Component', {
             if (isData) {
                 me.tpl[me.tplWriteMode](el, me.data || {});
             } else {
-                el.setHtml(me.html, loadScripts, callback);
+                el.setHtml(me.html, loadScripts, callback, scriptScope || me);
             }
 
             if (doLayout) {
@@ -5450,8 +5565,8 @@ Ext.define('Ext.Component', {
         }
     },
 
-    setHtml: function (html) {
-        this.update(html);
+    setHtml: function (html, loadScripts, scriptScope) {
+        this.update(html, loadScripts, null, scriptScope);
     },
 
     applyData: function (data) {

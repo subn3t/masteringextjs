@@ -848,9 +848,11 @@ Ext.define('Ext.chart.axis.sprite.Axis', {
         }
     },
 
-    renderLimits: function () {
+    renderLimits: function (clipRect) {
         var me = this,
             axis = me.getAxis(),
+            chart = axis.getChart(),
+            innerPadding = chart.getInnerPadding(),
             limits = Ext.Array.from(axis.getLimits());
 
         if (!limits.length) {
@@ -876,7 +878,7 @@ Ext.define('Ext.chart.axis.sprite.Axis', {
                 !limit.line && (limit.line = {});
                 value = Ext.isString(limit.value) ? axis.getCoordFor(limit.value) : limit.value;
                 value = value * matrix.getYY() + matrix.getDY();
-                limit.line.y = value;
+                limit.line.y = value + innerPadding.top;
                 limit.line.strokeStyle = limit.line.strokeStyle || attr.strokeStyle;
                 me.putMarker('horizontal-limit-lines', limit.line, i, true);
                 if (limit.line.title) {
@@ -896,7 +898,7 @@ Ext.define('Ext.chart.axis.sprite.Axis', {
                     }
                     titles.setAttributesFor(titles.position - 1, {
                         x: x,
-                        y: value - titleBBox.height / 2,
+                        y: limit.line.y - titleBBox.height / 2,
                         textAlign: titlePosition,
                         fillStyle: limit.line.title.fillStyle || limit.line.strokeStyle
                     });
@@ -908,7 +910,7 @@ Ext.define('Ext.chart.axis.sprite.Axis', {
                 !limit.line && (limit.line = {});
                 value = Ext.isString(limit.value) ? axis.getCoordFor(limit.value) : limit.value;
                 value = value * matrix.getXX() + matrix.getDX();
-                limit.line.x = value;
+                limit.line.x = value + innerPadding.left;
                 limit.line.strokeStyle = limit.line.strokeStyle || attr.strokeStyle;
                 me.putMarker('vertical-limit-lines', limit.line, i, true);
                 if (limit.line.title) {
@@ -927,7 +929,7 @@ Ext.define('Ext.chart.axis.sprite.Axis', {
                             break;
                     }
                     titles.setAttributesFor(titles.position - 1, {
-                        x: value + titleBBox.height / 2,
+                        x: limit.line.x + titleBBox.height / 2,
                         y: y,
                         fillStyle: limit.line.title.fillStyle || limit.line.strokeStyle,
                         rotationRads: Math.PI / 2
@@ -1009,7 +1011,7 @@ Ext.define('Ext.chart.axis.sprite.Axis', {
             me.renderTicks(surface, ctx, layout, clipRect);
             me.renderAxisLine(surface, ctx, layout, clipRect);
             me.renderGridLines(surface, ctx, layout, clipRect);
-            me.renderLimits();
+            me.renderLimits(clipRect);
             ctx.stroke();
         }
     }

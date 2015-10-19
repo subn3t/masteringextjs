@@ -22,15 +22,11 @@ Ext.define('Ext.event.publisher.Dom', {
     // the DOM,  For these events, when the delegated event model is used, we attach a
     // single listener on the window object using the "useCapture" option.
     captureEvents: {
-        resize: 1,
-        focus: 1,
-        blur: 1,
-        paste: 1,
-        input: 1,
-        change: 1,
         animationstart: 1,
         animationend: 1,
-        scroll: 1
+        resize: 1,
+        focus: 1,
+        blur: 1
     },
 
     // The following events do not bubble, and cannot be "captured".  The only way to
@@ -48,7 +44,11 @@ Ext.define('Ext.event.publisher.Dom', {
         error: 1,
         DOMContentLoaded: 1,
         DOMFrameContentLoaded: 1,
-        hashchange: 1
+        hashchange: 1,
+        // Scroll can be captured, but it is listed here as one of directEvents instead of
+        // captureEvents because in some browsers capturing the scroll event does not work
+        // if the window object itself fired the scroll event.
+        scroll: 1
     },
 
     /**
@@ -519,6 +519,15 @@ Ext.define('Ext.event.publisher.Dom', {
             // both look for flags on the same object.
             self = Ext.event.publisher.Dom,
             now = Ext.now();
+
+        // Gecko has a bug where right clicking will trigger both a contextmenu
+        // and click event. This only occurs when delegating the event onto the window
+        // object like we do by default for delegated events.
+        // This is not possible to feature detect using synthetic events.
+        // Ticket logged: https://bugzilla.mozilla.org/show_bug.cgi?id=1156023
+        if (Ext.isGecko && e.type === 'click' && e.button === 2) {
+            return true;
+        }
 
         // prevent emulated pointerover, pointerout, pointerenter, and pointerleave
         // events from firing when triggered by touching the screen.

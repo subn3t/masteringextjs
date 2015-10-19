@@ -487,7 +487,12 @@ Ext.define('Ext.data.Store', {
         var me = this,
             len = records.length,
             lastChunk = info ? !info.next : false,
-            removed = me.getRemovedRecords(),
+
+            // Must use class-specific removed property.
+            // Regular Stores add to the "removed" property on remove.
+            // TreeStores are having records removed all the time; node collapse removes.
+            // TreeStores add to the "removedNodes" property onNodeRemove
+            removed = me.removed,
             ignoreAdd = me.ignoreCollectionAdd,
             session = me.getSession(),
             replaced = info && info.replaced,
@@ -565,10 +570,7 @@ Ext.define('Ext.data.Store', {
     },
 
     fireChangeEvent: function(record) {
-        var data = this.getData();
-
-        data = data.getSource() || data;
-        return data.contains(record);
+        return this.getDataSource().contains(record);
     },
 
     afterChange: function(record, modifiedFieldNames, type) {
@@ -620,14 +622,14 @@ Ext.define('Ext.data.Store', {
         if (remote) {
             data.setSorters(null);
         }
-        
+
         return me.insert(index, record);
     },
 
     /**
      * Removes the specified record(s) from the Store, firing the {@link #event-remove}
      * event for the removed records.
-     * 
+     *
      * After all records have been removed a single `datachanged` is fired.
      *
      * @param {Ext.data.Model/Ext.data.Model[]/Number/Number[]} records Model instance or
@@ -635,12 +637,12 @@ Ext.define('Ext.data.Store', {
      */
     remove: function(records, /* private */ isMove, silent) {
         var me = this,
-            data = me.getData(),
+            data = me.getDataSource(),
             len, i, toRemove, record;
-        
+
         if (records) {
             if (records.isModel) {
-                if (me.indexOf(records) > -1) {
+                if (data.indexOf(records) > -1) {
                     toRemove = [records];
                     len = 1;
                 } else {
@@ -665,23 +667,24 @@ Ext.define('Ext.data.Store', {
                 len = toRemove.length;
             }
         }
-        
+
         if (!len) {
             return [];
         }
-        
+
         me.removeIsMove = isMove === true;
         me.removeIsSilent = silent;
         data.remove(toRemove);
         me.removeIsSilent = false;
         return toRemove;
     },
-    
+
     onCollectionRemove: function(collection, info) {
         var me = this,
-            // Use class-specific removed collection.
-            // TreeStore uses a different property and must not collect nodes on removal from the collection
-            // but on removal of child nodes on onNodeRemove,
+            // Must use class-specific removed property.
+            // Regular Stores add to the "removed" property on remove.
+            // TreeStores are having records removed all the time; node collapse removes.
+            // TreeStores add to the "removedNodes" property onNodeRemove
             removed = me.removed,
             records = info.items,
             len = records.length,
@@ -690,14 +693,12 @@ Ext.define('Ext.data.Store', {
             silent = me.removeIsSilent,
             lastChunk = !info.next,
             replacement = info.replacement,
-            data = me.getData(),
+            data = me.getDataSource(),
             i, record;
         
         if (me.ignoreCollectionRemove) {
             return;
         }
-
-        data = data.getSource() || data;
 
         if (replacement) {
             me.setMoving(replacement.items, true);
@@ -912,7 +913,7 @@ Ext.define('Ext.data.Store', {
         if (me.isDestroyed) {
             return;
         }
-        
+
         if (resultSet) {
             me.totalCount = resultSet.getTotal();
         }
@@ -932,18 +933,33 @@ Ext.define('Ext.data.Store', {
         me.callObservers('AfterLoad', [records, successful, operation]);
     },
 
-    getUnfiltered: function() {
-        var data = this.getData();
-        
-        return data.getSource() || data;
+    // private
+    filterDataSource: function (fn) {
+        var source = this.getDataSource(),
+            items = source.items,
+            len = items.length,
+            ret = [],
+            i;
+
+        for (i = 0; i < len; i++) {
+            if (fn.call(source, items[i])) {
+                ret.push(items[i]);
+            }
+        }
+
+        return ret;
     },
 
     getNewRecords: function() {
-        return this.getUnfiltered().createFiltered(this.filterNew).getRange();
+        return this.filterDataSource(this.filterNew);
+    },
+
+    getRejectRecords: function() {
+        return this.filterDataSource(this.filterRejects);
     },
 
     getUpdatedRecords: function() {
-        return this.getUnfiltered().createFiltered(this.filterUpdated).getRange();
+        return this.filterDataSource(this.filterUpdated);
     },
 
     /**
@@ -1098,12 +1114,10 @@ Ext.define('Ext.data.Store', {
     clearData: function(isLoad) {
         var me = this,
             removed = me.removed,
-            data = me.getData(),
+            data = me.getDataSource(),
             clearRemovedOnLoad = me.getClearRemovedOnLoad(),
             needsUnjoinCheck = removed && isLoad && !clearRemovedOnLoad,
-            records, record, i, len, unjoin;
-
-        data = data.getSource() || data;
+            records, record, i, len;
 
         // We only have to do the unjoining if not buffered. PageMap will unjoin its records when it clears itself.
         // There is a potential for a race condition in stores configured with autoDestroy: true;
@@ -1168,10 +1182,6 @@ Ext.define('Ext.data.Store', {
         return item.phantom || item.dirty;
     },
 
-    getRejectRecords: function() {
-        return this.getData().createFiltered(this.filterRejects).getRange();
-    },
-
     /**
      * {@link Ext.data.Model#reject Rejects} outstanding changes on all {@link #getModifiedRecords modified records}
      * and re-insert any records that were removed locally. Any phantom records will be removed.
@@ -1202,7 +1212,7 @@ Ext.define('Ext.data.Store', {
         }
 
         // Restore removed records back to their original positions.
-        recs = me.removed;
+        recs = me.getRawRemovedRecords();
         if (recs) {
             len = recs.length;
             sorted = !me.getRemoteSort() && me.isSorted();

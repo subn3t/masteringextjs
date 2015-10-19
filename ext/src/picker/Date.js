@@ -350,7 +350,10 @@ Ext.define('Ext.picker.Date', {
      * @param {Date} date The selected date
      */
 
-    // private, inherit docs
+    /**
+     * @private
+     * @inheritdoc
+     */
     initComponent: function() {
         var me = this,
             clearTime = Ext.Date.clearTime;
@@ -511,6 +514,9 @@ Ext.define('Ext.picker.Date', {
             });
         }
 
+        // Month button is pointer interactive only, it should not be allowed to focus.
+        me.monthBtn.el.on('mousedown', me.onMouseDown, me);
+
         me.prevRepeater = new Ext.util.ClickRepeater(me.prevEl, {
             handler: me.showPrevMonth,
             scope: me,
@@ -534,17 +540,25 @@ Ext.define('Ext.picker.Date', {
 
             left: function(e) {
                 if (e.ctrlKey) {
+                    e.preventDefault();
                     me.showPrevMonth();
                 } else {
                     me.update(eDate.add(me.activeDate, day, -1));
+                }
+                if (pickerField) {
+                    pickerField.onArrowKey('left', e);
                 }
             },
 
             right: function(e){
                 if (e.ctrlKey) {
+                    e.preventDefault();
                     me.showNextMonth();
                 } else {
                     me.update(eDate.add(me.activeDate, day, 1));
+                }
+                if (pickerField) {
+                    pickerField.onArrowKey('right', e);
                 }
             },
 
@@ -554,6 +568,9 @@ Ext.define('Ext.picker.Date', {
                 } else {
                     me.update(eDate.add(me.activeDate, day, -7));
                 }
+                if (pickerField) {
+                    pickerField.onArrowKey('up', e);
+                }
             },
 
             down: function(e) {
@@ -561,6 +578,9 @@ Ext.define('Ext.picker.Date', {
                     me.showPrevYear();
                 } else {
                     me.update(eDate.add(me.activeDate, day, 7));
+                }
+                if (pickerField) {
+                    pickerField.onArrowKey('down', e);
                 }
             },
 
@@ -617,7 +637,7 @@ Ext.define('Ext.picker.Date', {
         }, me.keyNavConfig));
 
         if (me.disabled) {
-            me.syncDisabled(true);
+            me.syncDisabled(true, true);
         }
         me.update(me.value);
     },
@@ -779,7 +799,7 @@ Ext.define('Ext.picker.Date', {
         var me = this;
 
         me.callParent();
-        me.syncDisabled(false);
+        me.syncDisabled(false, true);
         me.update(me.activeDate);
 
     },
@@ -813,7 +833,7 @@ Ext.define('Ext.picker.Date', {
      */
     onDisable: function() {
         this.callParent();
-        this.syncDisabled(true);
+        this.syncDisabled(true, true);
     },
 
     /**
@@ -834,6 +854,10 @@ Ext.define('Ext.picker.Date', {
         var picker = this.monthPicker,
             options = {
                 duration: 200,
+                // Prevent the animation callback from hiding the element,
+                // it can cause issues in IE where we lose focus before
+                // calling hide on the component
+                preventHide: isHide,
                 callback: function() {
                     picker.setVisible(!isHide);
                 }
@@ -867,7 +891,7 @@ Ext.define('Ext.picker.Date', {
         return me;
     },
     
-    doShowMonthPicker: function(){
+    doShowMonthPicker: function() {
         // Wrap in an extra call so we can prevent the button
         // being passed as an animation parameter.
         this.showMonthPicker();
@@ -1169,6 +1193,7 @@ Ext.define('Ext.picker.Date', {
                 (ddMatch && format && ddMatch.test(eDate.dateFormat(tempDate, format))) ||
                 (ddays && ddays.indexOf(tempDate.getDay()) !== -1));
 
+            me.todayDisabled = disableToday;
             if (!me.disabled) {
                 me.todayBtn.setDisabled(disableToday);
             }
@@ -1309,20 +1334,22 @@ Ext.define('Ext.picker.Date', {
         /**
          * Set the disabled state of various internal components
          * @param {Boolean} disabled
+         * @param {Boolean} [doButton=false]
          * @private
          */
-        syncDisabled: function (disabled) {
+        syncDisabled: function (disabled, doButton) {
             var me = this,
-                keyNav = me.keyNav;
+                keyNav = me.keyNav,
+                todayBtn = me.todayBtn;
 
             // If we have one, we have all
             if (keyNav) {
                 keyNav.setDisabled(disabled);
                 me.prevRepeater.setDisabled(disabled);
                 me.nextRepeater.setDisabled(disabled);
-                if (me.todayBtn) {
-                    me.todayBtn.setDisabled(disabled);
-                }
+            }
+            if (doButton && todayBtn) {
+                todayBtn.setDisabled(me.todayDisabled || disabled);
             }
         }
     }

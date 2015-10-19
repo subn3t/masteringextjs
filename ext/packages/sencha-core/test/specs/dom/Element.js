@@ -792,6 +792,219 @@ describe("Ext.dom.Element", function() {
                 });
             });
 
+            describe("wrap/unwrap", function() {
+                describe("wrap", function() {
+                    var wrap;
+
+                    beforeEach(function() {
+                        element = addElement('div');
+                    });
+
+                    afterEach(function() {
+                        wrap = Ext.destroy(wrap);
+                    });
+
+                    it("should wrap the element", function() {
+                        var parent = element.dom.parentNode;
+                        wrap = element.wrap();
+                        expect(element.dom.parentNode.parentNode).toBe(parent);
+                    });
+
+                    it("should wrap the element in place", function() {
+                        var el1 = Ext.getBody().createChild(),
+                            el2 = Ext.getBody().createChild();
+
+                        el1.insertBefore(element);
+
+                        wrap = element.wrap();
+
+                        expect(wrap.prev()).toBe(el1);
+                        expect(wrap.next()).toBe(el2);
+
+                        Ext.destroy(el1, el2);
+                    });
+
+                    describe("config", function() {
+                        it("should apply the config to the wrapping element", function() {
+                            var newId = Ext.id();
+                            wrap = element.wrap({
+                                cls: 'foo',
+                                id: newId
+                            });
+                            expect(wrap.dom.className).toBe('foo');
+                            expect(wrap.dom.id).toBe(newId);
+                        });
+                    });
+
+                    describe("returnDom", function() {
+                        it("should return an Ext.dom.Element by default", function() {
+                            wrap = element.wrap();
+                            expect(wrap.isElement).toBe(true);
+                        });
+
+                        it("should return an Ext.dom.Element when passing false", function() {
+                            wrap = element.wrap({}, false);
+                            expect(wrap.isElement).toBe(true);
+                        });
+
+                        it("should return an DOM element when passing true", function() {
+                            wrap = element.wrap({}, true);
+                            expect(wrap.isElement).not.toBe(true);
+                            // To allow it to be destroyed in the afterEach
+                            wrap = Ext.get(wrap);
+                        });
+                    });
+
+                    describe("selector", function() {
+                        it("should place the element in the element match the selector", function() {
+                            wrap = element.wrap({
+                                cls: 'foo',
+                                children: [{
+                                    cls: 'bar',
+                                    children: [{
+                                        cls: 'baz'
+                                    }]
+                                }]
+                            }, false, '.baz');
+
+                            expect(element.dom.parentNode.className).toBe('baz');
+                            expect(element.dom.parentNode.parentNode.className).toBe('bar');
+                            expect(element.dom.parentNode.parentNode.parentNode.className).toBe('foo');
+                        });
+                    });
+
+                    describe("focus", function() {
+                        it("should keep focus if the active element is inside the wrapped element", function() {
+                            var child = element.createChild({
+                                tag: 'a',
+                                html: 'Foo',
+                                tabIndex: '0'
+                            });
+
+                            jasmine.focusAndWait(child);
+                            runs(function() {
+                                wrap = element.wrap();
+                            });
+                            jasmine.waitsForFocus(child);
+                            runs(function() {
+                                expect(Ext.dom.Element.getActiveElement()).toBe(child.dom);
+                            });
+                        });
+
+                        it("should not fire focus/blur events on the element", function() {
+                            var child = element.createChild({
+                                tag: 'a',
+                                html: 'Foo',
+                                tabIndex: '0'
+                            }), spy = jasmine.createSpy();
+
+                            jasmine.focusAndWait(child);
+                            runs(function() {
+                                child.on('focus', spy);
+                                child.on('blur', spy);
+                                wrap = element.wrap();
+                            });
+                            jasmine.waitsForFocus(child);
+                            runs(function() {
+                                expect(spy).not.toHaveBeenCalled();
+                                child.destroy();
+                            });
+                        });
+
+                        it("should not cause an exception when the focused element is not in the element cache", function() {
+                            var newId = Ext.id();
+                            element.dom.innerHTML = '<a tabIndex="0" id="' + newId + '">Foo</a>';
+
+                            var child = element.dom.firstChild;
+
+                            jasmine.focusAndWait(child);
+                            runs(function() {
+                                expect(function() {
+                                    wrap = element.wrap();
+                                }).not.toThrow();
+                                expect(Ext.cache[newId]).toBeUndefined();
+                            });
+                            jasmine.waitsForFocus(child);
+                            runs(function() {
+                                expect(Ext.dom.Element.getActiveElement()).toBe(child);
+                            });
+                        });
+                    });
+                });
+
+                // API is private, just want to test focus stuff here
+                describe("unwrap", function() {
+                    var wrap;
+
+                    beforeEach(function() {
+                        element = addElement('div');
+                        wrap = element.wrap();
+                    });
+
+                    afterEach(function() {
+                        wrap = Ext.destroy(wrap);
+                    });
+
+                    describe("focus", function() {
+                        it("should keep focus if the active element is inside the wrapped element", function() {
+                            var child = element.createChild({
+                                tag: 'a',
+                                html: 'Foo',
+                                tabIndex: '0'
+                            });
+
+                            jasmine.focusAndWait(child);
+                            runs(function() {
+                                element.unwrap();
+                            });
+                            jasmine.waitsForFocus(child);
+                            runs(function() {
+                                expect(Ext.dom.Element.getActiveElement()).toBe(child.dom);
+                            });
+                        });
+
+                        it("should not fire focus/blur events on the element", function() {
+                            var child = element.createChild({
+                                tag: 'a',
+                                html: 'Foo',
+                                tabIndex: '0'
+                            }), spy = jasmine.createSpy();
+
+                            jasmine.focusAndWait(child);
+                            runs(function() {
+                                child.on('focus', spy);
+                                child.on('blur', spy);
+                                element.unwrap();
+                            });
+                            jasmine.waitsForFocus(child);
+                            runs(function() {
+                                expect(spy).not.toHaveBeenCalled();
+                                child.destroy();
+                            });
+                        });
+
+                        it("should not cause an exception when the focused element is not in the element cache", function() {
+                            var newId = Ext.id();
+                            element.dom.innerHTML = '<a tabIndex="0" id="' + newId + '">Foo</a>';
+
+                            var child = element.dom.firstChild;
+
+                            jasmine.focusAndWait(child);
+                            runs(function() {
+                                expect(function() {
+                                    element.unwrap();
+                                }).not.toThrow();
+                                expect(Ext.cache[newId]).toBeUndefined();
+                            });
+                            jasmine.waitsForFocus(child);
+                            runs(function() {
+                                expect(Ext.dom.Element.getActiveElement()).toBe(child);
+                            });
+                        });
+                    });
+                });
+            });
+
             describe("getValue", function() {
                 beforeEach(function() {
                     element = addElement('div');
@@ -2246,6 +2459,32 @@ describe("Ext.dom.Element", function() {
 
             expect(element.shim.el).toBeNull();
             expect(element.shim.disabled).toBe(true);
+        });
+
+        it("should mask all iframes when resizing an element with shim and unmask when done.", function() {
+            var iframe = Ext.getBody().createChild({
+                tag: 'iframe',
+                src: 'about:blank',
+                style: 'position:absolute;left:0px;top:0px;width:200px;height:100px;'
+            });
+
+            var win = Ext.create('Ext.window.Window', {
+                width: 100,
+                height: 100,
+                title: 'Test',
+                shim: true
+            }).show();
+
+            jasmine.fireMouseEvent(win.resizer.south, 'mousedown');
+
+            expect(Ext.fly(iframe.dom.parentNode).isMasked()).toBe(true);
+
+            jasmine.fireMouseEvent(win.resizer.south, 'mouseup');
+
+            expect(Ext.fly(iframe.dom.parentNode).isMasked()).toBe(false);
+
+            iframe.destroy();
+            win.destroy();
         });
     });
 
@@ -4087,7 +4326,7 @@ describe("Ext.dom.Element", function() {
 
         describe('listener arguments', function() {
             it('should fire an event with the correct signature on every element in the bubble stack', function() {
-                https://sencha.jira.com/browse/EXTJS-15735
+                // https://sencha.jira.com/browse/EXTJS-15735
                 var c1 = Ext.getBody().appendChild({
                         id: 'c1',
                         cn: {
@@ -4368,6 +4607,105 @@ describe("Ext.dom.Element", function() {
                 el.on('click', function() {}, null, {stopEvent: true});
                 jasmine.fireMouseEvent(el, 'click');
                 expect(spy.callCount).toBe(1);
+            });
+        });
+    });
+
+    describe("special DOM events", function() {
+        var el, spy, e;
+
+        beforeEach(function() {
+            var proto = Ext.dom.Element.prototype;
+            proto.additiveEvents.custommousemove = 'custommousemove';
+            proto.eventMap.custommousemove = 'customtouchmove';
+            proto.eventMap.customclick = 'customtap';
+
+            el = Ext.getBody().createChild();
+            spy = jasmine.createSpy();
+            e = new Ext.event.Event({});
+        });
+
+        afterEach(function() {
+            var proto = Ext.dom.Element.prototype;
+            delete proto.additiveEvents.custommousemove;
+            delete proto.eventMap.custommousemove;
+            delete proto.eventMap.customclick;
+
+            el = spy = e = Ext.destroy(el);
+        });
+
+        describe("additive events", function() {
+            it("should add listeners for both event types", function() {
+                el.on('custommousemove', spy);
+
+                Ext.event.publisher.Gesture.instance.fire(el, 'custommousemove', e, false, false);
+                expect(spy.callCount).toBe(1);
+
+                spy.reset();
+
+                Ext.event.publisher.Gesture.instance.fire(el, 'customtouchmove', e, false, false);
+                expect(spy.callCount).toBe(1);
+            });
+
+            it("should clear both listeners on removal", function() {
+                el.on('custommousemove', spy);
+                el.un('custommousemove', spy);
+
+                Ext.event.publisher.Gesture.instance.fire(el, 'custommousemove', e, false, false);
+                Ext.event.publisher.Gesture.instance.fire(el, 'customtouchmove', e, false, false);
+                expect(spy).not.toHaveBeenCalled();
+            });
+
+            it("should clear listeners correctly with single: true", function() {
+                el.on('custommousemove', spy, null, {single: true});
+
+                Ext.event.publisher.Gesture.instance.fire(el, 'custommousemove', e, false, false);
+                expect(spy.callCount).toBe(1);
+
+                spy.reset();
+
+                Ext.event.publisher.Gesture.instance.fire(el, 'custommousemove', e, false, false);
+                Ext.event.publisher.Gesture.instance.fire(el, 'customtouchmove', e, false, false);
+                expect(spy).not.toHaveBeenCalled();
+            });
+
+            it("should remove listeners correctly with destroyable", function() {
+                el.on('custommousemove', spy, null, {
+                    destroyable: true
+                }).destroy();
+
+                Ext.event.publisher.Gesture.instance.fire(el, 'custommousemove', e, false, false);
+                Ext.event.publisher.Gesture.instance.fire(el, 'customtouchmove', e, false, false);
+                expect(spy).not.toHaveBeenCalled();
+            });
+        });
+
+        describe("managed listeners", function() {
+            it("should remove listeners correctly with translated event names", function() {
+                var o = new Ext.mixin.Observable();
+
+                o.mon(el, 'customclick', spy);
+
+                Ext.event.publisher.Gesture.instance.fire(el, 'customtap', e, false, false);
+                expect(spy.callCount).toBe(1);
+
+                spy.reset();
+
+                o.mun(el, 'customclick', spy);
+
+                Ext.event.publisher.Gesture.instance.fire(el, 'customtap', e, false, false);
+                expect(spy).not.toHaveBeenCalled();
+            });
+
+            it("should remove listeners correctly with destroyable & translated event names", function() {
+                var o = new Ext.mixin.Observable();
+
+                o.mon(el, 'customclick', spy, null, {
+                    destroyable: true
+                }).destroy();
+
+                Ext.event.publisher.Gesture.instance.fire(el, 'customtap', e, false, false);
+                expect(spy).not.toHaveBeenCalled();
             });
         });
     });

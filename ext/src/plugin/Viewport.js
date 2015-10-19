@@ -97,7 +97,15 @@ Ext.define('Ext.plugin.Viewport', {
 
                 setupViewport : function() {
                     var me = this,
-                        el = document.body;
+                        el = document.body,
+                        DomScroller = Ext.scroll.DomScroller;
+
+                    // By default document.body is monitored by a special DomScroller singleton so that
+                    // the global scroll event fires when the document scrolls.
+                    // A Viewport's Scroller will take over from this one.
+                    if (DomScroller.document) {
+                        DomScroller.document = DomScroller.document.destroy();
+                    }
 
                     // Here in the (perhaps unlikely) case that the body dom el doesn't yet have an id,
                     // we want to give it the same id as the viewport component so getCmp lookups will

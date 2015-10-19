@@ -104,16 +104,18 @@ Ext.define('Ext.tip.QuickTip', {
      *
      * @param {Object} config The config object with the following properties:
      * @param config.target (required) The target HTMLElement, {@link Ext.dom.Element} or 
-     * id to associate with this Quicktip.  See {@link #target}.
-     * @param config.text Tip body content.  See {@link #text}.
-     * @param config.title Tip header.  See {@link #title}.
+     * id to associate with this Quicktip.  See {@link Ext.tip.QuickTip#target target}.
+     * @param config.text Tip body content.  See {@link Ext.tip.QuickTip#text text}.
+     * @param config.title Tip header.  See {@link Ext.tip.QuickTip#title title}.
      * @param config.autoHide False to prevent the tip from automatically hiding on 
-     * mouseleave.  See {@link #autoHide}.
+     * mouseleave.  See {@link Ext.tip.QuickTip#autoHide autoHide}.
      * @param config.cls An optional extra CSS class that will be added to the tip.  See 
-     * {@link #cls}.
+     * {@link Ext.tip.QuickTip#cls cls}.
      * @param config.dismissDelay Delay in milliseconds before the tooltip automatically 
-     * hides (overrides singleton value).  See {@link #dismissDelay}.
-     * @param config.width Tip width in pixels.  See {@link #width}.
+     * hides (overrides singleton value).  See 
+     * {@link Ext.tip.QuickTip#dismissDelay dismissDelay}.
+     * @param config.width Tip width in pixels.  See 
+     * {@link Ext.tip.QuickTip#width width}.
      */
     register : function(config){
         var configs = Ext.isArray(config) ? config : arguments,

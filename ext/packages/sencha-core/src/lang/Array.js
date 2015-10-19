@@ -311,7 +311,9 @@ Ext.Array = (function() {
          *
          *     sum(1, 2, 3); // returns 6
          *
-         * The iteration can be stopped by returning false in the function callback.
+         * The iteration can be stopped by returning `false` from the callback function.  
+         * Returning `undefined` (i.e `return;`) will only exit the callback function and 
+         * proceed with the next iteration of the loop.
          *
          *     Ext.Array.each(countries, function(name, index, countriesItSelf) {
          *         if (name === 'Singapore') {
@@ -324,12 +326,14 @@ Ext.Array = (function() {
          * @param {Array/NodeList/Object} iterable The value to be iterated. If this
          * argument is not iterable, the callback function is called once.
          * @param {Function} fn The callback function. If it returns `false`, the iteration
-         * stops and this method returns the current `index`.
+         * stops and this method returns the current `index`. Returning `undefined` (i.e 
+         * `return;`) will only exit the callback function and proceed with the next iteration 
+         * in the loop.
          * @param {Object} fn.item The item at the current `index` in the passed `array`
          * @param {Number} fn.index The current `index` within the `array`
          * @param {Array} fn.allItems The `array` itself which was passed as the first argument
-         * @param {Boolean} fn.return Return false to stop iteration.
-         * @param {Object} scope (Optional) The scope (`this` reference) in which the specified function is executed.
+         * @param {Boolean} fn.return Return `false` to stop iteration.
+         * @param {Object} [scope] The scope (`this` reference) in which the specified function is executed.
          * @param {Boolean} [reverse=false] Reverse the iteration order (loop from the end to the beginning).
          * @return {Boolean} See description for the `fn` parameter.
          */

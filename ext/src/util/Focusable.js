@@ -48,6 +48,20 @@ Ext.define('Ext.util.Focusable', {
      */
     
     /**
+     * @event focusenter
+     * Fires when focus enters this Component's hierarchy.
+     * @param {Ext.Component} this
+     * @param {Ext.event.Event} event The focusenter event.
+     */
+    
+    /**
+     * @event focusleave
+     * Fires when focus leaves this Component's hierarchy.
+     * @param {Ext.Component} this
+     * @param {Ext.event.Event} event The focusleave event.
+     */
+    
+    /**
      * Template method to do any Focusable related initialization that
      * does not involve event listeners creation.
      * @protected

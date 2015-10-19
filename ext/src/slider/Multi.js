@@ -465,13 +465,18 @@ Ext.define('Ext.slider.Multi', {
             thumbClicked = thumbClicked || e.target === thumbs[i].el.dom;
         }
 
+        // Focus ourselves before setting the value. This allows other
+        // fields that have blur handlers (for example, date/number field)
+        // to take care of themselves first. This is important for
+        // databinding.
+        me.focus();
+
         if (me.clickToChange && !thumbClicked) {
             trackPoint = me.getTrackpoint(e.getXY());
             if (trackPoint !== undefined) {
                 me.onClickChange(trackPoint);
             }
         }
-        me.focus();
     },
 
     /**
@@ -519,6 +524,10 @@ Ext.define('Ext.slider.Multi', {
             dist  = Math.abs(value - clickValue);
 
             if (Math.abs(dist) <= nearestDistance) {
+                // this makes sure that thumbs will stay in order
+                if (nearest && nearest.value == value && value > clickValue && thumb.index > nearest.index) {
+                    continue;
+                }
                 nearest = thumb;
                 nearestDistance = dist;
             }
@@ -532,21 +541,25 @@ Ext.define('Ext.slider.Multi', {
      * by this.keyIncrement. If DOWN or LEFT it is moved left. Pressing CTRL moves the slider to the end in either direction
      * @param {Ext.event.Event} e The Event object
      */
-    onKeyDown : function(e) {
+    onKeyDown: function(e) {
+        var me = this,
+            k, val;
+        
+        k = e.getKey();
+        
         /*
          * The behaviour for keyboard handling with multiple thumbs is currently undefined.
          * There's no real sane default for it, so leave it like this until we come up
          * with a better way of doing it.
          */
-        var me = this,
-            k,
-            val;
-
-        if(me.disabled || me.thumbs.length !== 1) {
-            e.preventDefault();
+        if (me.disabled || me.thumbs.length !== 1) {
+            // Must not mingle with the Tab key!
+            if (k !== e.TAB) {
+                e.preventDefault();
+            }
+            
             return;
         }
-        k = e.getKey();
 
         switch(k) {
             case e.UP:

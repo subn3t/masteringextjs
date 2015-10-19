@@ -227,13 +227,19 @@ Ext.define('Ext.data.operation.Operation', {
      * @return {Ext.data.Request} The request object
      */
     execute: function() {
-        var me = this;
+        var me = this,
+            request;
+
         delete me.error;
         delete me.success;
         me.complete = me.exception = false;
         
         me.setStarted();
-        return me.request = me.doExecute();
+        me.request = request = me.doExecute();
+        if (request) {
+            request.setOperation(me);
+        }
+        return request;
     },
     
     doExecute: Ext.emptyFn,

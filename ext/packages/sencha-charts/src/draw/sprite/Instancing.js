@@ -74,6 +74,21 @@ Ext.define('Ext.draw.sprite.Instancing', {
     },
 
     /**
+     * @private
+     * Checks if the instancing sprite can be seen.
+     * @return {Boolean}
+     */
+    isVisible: function () {
+        var attr = this.attr,
+            parent = this.getParent(),
+            result;
+
+        result = parent && parent.isSurface && !attr.hidden && attr.globalAlpha;
+
+        return !!result;
+    },
+
+    /**
      * Creates a new sprite instance.
      * 
      * @param {Object} config The configuration of the instance.

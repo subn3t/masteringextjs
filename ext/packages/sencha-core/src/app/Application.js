@@ -46,7 +46,7 @@
  *
  * Note that we didn't actually list the Views directly in the Application itself. This is because Views are managed by
  * Controllers, so it makes sense to keep those dependencies there. The Application will load each of the specified
- * Controllers using the pathing conventions laid out in the [application architecture guide](../../../application_architecture/application_architecture.html) - in this case
+ * Controllers using the pathing conventions laid out in the [application architecture guide](../application_architecture/application_architecture.html) - in this case
  * expecting the controllers to reside in app/controller/Posts.js and app/controller/Comments.js. In turn, each
  * Controller simply needs to list the Views it uses and they will be automatically loaded. Here's how our Posts
  * controller like be defined:
@@ -113,7 +113,24 @@ Ext.define('Ext.app.Application', {
 
     /**
      * @cfg {String/String[]} controllers
-     * Names of controllers that the app uses.
+     * Names of {@link Ext.app.Controller controllers} that the app uses.  By default, 
+     * the framework will look for the controllers in the "controller" folder within the 
+     * {@link #appFolder}.  Controller classes should be named using the syntax of
+     * "{appName}.controller.{ClassName}" with additional sub-folders under the 
+     * "controller" folder specified within the class name following "controller.".
+     * 
+     *     // by default, the following controller class would be located at:
+     *     // app/controller/Main.js
+     *     controllers: '.Main' // or 'MyApp.controller.Main'
+     * 
+     *     // while the following would be located at:
+     *     // app/controller/customer/Main.js
+     *     controllers: 'customer.Main' // or 'MyApp.controller.customer.Main'
+     * 
+     * **Note:** If the controller has a different namespace than that of the 
+     * application you will need to specify the full class name as well as define a path 
+     * in the {@link Ext.Loader#cfg-paths Loader's paths} config or 
+     * {@link Ext.Loader#method-setPath setPath} method.
      */
 
     /**
@@ -163,12 +180,11 @@ Ext.define('Ext.app.Application', {
     paths: null,
     
     /**
-     * @cfg {String} appFolder
+     * @cfg {String} [appFolder="app"]
      * The path to the directory which contains all application's classes.
      * This path will be registered via {@link Ext.Loader#setPath} for the namespace specified
      * in the {@link #name name} config.
      */
-    appFolder: 'app',
     // NOTE - this config has to be processed by Ext.application
 
 
@@ -234,12 +250,11 @@ Ext.define('Ext.app.Application', {
         var Controller = Ext.app.Controller,
             proto = cls.prototype,
             requires = [],
-            onBeforeClassCreated, paths, namespace, ns, appFolder;
+            onBeforeClassCreated, paths, namespace, ns;
         
         // Ordinary inheritance does not work here so we collect
         // necessary data from current class data and its superclass
-        namespace = data.name      || cls.superclass.name;
-        appFolder = data.appFolder || cls.superclass.appFolder;
+        namespace = data.name || cls.superclass.name;
         
         if (namespace) {
             data.$namespace = namespace;
@@ -250,23 +265,13 @@ Ext.define('Ext.app.Application', {
             Ext.app.addNamespaces(data.namespaces);
         }
 
-        if (!data['paths processed']) {
-            if (namespace && appFolder) {
-                Ext.Loader.setPath(namespace, appFolder);
-            }
-            
-            paths = data.paths;
-
-            if (paths) {
-                for (ns in paths) {
-                    if (paths.hasOwnProperty(ns)) {
-                        Ext.Loader.setPath(ns, paths[ns]);
-                    }
-                }
-            }
+        if (data['paths processed']) {
+            delete data['paths processed'];
         }
         else {
-            delete data['paths processed'];
+            Ext.app.setupPaths(namespace,
+                ('appFolder' in data) ? data.appFolder : cls.superclass.appFolder,
+                data.paths);
         }
 
         // Require all profiles

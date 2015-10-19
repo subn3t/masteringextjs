@@ -1,3 +1,6 @@
+/**
+ * @private
+ */
 Ext.define('Ext.ux.colorpick.Selection', {
     mixinId: 'colorselection',
     config: {
@@ -75,6 +78,9 @@ Ext.define('Ext.ux.colorpick.Selection', {
     }
 });
 
+/**
+ * @private
+ */
 Ext.define('Ext.ux.colorpick.ColorUtils', function(ColorUtils) {
     var oldIE = Ext.isIE && Ext.ieVersion < 10;
     return {
@@ -399,6 +405,9 @@ Ext.define('Ext.ux.colorpick.ColorUtils', function(ColorUtils) {
             }
             return (r + g + b).toUpperCase();
         },
+        /**
+         * @property
+         */
         colorMap: {
             aliceblue: [
                 240,
@@ -1155,6 +1164,9 @@ Ext.define('Ext.ux.colorpick.ColorUtils', function(ColorUtils) {
     Ext.apply(formats, lowerized);
 });
 
+/**
+ * @private
+ */
 Ext.define('Ext.ux.colorpick.ColorMapController', {
     extend: 'Ext.app.ViewController',
     alias: 'controller.colorpickercolormapcontroller',
@@ -1540,6 +1552,9 @@ Ext.define('Ext.ux.colorpick.SelectorModel', {
     }
 });
 
+/**
+ * @private
+ */
 Ext.define('Ext.ux.colorpick.SelectorController', {
     extend: 'Ext.app.ViewController',
     alias: 'controller.colorpick-selectorcontroller',
@@ -1638,7 +1653,6 @@ Ext.define('Ext.ux.colorpick.SelectorController', {
         s = vm.get('saturation');
         v = vm.get('value');
         a = vm.get('alpha');
-        console.log('h=' + h);
         // Reposition the colormap's & sliders' drag handles
         refs.colorMap.setPosition(vm.getData());
         refs.hueSlider.setHue(h);
@@ -1702,6 +1716,9 @@ Ext.define('Ext.ux.colorpick.ColorPreview', {
     }
 });
 
+/**
+ * @private
+ */
 Ext.define('Ext.ux.colorpick.SliderController', {
     extend: 'Ext.app.ViewController',
     alias: 'controller.colorpick-slidercontroller',
@@ -1777,10 +1794,15 @@ Ext.define('Ext.ux.colorpick.Slider', {
     extend: 'Ext.container.Container',
     xtype: 'colorpickerslider',
     controller: 'colorpick-slidercontroller',
+    afterRender: function() {
+        this.callParent(arguments);
+        var width = this.width,
+            dragCt = this.lookupReference('dragHandleContainer'),
+            dragWidth = dragCt.getWidth();
+        dragCt.el.setStyle('left', ((width - dragWidth) / 2) + 'px');
+    },
     baseCls: Ext.baseCSSPrefix + 'colorpicker-slider',
-    layout: 'center',
     requires: [
-        'Ext.layout.container.Center',
         'Ext.ux.colorpick.SliderController'
     ],
     referenceHolder: true,
@@ -1835,7 +1857,7 @@ Ext.define('Ext.ux.colorpick.SliderAlpha', {
         'Ext.XTemplate'
     ],
     gradientStyleTpl: Ext.create('Ext.XTemplate', Ext.isIE && Ext.ieVersion < 10 ? 'filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0, startColorstr=\'#FF{hex}\', endColorstr=\'#00{hex}\');' : /* IE6-9 */
-    'background: -mox-linear-gradient(top, rgba({r}, {g}, {b}, 1) 0%, rgba({r}, {g}, {b}, 0) 100%);' + /* FF3.6+ */
+    'background: -moz-linear-gradient(top, rgba({r}, {g}, {b}, 1) 0%, rgba({r}, {g}, {b}, 0) 100%);' + /* FF3.6+ */
     'background: -webkit-linear-gradient(top,rgba({r}, {g}, {b}, 1) 0%, rgba({r}, {g}, {b}, 0) 100%);' + /* Chrome10+,Safari5.1+ */
     'background: -o-linear-gradient(top, rgba({r}, {g}, {b}, 1) 0%, rgba({r}, {g}, {b}, 0) 100%);' + /* Opera 11.10+ */
     'background: -ms-linear-gradient(top, rgba({r}, {g}, {b}, 1) 0%, rgba({r}, {g}, {b}, 0) 100%);' + /* IE10+ */
@@ -1876,7 +1898,7 @@ Ext.define('Ext.ux.colorpick.SliderAlpha', {
         }
         // Determine HEX for new hue and set as background based on template
         hex = Ext.ux.colorpick.ColorUtils.rgb2hex(color.r, color.g, color.b);
-        el = container.getEl().down('.x-autocontainer-innerCt');
+        el = container.getEl().first();
         el.applyStyles(me.gradientStyleTpl.apply({
             hex: hex,
             r: color.r,
@@ -2071,8 +2093,9 @@ Ext.define('Ext.ux.colorpick.SliderHue', {
  * API has been kept as close to the regular colorpicker as possible. The Selector can be
  * rendered to any container.
  *
- * The defaul selected color is configurable via {@link #value} config. Usually used in
- * forms via {@link Ext.ux.colorpick.Button} or {@link Ext.ux.colorpick.Field}.
+ * The defaul selected color is configurable via 
+ * {@link Ext.ux.colorpick.Selection#value value} config. Usually used in forms via 
+ * {@link Ext.ux.colorpick.Button} or {@link Ext.ux.colorpick.Field}.
  *
  * Typically you will need to listen for the change event to be notified when the user
  * chooses a color. Alternatively, you can bind to the "value" config
@@ -2149,14 +2172,16 @@ Ext.define('Ext.ux.colorpick.Selector', {
      * @event change
      * Fires when a color is selected. Simply dragging sliders around will trigger this.
      * @param {Ext.ux.colorpick.Selector} this
-     * @param {String} color The value of the selected color as per specified {@link #format}.
+     * @param {String} color The value of the selected color as per specified 
+     * {@link Ext.ux.colorpick.Selection#format format}.
      * @param {String} previousColor The previous color value.
      */
     /**
      * @event ok
      * Fires when OK button is clicked (see {@link #showOkCancelButtons}).
      * @param {Ext.ux.colorpick.Selector} this
-     * @param {String} color The value of the selected color as per specified {@link #format}.
+     * @param {String} color The value of the selected color as per specified 
+     * {@link Ext.ux.colorpick.Selection#format format}.
      */
     /**
      * @event cancel
@@ -2292,12 +2317,13 @@ Ext.define('Ext.ux.colorpick.Selector', {
     // Splits up view declaration for readability
     // Slider and H field 
     getSliderAndHField: function(childViewModel) {
-        var me = this;
+        var me = this,
+            fieldWidth = me.fieldWidth;
         return {
             xtype: 'container',
             viewModel: childViewModel,
             cls: Ext.baseCSSPrefix + 'colorpicker-escape-overflow',
-            width: me.fieldWidth,
+            width: fieldWidth,
             layout: {
                 type: 'vbox',
                 align: 'stretch'
@@ -2310,6 +2336,7 @@ Ext.define('Ext.ux.colorpick.Selector', {
                     bind: {
                         hue: '{selectedColor.h}'
                     },
+                    width: fieldWidth,
                     listeners: {
                         handledrag: 'onHueSliderHandleDrag'
                     }
@@ -2318,7 +2345,6 @@ Ext.define('Ext.ux.colorpick.Selector', {
                     xtype: 'numberfield',
                     fieldLabel: 'H',
                     labelAlign: 'top',
-                    width: me.fieldWidth,
                     labelSeparator: '',
                     bind: '{hue}',
                     hideTrigger: true,
@@ -2333,12 +2359,13 @@ Ext.define('Ext.ux.colorpick.Selector', {
     // Splits up view declaration for readability
     // Slider and S field 
     getSliderAndSField: function(childViewModel) {
-        var me = this;
+        var me = this,
+            fieldWidth = me.fieldWidth;
         return {
             xtype: 'container',
             viewModel: childViewModel,
             cls: Ext.baseCSSPrefix + 'colorpicker-escape-overflow',
-            width: me.fieldWidth,
+            width: fieldWidth,
             layout: {
                 type: 'vbox',
                 align: 'stretch'
@@ -2356,6 +2383,7 @@ Ext.define('Ext.ux.colorpick.Selector', {
                         saturation: '{saturation}',
                         hue: '{selectedColor.h}'
                     },
+                    width: fieldWidth,
                     listeners: {
                         handledrag: 'onSaturationSliderHandleDrag'
                     }
@@ -2378,12 +2406,13 @@ Ext.define('Ext.ux.colorpick.Selector', {
     // Splits up view declaration for readability
     // Slider and V field 
     getSliderAndVField: function(childViewModel) {
-        var me = this;
+        var me = this,
+            fieldWidth = me.fieldWidth;
         return {
             xtype: 'container',
             viewModel: childViewModel,
             cls: Ext.baseCSSPrefix + 'colorpicker-escape-overflow',
-            width: me.fieldWidth,
+            width: fieldWidth,
             layout: {
                 type: 'vbox',
                 align: 'stretch'
@@ -2397,6 +2426,7 @@ Ext.define('Ext.ux.colorpick.Selector', {
                         value: '{value}',
                         hue: '{selectedColor.h}'
                     },
+                    width: fieldWidth,
                     listeners: {
                         handledrag: 'onValueSliderHandleDrag'
                     }
@@ -2419,12 +2449,13 @@ Ext.define('Ext.ux.colorpick.Selector', {
     // Splits up view declaration for readability
     // Slider and A field 
     getSliderAndAField: function(childViewModel) {
-        var me = this;
+        var me = this,
+            fieldWidth = me.fieldWidth;
         return {
             xtype: 'container',
             viewModel: childViewModel,
             cls: Ext.baseCSSPrefix + 'colorpicker-escape-overflow',
-            width: me.fieldWidth,
+            width: fieldWidth,
             layout: {
                 type: 'vbox',
                 align: 'stretch'
@@ -2444,6 +2475,7 @@ Ext.define('Ext.ux.colorpick.Selector', {
                             deep: true
                         }
                     },
+                    width: fieldWidth,
                     listeners: {
                         handledrag: 'onAlphaSliderHandleDrag'
                     }
@@ -2523,6 +2555,9 @@ Ext.define('Ext.ux.colorpick.Selector', {
     }
 });
 
+/**
+ * @private
+ */
 Ext.define('Ext.ux.colorpick.ButtonController', {
     extend: 'Ext.app.ViewController',
     alias: 'controller.colorpick-buttoncontroller',
@@ -2593,7 +2628,7 @@ Ext.define('Ext.ux.colorpick.ButtonController', {
 /**
  * A simple color swatch that can be clicked to bring up the color selector.
  *
- * The selected color is configurable via {@link #value}.
+ * The selected color is configurable via {@link Ext.ux.colorpick.Selection#value value}.
  *
  *     @example
  *     Ext.create('Ext.ux.colorpick.Button', {
@@ -2662,7 +2697,8 @@ Ext.define('Ext.ux.colorpick.Button', {
      * @event change
      * Fires when a color is selected.
      * @param {Ext.ux.colorpick.Selector} this
-     * @param {String} color The value of the selected color as per specified {@link #format}.
+     * @param {String} color The value of the selected color as per specified 
+     * {@link Ext.ux.colorpick.Selection#format format}.
      * @param {String} previousColor The previous color value.
      */
     updateColor: function(color) {
@@ -3210,7 +3246,7 @@ Ext.define('Ext.ux.rating.Picker', {
         /**
          * This method returns the DOM text node into which glyphs are placed.
          * @param {HTMLElement} dom The DOM node parent of the text node.
-         * @return {HTMLTextNode} The text node.
+         * @return {TextNode} The text node.
          * @private
          */
         getGlyphTextNode: function(dom) {
@@ -3296,7 +3332,7 @@ Ext.define('Ext.ux.rating.Picker', {
         },
         /**
          * Convert the coordinates of the given `Event` into a rating value.
-         * @param {Ext.Event} event The event.
+         * @param {Ext.event.Event} event The event.
          * @return {Number} The rating based on the given event coordinates.
          * @private
          */

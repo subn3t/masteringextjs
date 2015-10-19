@@ -38,6 +38,12 @@ Ext.define('Ext.grid.header.Container', {
         'Ext.util.FocusableContainer'
     ],
 
+    config: {
+        scrollable: {
+            indicators: false
+        }
+    },
+
     border: true,
 
     alias: 'widget.headercontainer',
@@ -489,11 +495,15 @@ Ext.define('Ext.grid.header.Container', {
     onHeaderCtLongPress: function(e) {
         var me = this,
             headerEl = me.getHeaderElByEvent(e),
-            header = Ext.getCmp(headerEl.id);
+            header;
 
-        if (!header.menuDisabled) {
-            me.longPressFired = true;
-            me.showMenuBy(e, headerEl, header);
+        // Might be outside the headers.
+        if (headerEl) {
+            header = Ext.getCmp(headerEl.id);
+            if (header && !header.menuDisabled) {
+                me.longPressFired = true;
+                me.showMenuBy(e, headerEl, header);
+            }
         }
     },
 
@@ -611,7 +621,11 @@ Ext.define('Ext.grid.header.Container', {
         }
 
         if (moved) {
+            // This flag will prevent the groupheader from being removed by its owner when it (temporarily) has no child items.
+            me.applyingState = true;
             me.removeAll(false);
+            delete me.applyingState;
+
             me.add(newOrder);
             me.purgeCache();
         }
@@ -712,12 +726,28 @@ Ext.define('Ext.grid.header.Container', {
         gridHeaderCt.onHeaderMoved(headerToMove, numColsToMove, headerToMove.visibleFromIdx, visibleToIdx);
     },
 
+    // @private
+    maybeContinueRemove: function () {
+        var me = this;
+
+        // Note that if the column is a group header and is the current target of a drag, we don't want to remove it
+        // if it since it could be one of any number of (empty) nested group headers.
+        // See #isNested.
+        //
+        // There are also other scenarios in which the remove should not occur. For instance, when applying column
+        // state to a groupheader, the subheaders are all removed before being re-added in their stateful order,
+        // and the groupheader should not be removed in the meantime.
+        // See EXTJS-17577.
+        return (me.isGroupHeader && !me.applyingState) && !me.isNestedParent && me.ownerCt && !me.items.getCount();
+    },
+
     // Invalidate column cache on remove
     // We cannot refresh the View on every remove because this method is called
     // when the HeaderDropZone moves Headers around, that will also refresh the view
     onRemove: function(c) {
         var me = this,
-            ownerCt = me.ownerCt;
+            ownerCt = me.ownerCt,
+            lastHiddenHeader = c.lastHiddenHeader;
 
         me.callParent(arguments);
 
@@ -735,10 +765,7 @@ Ext.define('Ext.grid.header.Container', {
                 me.onHeadersChanged(c, false);
             }
 
-            // Note that if the column is a group header and is the current target of a drag, we don't want to remove it
-            // if it since it could be one of any number of (empty) nested group headers.
-            // See #isNested.
-            if (me.isGroupHeader && !me.isNestedParent && ownerCt && !me.items.getCount()) {
+            if (me.maybeContinueRemove()) {
                 // Detach the header from the DOM here. Since we're removing and destroying the container,
                 // the inner DOM may get overwritten, since Container::deatchOnRemove gets processed after
                 // onRemove.
@@ -884,7 +911,7 @@ Ext.define('Ext.grid.header.Container', {
 
     updateMenuDisabledState: function(menu) {
         var me = this,
-            columns = me.query(':not([hidden])'),
+            columns = me.query('gridcolumn:not([hidden])'),
             i,
             len = columns.length,
             item,
@@ -915,7 +942,8 @@ Ext.define('Ext.grid.header.Container', {
 
     onHeaderShow: function (header) {
         var me = this,
-            ownerCt = me.ownerCt;
+            ownerCt = me.ownerCt,
+            lastHiddenHeader = header.lastHiddenHeader;
 
         if (!ownerCt) {
             return;
@@ -923,6 +951,13 @@ Ext.define('Ext.grid.header.Container', {
 
         if (me.forceFit) {
             delete me.flex;
+        }
+
+        // If lastHiddenHeader exists we know that header is a groupHeader and if all its subheaders
+        // are hidden then we need to show the last one that was hidden.
+        if (lastHiddenHeader && !header.query('[hidden=false]').length) {
+            lastHiddenHeader.show();
+            header.lastHiddenHeader = null;
         }
 
         me.onHeaderVisibilityChange(header, true);
@@ -1001,8 +1036,8 @@ Ext.define('Ext.grid.header.Container', {
      *
      * @param {Ext.event.Event} [event] The event which triggered the current handler. If omitted
      * or a key event, the menu autofocuses its first item.
-     * @param {HTMLElement/Ext.dom.Element} t The target to show the menu by
-     * @param {Ext.grid.header.Container} header The header container that the trigger was clicked on.
+     * @param {HTMLElement/Ext.dom.Element} [t] The target to show the menu by
+     * @param {Ext.grid.header.Container} [header] The header container that the trigger was clicked on.
      */
     showMenuBy: function(clickEvent, t, header) {
         var menu = this.getMenu(),
@@ -1221,19 +1256,10 @@ Ext.define('Ext.grid.header.Container', {
     },
 
     onColumnCheckChange: function(checkItem, checked) {
-        var header = Ext.getCmp(checkItem.headerId),
-            headerId;
+        var header = Ext.getCmp(checkItem.headerId);
 
         if (header.rendered) {
             header[checked ? 'show' : 'hide']();
-            headerId = header.lastCheckedHeaderId;
-
-            // If there's a headerId then we know we need to restore the checked status of the last check item that was deselected
-            // (and therefore the group was hidden).
-            if (checked && headerId) {
-                header.getRootHeaderCt().getMenu().down('[headerId=' + headerId + ']').setChecked(true);
-                header.lastCheckedHeaderId = null;
-            }
         } else {
             header.hidden = !checked;
         }
@@ -1559,6 +1585,16 @@ Ext.define('Ext.grid.header.Container', {
             }
         }
     },
+    
+    getRefItems: function(deep) {
+    // Override to include the header menu in the component tree
+        var result = this.callParent([deep]);
+
+        if (this.menu) {
+            result.push(this.menu);
+        }
+        return result;
+    },
 
     privates: {
         beginChildHide: function() {
@@ -1637,3 +1673,4 @@ Ext.define('Ext.grid.header.Container', {
         }
     }
 });
+

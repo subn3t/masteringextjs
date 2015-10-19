@@ -1,3 +1,5 @@
+/* global Ext, MockAjaxManager, expect, spyOn, jasmine */
+
 describe("Ext.data.TreeStore", function() {
     var store,
         loadStore,
@@ -65,6 +67,19 @@ describe("Ext.data.TreeStore", function() {
         }, cfg));
     }
 
+    function expectOrder(parent, ids) {
+        var childNodes = parent.childNodes,
+            i, len;
+
+        expect((childNodes || []).length).toBe(ids.length);
+
+        if (childNodes) {
+            for (i = 0, len = childNodes.length; i < len; ++i) {
+                expect(childNodes[i].id).toBe(ids[i]);
+            }
+        }
+    }
+
     beforeEach(function() {
         dummyData = {
             success: true,
@@ -105,6 +120,7 @@ describe("Ext.data.TreeStore", function() {
     });
     
     afterEach(function() {
+        store = Ext.destroy(store);
         MockAjaxManager.removeMethods();
     });
 
@@ -115,9 +131,39 @@ describe("Ext.data.TreeStore", function() {
         });
     }
 
+    function completeWithFailure() {
+        Ext.Ajax.mockComplete({
+            status: 200,
+            responseText: Ext.encode({
+                success: false
+            })
+        });
+    }
+
     function byId(id) {
         return store.getNodeById(id);
     }
+
+    describe('success: false in return packet', function() {
+        // Set to bug condition to ensure event fires as expected.
+        var wasSuccessful = true;
+
+        it("should fire the load event with the success parameter false", function() {
+            store = new Ext.data.TreeStore({
+                model: NodeModel,
+                root: {
+                    expanded: true
+                },
+                listeners: {
+                    load: function(store, records, successful, operation, node) {
+                        wasSuccessful = successful;
+                    }
+                }
+            });
+            completeWithFailure();
+            expect(wasSuccessful).toBe(false);
+        });
+    });
 
     describe("the model", function() {
         it("should be able to use a non TreeModel", function() {
@@ -137,22 +183,49 @@ describe("Ext.data.TreeStore", function() {
             expect(store.getModel()).toBe(Model);
             expect(Model.prototype.isNode).toBe(true);
         });
+
+        describe("using an implicit model", function() {
+            it("should use the model's proxy when no proxy is defined on the store", function() {
+                store = new Ext.data.TreeStore({
+                    fields: ['id', 'height', 'width']
+                });
+                expect(store.getProxy()).toBe(store.getModel().getProxy());
+            });
+
+            it("should set the store's proxy on the model", function() {
+                store = new Ext.data.TreeStore({
+                    fields: ['id', 'height', 'width'],
+                    proxy: {
+                        type: 'ajax',
+                        url: 'foo'
+                    }
+                });
+                expect(store.getProxy().url).toBe('foo');
+                expect(store.getProxy()).toBe(store.getModel().getProxy());
+            });
+
+            it("should have the model set on the proxy & the reader", function() {
+                store = new Ext.data.TreeStore({
+                    fields: ['id', 'height', 'width'],
+                    proxy: {
+                        type: 'ajax',
+                        url: 'foo'
+                    }
+                });
+                expect(store.getProxy().getModel()).toBe(store.getModel());
+                expect(store.getProxy().getReader().getModel()).toBe(store.getModel());
+            });
+
+            it("should extend Ext.data.TreeModel", function() {
+                store = new Ext.data.TreeStore({
+                    fields: ['id', 'height', 'width']
+                });
+                expect(store.getModel().superclass.self).toBe(Ext.data.TreeModel);
+            });
+        });
     });
 
     describe("sorting", function() {
-        function expectOrder(parent, ids) {
-            var childNodes = parent.childNodes,
-                i, len;
-
-            expect((childNodes || []).length).toBe(ids.length);
-
-            if (childNodes) {
-                for (i = 0, len = childNodes.length; i < len; ++i) {
-                    expect(childNodes[i].id).toBe(ids[i]);
-                }
-            }
-        }
-
         function expectStoreOrder(ids) {
             var len = ids.length,
                 i;
@@ -786,7 +859,7 @@ describe("Ext.data.TreeStore", function() {
                 it("should load the TreeStore automatically", function() {
                     spyOn(Ext.data.TreeStore.prototype, 'load');
                     
-                    store = Ext.create('Ext.data.TreeStore', {
+                    store = new Ext.data.TreeStore({
                         model: NodeModel,
                         root: {
                             expanded: true,
@@ -803,7 +876,7 @@ describe("Ext.data.TreeStore", function() {
                         spyOn(Ext.data.TreeStore.prototype, 'load');
                     
                         runs(function() {
-                            store = Ext.create('Ext.data.TreeStore', {
+                            store = new Ext.data.TreeStore({
                                 model: NodeModel,
                                 autoLoad: true,
                                 root: {
@@ -824,7 +897,7 @@ describe("Ext.data.TreeStore", function() {
                         spyOn(Ext.data.TreeStore.prototype, 'load');
                     
                         runs(function() {
-                            store = Ext.create('Ext.data.TreeStore', {
+                            store = new Ext.data.TreeStore({
                                 model: NodeModel,
                                 autoLoad: true
                             });
@@ -840,7 +913,7 @@ describe("Ext.data.TreeStore", function() {
             
             describe("if the root node is not expanded", function() {
                 beforeEach(function() {
-                    store = Ext.create('Ext.data.TreeStore', {
+                    store = new Ext.data.TreeStore({
                         model: NodeModel,
                         autoLoad: false,
                         root: {
@@ -870,7 +943,7 @@ describe("Ext.data.TreeStore", function() {
                     beforeEach(function() {
                         spyOn(Ext.data.TreeStore.prototype, 'load').andCallFake(function() {});
 
-                        store = Ext.create('Ext.data.TreeStore', {
+                        store = new Ext.data.TreeStore({
                             model: NodeModel,
                             autoLoad: true,
                             root: {
@@ -889,7 +962,7 @@ describe("Ext.data.TreeStore", function() {
 
             describe("when reloading a store that already contains records", function() {
                 beforeEach(function() {
-                    store = Ext.create('Ext.data.TreeStore', {
+                    store = new Ext.data.TreeStore({
                         model: NodeModel,
                         autoLoad: false,
                         root: {
@@ -958,31 +1031,31 @@ describe("Ext.data.TreeStore", function() {
                     dummyData = {
                         success: true,
                         children: [{
-                                id: 1, 
-                                name: "aaa", 
-                                index: 2
-                            },{
-                                id: 2, 
-                                name: "bbb", 
-                                index: 0, 
-                                children: [{
-                                    id: 3, 
-                                    name: "ccc", 
-                                    index: 1
-                                },{
-                                    id: 4, 
-                                    name: "ddd", 
-                                    index: 0
-                                }],
-                                expanded: true
-                            },{
-                                id: 5, 
-                                name: "eee", 
+                            id: 1, 
+                            name: "aaa", 
+                            index: 2
+                        }, {
+                            id: 2, 
+                            name: "bbb", 
+                            index: 0, 
+                            children: [{
+                                id: 3, 
+                                name: "ccc", 
                                 index: 1
+                            }, {
+                                id: 4, 
+                                name: "ddd", 
+                                index: 0
+                            }],
+                            expanded: true
+                        }, {
+                            id: 5, 
+                            name: "eee", 
+                            index: 1
                         }]
                     };
 
-                    store = Ext.create('Ext.data.TreeStore', {
+                    store = new Ext.data.TreeStore({
                         model: NodeModel,
                         root: {
                             expanded: true,
@@ -1019,7 +1092,7 @@ describe("Ext.data.TreeStore", function() {
         describe("clearOnLoad", function(){
             
             beforeEach(function(){
-                store = Ext.create('Ext.data.TreeStore', {
+                store = new Ext.data.TreeStore({
                     model: NodeModel,
                     root: {
                         expanded: true,
@@ -1257,7 +1330,7 @@ describe("Ext.data.TreeStore", function() {
         var record, records, syncSpy;
 
         beforeEach(function() {
-            store = Ext.create('Ext.data.TreeStore', {
+            store = new Ext.data.TreeStore({
                 model: NodeModel,
                 root: {
                     expanded: true,
@@ -1543,7 +1616,7 @@ describe("Ext.data.TreeStore", function() {
                         otherSyncSpy;
 
                     beforeEach(function() {
-                        otherStore = Ext.create('Ext.data.TreeStore', {
+                        otherStore = new Ext.data.TreeStore({
                             model: NodeModel,
                             root: {
                                 expanded: true,
@@ -1679,6 +1752,25 @@ describe("Ext.data.TreeStore", function() {
                 return name1 < name2 ? 1 : node1 === node2 ? 0 : -1;
             };
 
+            describe("when sorting the TreeStore", function() {
+                var beforeSortSpy,
+                    sortSpy;
+
+                beforeEach(function() {
+                    beforeSortSpy = spyOnEvent(store, 'beforesort');
+                    sortSpy = spyOnEvent(store, 'sort');
+                    store.sort(sortByNameDesc);
+                });
+
+                it("should not add any records to getUpdatedRecords", function() {
+                    expect(store.getUpdatedRecords().length).toBe(0);
+
+                    // Expected events must have fired.
+                    expect(beforeSortSpy.callCount).toBe(1);
+                    expect(sortSpy.callCount).toBe(1);
+                });
+            });
+
             describe("when sorting recursively", function() {
                 beforeEach(function() {
                     store.getRootNode().sort(sortByNameDesc, true);
@@ -1751,7 +1843,7 @@ describe("Ext.data.TreeStore", function() {
         it('should load the root nodes children using Proxy\'s "root" config', function() {
             // Suppress console error
             spyOn(Ext.log, 'error');
-            var store = Ext.create('Ext.data.TreeStore', {
+            store = new Ext.data.TreeStore({
                 root: {
                     expanded: true,
                     CHILDREN: [
@@ -1781,7 +1873,7 @@ describe("Ext.data.TreeStore", function() {
     
     describe("default node id", function() {
         it('Should use generate an ID if the idProperty is null in the incoming data', function() {
-            store = Ext.create('Ext.data.TreeStore', {
+            store = new Ext.data.TreeStore({
                 model: TaskModel,
                 defaultRootId: null,
                 root : {
@@ -1792,7 +1884,7 @@ describe("Ext.data.TreeStore", function() {
         it('Should use "root" as the defaultRootId, and parse that according to the idProperty field type', function() {
             // The idProperty field is an int, so this should raise an error
             expect(function() {
-                store = Ext.create('Ext.data.TreeStore', {
+                store = new Ext.data.TreeStore({
                     model: TaskModel,
                     root : {
                     }
@@ -1801,7 +1893,7 @@ describe("Ext.data.TreeStore", function() {
         });
 
         it('Should use the configured defaultRootId, and parse that according to the idProperty field type', function() {
-            store = Ext.create('Ext.data.TreeStore', {
+            store = new Ext.data.TreeStore({
                 model: TaskModel,
                 defaultRootId: -1,
                 root : {
@@ -1813,7 +1905,7 @@ describe("Ext.data.TreeStore", function() {
     
     describe('moving root node between trees', function() {
         it('should move root and all descendants from source tree into destination tree', function() {
-            var store = Ext.create('Ext.data.TreeStore', {
+            store = new Ext.data.TreeStore({
                     root: {
                         expanded: true, 
                         children: [{
@@ -1836,10 +1928,11 @@ describe("Ext.data.TreeStore", function() {
                             removed++;
                         }
                     }
-                }),
-                rootNode = store.getRootNode(),
+                });
+
+            var rootNode = store.getRootNode(),
                 childNode = rootNode.firstChild,
-                store2 = Ext.create('Ext.data.TreeStore', {
+                store2 = new Ext.data.TreeStore({
                     listeners: {
                         rootchange: function(newRoot, oldRoot) {
                             newStoreRootChangeArgs = [newRoot, oldRoot];
@@ -1897,6 +1990,8 @@ describe("Ext.data.TreeStore", function() {
 
             // Old TreeStore must not have a root
             expect(store.getRootNode()).toBeFalsy();
+
+            store2.destroy();
         });
     });
 
@@ -2199,7 +2294,7 @@ describe("Ext.data.TreeStore", function() {
 
     describe('events from descendants of collapsed nodes', function() {
         beforeEach(function() {
-            store = Ext.create('Ext.data.TreeStore', {
+            store = new Ext.data.TreeStore({
                 model: NodeModel,
                 autoLoad: true,
                 root: {
@@ -2226,7 +2321,7 @@ describe("Ext.data.TreeStore", function() {
         it('should not clear node descendants if a function bound to beforeload returns false', function() {
             var beforeLoadComplete = false;
 
-            store = Ext.create('Ext.data.TreeStore', {
+            store = new Ext.data.TreeStore({
                 model: NodeModel,
                 autoLoad: false,
                 root: {
@@ -2255,7 +2350,7 @@ describe("Ext.data.TreeStore", function() {
 
     describe('appending to leaf nodes', function() {
         beforeEach(function() {
-            store = Ext.create('Ext.data.TreeStore', {
+            store = new Ext.data.TreeStore({
                 model: NodeModel,
                 root: {
                     expanded: true,
@@ -2367,7 +2462,7 @@ describe("Ext.data.TreeStore", function() {
                 expect(vis(5)).toBe(false);
             });
 
-            it("should run the filters on all nodes (even if the parent is not visible) bottom up", function() {
+            it("should run the filters on all nodes (even if the parent is not visible)", function() {
                 makeStore([{
                     id: 'n',
                     children: [{
@@ -2443,7 +2538,7 @@ describe("Ext.data.TreeStore", function() {
                         return node.id !== 'h';
                     }
                 });
-                expect(order.join('')).toBe('abcdefghijklmnopqrstuvwxyz');
+                expect(order.join('')).toBe('nhcabfdegmiljkvrpoqustzxwy');
             });
         });
 
@@ -3138,7 +3233,7 @@ describe("Ext.data.TreeStore", function() {
         var rec0, rec1, rec2;
 
         beforeEach(function() {
-            store = Ext.create('Ext.data.TreeStore', {
+            store = new Ext.data.TreeStore({
                 model: NodeModel,
                 root: {
                     expanded: true,
@@ -3182,7 +3277,7 @@ describe("Ext.data.TreeStore", function() {
         var n1, n2, n3;
 
         beforeEach(function() {
-            store = Ext.create('Ext.data.TreeStore', {
+            store = new Ext.data.TreeStore({
                 model: NodeModel,
                 root: {
                     expanded: true,
@@ -3241,7 +3336,7 @@ describe("Ext.data.TreeStore", function() {
         var n1, n2, n3;
 
         beforeEach(function() {
-            store = Ext.create('Ext.data.TreeStore', {
+            store = new Ext.data.TreeStore({
                 model: NodeModel,
                 root: {
                     expanded: true,
@@ -3300,6 +3395,23 @@ describe("Ext.data.TreeStore", function() {
             // Only "Bar" and "Bletch" present now.
             expect(store.getCount()).toBe(2);
         });
+
+        it('should remove deleted records from removed list if they get added back', function() {
+            var bletchNode = store.findNode('name', 'Bletch'),
+                bletchParent = bletchNode.parentNode;
+
+            // Queue the node for destruction upon the next store sync.
+            bletchNode.drop();
+
+            // Should be in destruction queue
+            expect(Ext.Array.contains(store.getRemovedRecords(), bletchNode)).toBe(true);
+
+            // Change ourt mind, add it back
+            bletchParent.appendChild(bletchNode);
+            
+            // Should NOT be in destruction queue
+            expect(Ext.Array.contains(store.getRemovedRecords(), bletchNode)).toBe(false);            
+        });
     });
 
     describe("parentIdProperty", function() {
@@ -3318,15 +3430,24 @@ describe("Ext.data.TreeStore", function() {
             root = null;
         });
 
+        function makeNode(id, parent) {
+            var o = {
+                id: id,
+                expanded: true
+            };
+            if (arguments.length > 1) {
+                o.foo = parent;
+            }
+            return o;
+        }
+
         it("should append items without a parentId to the loaded item", function() {
             root.expand();
-            completeWithData([{
-                id: 1
-            }, {
-                id: 2
-            }, {
-                id: 3
-            }]);
+            completeWithData([
+                makeNode(1),
+                makeNode(2),
+                makeNode(3)
+             ]);
 
             var childNodes = root.childNodes;
             expect(byId(1)).toBe(childNodes[0]);
@@ -3336,12 +3457,10 @@ describe("Ext.data.TreeStore", function() {
 
         it("should allow a parentId of 0", function() {
             root.expand();
-            completeWithData([{
-                id: 0
-            }, {
-                id: 1,
-                foo: 0
-            }]);
+            completeWithData([
+                makeNode(0),
+                makeNode(1, 0)
+             ]);
 
             expect(byId(1)).toBe(byId(0).childNodes[0]);
         });
@@ -3349,107 +3468,143 @@ describe("Ext.data.TreeStore", function() {
         it("should throw an exception if a matching parent is not found", function() {
             root.expand();
             expect(function() {
-                completeWithData([{
-                    id: 1
-                }, {
-                    id: 2,
-                    foo: 100
-                }]);
+                completeWithData([
+                    makeNode(1),
+                    makeNode(2, 100)
+                ]);
             }).toThrow();
         });
 
         it("should add children to their parent nodes, retaining any implied order", function() {
             root.expand();
-            completeWithData([{
-                id: 'c21',
-                foo: 'c2'
-            }, {
-                id: 'a'
-            }, {
-                id: 'c2',
-                foo: 'c'
-            }, {
-                id: 'a1',
-                foo: 'a'
-            }, {
-                id: 'c'
-            }, {
-                id: 'b'
-            }, {
-                id: 'b1',
-                foo: 'b'
-            }, {
-                id: 'a2',
-                foo: 'a'
-            }, {
-                id: 'c1',
-                foo: 'c'
-            }, {
-                id: 'c22',
-                foo: 'c2'
-            }, {
-                id: 'a32',
-                foo: 'a3'
-            }, {
-                id: 'a31',
-                foo: 'a3'
-            }, {
-                id: 'a21',
-                foo: 'a2'
-            }, {
-                id: 'b11',
-                foo: 'b1'
-            }, {
-                id: 'a3',
-                foo: 'a'
-            }, {
-                id: 'a211',
-                foo: 'a21'
-            }]);
+            completeWithData([
+                makeNode('c21', 'c2'),
+                makeNode('a'),
+                makeNode('c2', 'c'),
+                makeNode('a1', 'a'),
+                makeNode('c'),
+                makeNode('b'),
+                makeNode('b1', 'b'),
+                makeNode('a2', 'a'),
+                makeNode('c1', 'c'),
+                makeNode('c22', 'c2'),
+                makeNode('a32', 'a3'),
+                makeNode('a31', 'a3'),
+                makeNode('a21', 'a2'),
+                makeNode('b12', 'b1'),
+                makeNode('b11', 'b1'),
+                makeNode('a3', 'a'),
+                makeNode('a211', 'a21')
+            ]);
 
-            var a = byId('a'),
-                b = byId('b'),
-                c = byId('c');
+            expectOrder(root, ['a', 'c', 'b']);
 
-            expect(a).toBe(root.childNodes[0]);
-            expect(c).toBe(root.childNodes[1]);
-            expect(b).toBe(root.childNodes[2]);
+            expectOrder(byId('a'), ['a1', 'a2', 'a3']);
+            expectOrder(byId('a2'), ['a21']);
+            expectOrder(byId('a21'), ['a211']);
 
-            var a2 = byId('a2'),
-                a21 = byId('a21'),
-                a3 = byId('a3');
+            expectOrder(byId('b'), ['b1']);
+            expectOrder(byId('b1'), ['b12', 'b11']);
 
-            expect(byId('a1')).toBe(a.childNodes[0]);
-            expect(a2).toBe(a.childNodes[1]);
-            expect(a3).toBe(a.childNodes[2]);
+            expectOrder(byId('c'), ['c2', 'c1']);
+            expectOrder(byId('c2'), ['c21', 'c22']);
+        });
 
-            expect(a21).toBe(a2.childNodes[0]);
+        describe("sorting", function() {
+            it("should sort nodes via sorter", function() {
+                store.getSorters().add('id');
+                root.expand();
+                completeWithData([
+                    makeNode('c'),
+                    makeNode('a'),
+                    makeNode('b'),
+                    makeNode('c3', 'c'),
+                    makeNode('b3', 'b'),
+                    makeNode('a3', 'a'),
+                    makeNode('c2', 'c'),
+                    makeNode('b2', 'b'),
+                    makeNode('a2', 'a'),
+                    makeNode('c1', 'c'),
+                    makeNode('b1', 'b'),
+                    makeNode('a1', 'a')
+                ]);
 
-            expect(byId('a211')).toBe(a21.childNodes[0]);
+                expectOrder(root, ['a', 'b', 'c']);
 
-            expect(byId('a32')).toBe(a3.childNodes[0]);
-            expect(byId('a31')).toBe(a3.childNodes[1]);
+                expectOrder(byId('a'), ['a1', 'a2', 'a3']);
+                expectOrder(byId('b'), ['b1', 'b2', 'b3']);
+                expectOrder(byId('c'), ['c1', 'c2', 'c3']);
+            });
 
-            var b1 = byId('b1');
+            it("should do an index sort if required", function() {
+                root.expand();
+                completeWithData([
+                    {id: 'a', index: 2},
+                    {id: 'b', index: 1},
+                    {id: 'c', index: 0},
+                    {id: 'a1', foo: 'a', index: 2},
+                    {id: 'a2', foo: 'a', index: 1},
+                    {id: 'a3', foo: 'a', index: 0}
+                ]);
 
-            expect(b1).toBe(b.childNodes[0]);
+                expectOrder(root, ['c', 'b', 'a']);
+                expectOrder(byId('a'), ['a3', 'a2', 'a1']);
+            });
+        });
 
-            expect(byId('b11')).toBe(b1.childNodes[0]);
+        describe("filtering", function() {
+            it("should apply filters", function() {
+                var allowed = ['a', 'c', 'a2', 'c1', 'c11', 'c13'];
+                store.getFilters().add({
+                    filterFn: function(node) {
+                        return Ext.Array.indexOf(allowed, node.id) > -1;
+                    }
+                });
 
-            var c2 = byId('c2');
+                root.expand();
+                completeWithData([
+                    makeNode('a'),
+                    makeNode('b'),
+                    makeNode('c'),
+                    makeNode('a1', 'a'),
+                    makeNode('a2', 'a'),
+                    makeNode('a3', 'a'),
+                    makeNode('b1', 'b'),
+                    makeNode('b2', 'b'),
+                    makeNode('b3', 'b'),
+                    makeNode('c1', 'c'),
+                    makeNode('c11', 'c1'),
+                    makeNode('c12', 'c1'),
+                    makeNode('c13', 'c1'),
+                    makeNode('c2', 'c'),
+                    makeNode('c3', 'c')
+                ]);
 
-            expect(c2).toBe(c.childNodes[0]);
-            expect(byId('c1')).toBe(c.childNodes[1]);
+                expect(store.isVisible(byId('a'))).toBe(true);
+                expect(store.isVisible(byId('a1'))).toBe(false);
+                expect(store.isVisible(byId('a2'))).toBe(true);
+                expect(store.isVisible(byId('a3'))).toBe(false);
 
-            expect(byId('c21')).toBe(c2.childNodes[0]);
-            expect(byId('c22')).toBe(c2.childNodes[1]);
+                expect(store.isVisible(byId('b'))).toBe(false);
+                expect(store.isVisible(byId('b1'))).toBe(false);
+                expect(store.isVisible(byId('b2'))).toBe(false);
+                expect(store.isVisible(byId('b3'))).toBe(false);
+
+                expect(store.isVisible(byId('c'))).toBe(true);
+                expect(store.isVisible(byId('c1'))).toBe(true);
+                expect(store.isVisible(byId('c11'))).toBe(true);
+                expect(store.isVisible(byId('c12'))).toBe(false);
+                expect(store.isVisible(byId('c13'))).toBe(true);
+                expect(store.isVisible(byId('c2'))).toBe(false);
+                expect(store.isVisible(byId('c3'))).toBe(false);
+            });
         });
     });
     
     describe('loading inline data with no configured root node', function() {
         it('should run without throwing an error', function() {
             expect(function() {
-                new Ext.data.TreeStore({
+                store = new Ext.data.TreeStore({
                     fields: ['name', 'text', 'id', 'parentId'],
                     parentIdProperty: 'parentId',
                     data: [{
@@ -3464,8 +3619,115 @@ describe("Ext.data.TreeStore", function() {
                         parentId: 1,
                         leaf: true
                     }]
-                }).load();
+                });
+                store.load();
             }).not.toThrow();
+        });
+    });
+
+    describe("setting the root", function() {
+        describe("via configuration", function() {
+            describe("with a model config", function() {
+                beforeEach(function() {
+                    store = new Ext.data.TreeStore({
+                        model: NodeModel,
+                        root: {}
+                    });
+                });
+
+                it("should set the root property", function() {
+                    expect(store.getRoot().get('root')).toBe(true);
+                });
+
+                it("should have the treeStore available", function() {
+                    var root = store.getRoot();
+                    expect(root.getTreeStore()).toBe(store);
+                });
+            });
+
+            describe("with a model instance", function() {
+                var root;
+
+                beforeEach(function() {
+                    root = new NodeModel();
+                    store = new Ext.data.TreeStore({
+                        model: NodeModel,
+                        root: root
+                    });
+                });
+
+                afterEach(function() {
+                    root = null;
+                });
+
+                it("should set the root property", function() {
+                    expect(root.get('root')).toBe(true);
+                });
+
+                it("should have the treeStore available", function() {
+                    expect(root.getTreeStore()).toBe(store);
+                });
+            });
+        });
+
+        describe("after creation", function() {
+            describe("with a model config", function() {
+                beforeEach(function() {
+                    store = new Ext.data.TreeStore({
+                        model: NodeModel,
+                        root: {}
+                    });
+                });
+
+                it("should set the root property", function() {
+                    var oldRoot = store.getRoot();
+                    store.setRoot({
+                        id: 'foo'
+                    });
+                    expect(oldRoot.get('root')).toBe(false);
+                    expect(store.getRoot().get('root')).toBe(true);
+                    expect(store.getRoot().id).toBe('foo');
+                });
+
+                it("should have the treeStore available", function() {
+                    var oldRoot = store.getRoot();
+                    store.setRoot({
+                        id: 'foo'
+                    });
+                    expect(oldRoot.getTreeStore()).toBeNull();
+                    expect(store.getRoot().getTreeStore()).toBe(store);
+                });
+            });
+
+            describe("with a model instance", function() {
+                var root, oldRoot;
+
+                beforeEach(function() {
+                    root = new NodeModel();
+                    store = new Ext.data.TreeStore({
+                        model: NodeModel,
+                        root: {}
+                    });
+                    oldRoot = store.getRoot();
+                });
+
+                afterEach(function() {
+                    oldRoot = root = null;
+                });
+
+                it("should set the root property", function() {
+                    store.setRoot(root);
+                    expect(oldRoot.get('root')).toBe(false);
+                    expect(store.getRoot().get('root')).toBe(true);
+                    expect(store.getRoot()).toBe(root);
+                });
+
+                it("should have the treeStore available", function() {
+                    store.setRoot(root);
+                    expect(oldRoot.getTreeStore()).toBeNull();
+                    expect(store.getRoot().getTreeStore()).toBe(store);
+                });
+            });
         });
     });
     
@@ -3522,11 +3784,6 @@ describe("Ext.data.TreeStore", function() {
             ]);
         });
 
-        afterEach(function() {
-            Ext.destroy(store);
-            store = null;
-        });
-
         it('should clear the removed collection', function() {
             var root = store.getRoot();
 
@@ -3557,5 +3814,207 @@ describe("Ext.data.TreeStore", function() {
         doTests(true);
         doTests(false);
     });
+
+    describe('collect', function() {
+        beforeEach(function() {
+            store = new Ext.data.TreeStore({
+                filterer: 'bottomup',
+                fields: ['name'],
+                asynchronousLoad: false,
+                root: {
+                    expanded: true,
+                    children: dummyData.children
+                }
+            });
+        });
+
+        describe('with collapse option', function() {
+            it('should collect values', function() {
+                var result = store.collect('name', {
+                    collapsed: true
+                });
+                expect(result).toEqual(["aaa", "bbb", "ccc", "ddd", "eee", "fff", "ggg"]);
+            });
+            it('should honour filters if bypassFilters not passed', function() {
+                store.filter({
+                    property: 'name',
+                    operator: '=',
+                    value: 'ddd'
+                });
+                expect(store.getCount()).toBe(1);
+                var result = store.collect('name', {
+                    collapsed: true
+                });
+
+                // bottom up filtering. Path nodes are visible.
+                expect(result).toEqual(["bbb", "ddd"]);
+            });
+            it('should collect values regardless of filter if filtered:true', function() {
+                store.filter({
+                    property: 'name',
+                    operator: '=',
+                    value: 'ddd'
+                });
+                expect(store.getCount()).toBe(1);
+                var result = store.collect('name', {
+                    filtered: true,
+                    collapsed: true
+                });
+
+                // Filters bypassed, all nodes collected
+                expect(result).toEqual(["aaa", "bbb", "ccc", "ddd", "eee", "fff", "ggg"]);
+            });
+        });
+
+        describe('without collapse option', function() {
+            it('should collect values', function() {
+                var result = store.collect('name');
+                expect(result).toEqual(["aaa", "bbb", "fff"]);
+            });
+            it('should honour filters if bypassFilters not passed', function() {
+                store.filter({
+                    property: 'name',
+                    operator: '=',
+                    value: 'ddd'
+                });
+                expect(store.getCount()).toBe(1);
+                var result = store.collect('name');
+
+                // bottom up filtering. Path nodes are visible if path is expanded.
+                expect(result).toEqual(["bbb"]);
+            });
+            it('should collect values regardless of filter if filtered:true', function() {
+                store.filter({
+                    property: 'name',
+                    operator: '=',
+                    value: 'ddd'
+                });
+                expect(store.getCount()).toBe(1);
+                var result = store.collect('name', {
+                    filtered:true
+                });
+
+                // Filters bypassed, all nodes collected if path to them is expanded
+                expect(result).toEqual(["aaa", "bbb", "fff"]);
+            });
+        });
+    });
+
+    describe('each', function() {
+        var result,
+            collect = function(bypassFilters, bypassCollapsed) {
+                store.each(function(node) {
+                    result.push(node.get('name'));
+                }, null, {
+                    filtered: bypassFilters,
+                    collapsed: bypassCollapsed
+                });
+            };
+
+        beforeEach(function() {
+            store = new Ext.data.TreeStore({
+                filterer: 'bottomup',
+                fields: ['name'],
+                asynchronousLoad: false,
+                root: {
+                    expanded: true,
+                    children: dummyData.children,
+                    name: 'root'
+                }
+            });
+            result = [];
+        });
+
+        describe('without bypassCollapsed', function() {
+            it('should visit all nodes which are below expanded ancestors', function() {
+                collect();
+                expect(result).toEqual(["aaa", "bbb", "fff"]);
+            });
+            it('should honour filters which are below expanded ancestors if bypassFilters not passed', function() {
+                store.filter({
+                    property: 'name',
+                    operator: '=',
+                    value: 'ddd'
+                });
+                collect();
+
+                // bottom up filtering. Path nodes are visible. "bbb" is collapsed, so the filtered in "ddd" is not present.
+                expect(result).toEqual(["bbb"]);
+            });
+            it('should collect values which are below expanded ancestors regardless of filter if bypassFilters passed', function() {
+                store.filter({
+                    property: 'name',
+                    operator: '=',
+                    value: 'ddd'
+                });
+                collect(true);
+
+                // Filters bypassed, only "bbb" is visible because its child, "ddd" is filtered in, but "bbb" is collapsed, do "ddd" is not present.
+                expect(result).toEqual(["bbb"]);
+            });
+        });
+
+        describe('with bypassCollapsed', function() {
+            it('should visit all nodes', function() {
+                collect(false, true);
+                expect(result).toEqual(["root", "aaa", "bbb", "ccc", "ddd", "eee", "fff", "ggg"]);
+            });
+            it('should honour filters if bypassFilters not passed', function() {
+                store.filter({
+                    property: 'name',
+                    operator: '=',
+                    value: 'ddd'
+                });
+                collect(false, true);
+
+                // bottom up filtering. Path nodes are visible.
+                expect(result).toEqual(["root", "bbb", "ddd"]);
+            });
+            it('should collect values regardless of filter if bypassFilters passed', function() {
+                store.filter({
+                    property: 'name',
+                    operator: '=',
+                    value: 'ddd'
+                });
+                collect(true, true);
+
+                // Filters bypassed, all nodes visited
+                expect(result).toEqual(["root", "aaa", "bbb", "ccc", "ddd", "eee", "fff", "ggg"]);
+            });
+        });
+    });
+
+    describe('loading locally filtered TreeStore', function() {
+        it('should not throw an error if a local function filter is applied', function() {
+            var opFilters;
+
+            store = new Ext.data.TreeStore({
+                root: {
+                    text: 'Root'
+                },
+                listeners: {
+                    beforeload: function(store, operation) {
+                        opFilters = operation.getFilters();
+                    }
+                }
+            });
+            loadStore(store);
+            expect(store.loadCount).toBe(1);
+            expect(store.isLoaded()).toBe(true);
+
+            store.filterBy(function(record, id) { // Simple filter that includes all
+                return true;
+            });
+
+            // Should run without error.
+            store.reload();
+            completeWithData(dummyData);
+            expect(store.loadCount).toBe(2);
+            
+            // Filter should not be part of the operation
+            expect(opFilters).toBeUndefined();
+        });
+    });
+
 });
 

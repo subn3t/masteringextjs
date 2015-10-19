@@ -603,18 +603,17 @@ Ext.define('Ext.app.BaseController', {
         if (token.isModel) {
             token = token.toUrl();
         }
-        if (!force) {
-            var currentToken = Ext.util.History.getToken();
 
-            if (currentToken === token) {
-                return false;
-            }
-        } else {
+        var isCurrent = Ext.util.History.getToken() === token,
+            ret = false;
+
+        if (!isCurrent) {
+            ret = true;
+            Ext.util.History.add(token);
+        } else if (force) {
+            ret = true;
             Ext.app.route.Router.onStateChange(token);
         }
-
-        Ext.util.History.add(token);
-
-        return true;
+        return ret;
     }
 });

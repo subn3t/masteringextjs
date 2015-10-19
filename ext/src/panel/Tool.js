@@ -277,7 +277,6 @@ Ext.define('Ext.panel.Tool', {
         me.callParent();
     },
 
-    // inherit docs
     afterRender: function() {
         var me = this,
             tip;
@@ -357,7 +356,6 @@ Ext.define('Ext.panel.Tool', {
         return me;
     },
 
-    // inherit docs
     onDestroy: function(){
         var me = this,
             keyMap = me.keyMap;

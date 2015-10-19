@@ -18,6 +18,8 @@
  * @param {number/list} [$border-width=0]
  * The border-width of the element receiving the outline.
  * Required in order for outline-offset to work in IE8
+ * 
+ * @member Global_CSS
  */
 @mixin css-outline(
     $width: 1px,

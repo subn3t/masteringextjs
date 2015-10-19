@@ -124,18 +124,18 @@ Ext.apply(Ext, {
      * Numbers and numeric strings are coerced to Dates using the value as the millisecond era value.
      *
      * Strings are coerced to Dates by parsing using the {@link Ext.Date#defaultFormat defaultFormat}.
-     * 
+     *
      * For example
      *
      *     Ext.coerce('false', true);
-     *     
+     *
      * returns the boolean value `false` because the second parameter is of type `Boolean`.
-     * 
+     *
      * @param {Mixed} from The value to coerce
      * @param {Mixed} to The value it must be compared against
      * @return The coerced value.
      */
-    coerce: function(from, to) {
+    coerce: function (from, to) {
         var fromType = Ext.typeOf(from),
             toType = Ext.typeOf(to),
             isString = typeof from === 'string';
@@ -147,11 +147,13 @@ Ext.apply(Ext, {
                 case 'number':
                     return Number(from);
                 case 'boolean':
-                    return isString && (!from || from === 'false') ? false : Boolean(from);
+                    // See http://ecma262-5.com/ELS5_HTML.htm#Section_11.9.3 as to why '0'.
+                    // TL;DR => ('0' == 0), so if given string '0', we must return boolean false.
+                    return isString && (!from || from === 'false' || from === '0') ? false : Boolean(from);
                 case 'null':
-                    return isString && (!from || from === 'null') ? null : from;
+                    return isString && (!from || from === 'null') ? null : false;
                 case 'undefined':
-                    return isString && (!from || from === 'undefined') ? undefined : from;
+                    return isString && (!from || from === 'undefined') ? undefined : false;
                 case 'date':
                     return isString && isNaN(from) ? Ext.Date.parse(from, Ext.Date.defaultFormat) : Date(Number(from));
             }
@@ -180,6 +182,9 @@ Ext.apply(Ext, {
      * @param {Boolean} [usePrototypeKeys=false] Pass `true` to copy keys off of the
      * prototype as well as the instance.
      * @return {Object} The `dest` object.
+     * @deprecated 5.1.2 Use {@link Ext#copy Ext.copy} instead. This old method
+     * would copy the named preoperties even if they did not exist in the source which
+     * could produce `undefined` values in the destination.
      */
     copyTo: function (dest, source, names, usePrototypeKeys) {
         if (typeof names === 'string') {
@@ -190,6 +195,46 @@ Ext.apply(Ext, {
             name = names[i];
 
             if (usePrototypeKeys || source.hasOwnProperty(name)) {
+                dest[name] = source[name];
+            }
+        }
+
+        return dest;
+    },
+    /**
+     * @method copy
+     * @member Ext
+     * Copies a set of named properties fom the source object to the destination object.
+     *
+     * Example:
+     *
+     *     var foo = { a: 1, b: 2, c: 3 };
+     *
+     *     var bar = Ext.copy({}, foo, 'a,c');
+     *     // bar = { a: 1, c: 3 };
+     *
+     * Important note: To borrow class prototype methods, use {@link Ext.Base#borrow} instead.
+     *
+     * @param {Object} dest The destination object.
+     * @param {Object} source The source object.
+     * @param {String/String[]} names Either an Array of property names, or a comma-delimited list
+     * of property names to copy.
+     * @param {Boolean} [usePrototypeKeys=false] Pass `true` to copy keys off of the
+     * prototype as well as the instance.
+     * @return {Object} The `dest` object.
+     */
+    copy: function (dest, source, names, usePrototypeKeys) {
+        if (typeof names === 'string') {
+            names = names.split(Ext.propertyNameSplitRe);
+        }
+
+        for (var name, i = 0, n = names ? names.length : 0; i < n; i++) {
+            name = names[i];
+
+            // Only copy a property if the source actually *has* that property.
+            // If we are including prototype properties, then ensure that a property of
+            // that name can be found *somewhere* in the prototype chain (otherwise we'd be copying undefined in which may break things)
+            if (source.hasOwnProperty(name) || (usePrototypeKeys && name in source)) {
                 dest[name] = source[name];
             }
         }
@@ -217,6 +262,9 @@ Ext.apply(Ext, {
      * @param {String/String[]} names Either an Array of property names, or a single string
      * with a list of property names separated by ",", ";" or spaces.
      * @return {Object} The `dest` object.
+     * @deprecated 5.1.2 Use {@link Ext#copyIf Ext.copyIf} instead. This old method
+     * would copy the named preoperties even if they did not exist in the source which
+     * could produce `undefined` values in the destination.
      */
     copyToIf: function (destination, source, names) {
         if (typeof names === 'string') {
@@ -233,6 +281,41 @@ Ext.apply(Ext, {
 
         return destination;
     },
+    /**
+     * @method copyIf
+     * @member Ext
+     * Copies a set of named properties fom the source object to the destination object
+     * if the destination object does not already have them.
+     *
+     * Example:
+     *
+     *     var foo = { a: 1, b: 2, c: 3 };
+     *
+     *     var bar = Ext.copyIf({ a:42 }, foo, 'a,c');
+     *     // bar = { a: 42, c: 3 };
+     *
+     * @param {Object} destination The destination object.
+     * @param {Object} source The source object.
+     * @param {String/String[]} names Either an Array of property names, or a single string
+     * with a list of property names separated by ",", ";" or spaces.
+     * @return {Object} The `dest` object.
+     */
+    copyIf: function (destination, source, names) {
+        if (typeof names === 'string') {
+            names = names.split(Ext.propertyNameSplitRe);
+        }
+
+        for (var name, i = 0, n = names ? names.length : 0; i < n; i++) {
+            name = names[i];
+
+            // Only copy a property if the destination has no property by that name
+            if (!(name in destination) && (name in source)) {
+                destination[name] = source[name];
+            }
+        }
+
+        return destination;
+    },
 
     /**
      * @method extend
@@ -243,17 +326,19 @@ Ext.apply(Ext, {
      * @return {Function} The subclass constructor from the <tt>overrides</tt> parameter, or a generated one if not provided.
      * @deprecated 4.0.0 Use {@link Ext#define Ext.define} instead
      */
-    extend: (function() {
+    extend: (function () {
         // inline overrides
         var objectConstructor = Object.prototype.constructor,
-            inlineOverrides = function(o) {
-            for (var m in o) {
-                if (!o.hasOwnProperty(m)) {
-                    continue;
+            inlineOverrides = function (o) {
+                var m;
+
+                for (m in o) {
+                    if (!o.hasOwnProperty(m)) {
+                        continue;
+                    }
+                    this[m] = o[m];
                 }
-                this[m] = o[m];
-            }
-        };
+            };
 
         return function(subclass, superclass, overrides) {
             // First we check if the user passed in just the superClass with overrides
@@ -810,3 +895,4 @@ Ext.apply(Ext, {
             return nullLog;
         }())
 });
+

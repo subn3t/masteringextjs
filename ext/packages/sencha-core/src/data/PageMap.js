@@ -173,10 +173,9 @@ Ext.define('Ext.data.PageMap', {
         var me = this,
             pageSize = me.getPageSize(),
             lastPage = pageNumber + Math.floor((records.length - 1) / pageSize),
-            startIdx,
             storeIndex = (pageNumber - 1) * pageSize,
             indexMap = me.indexMap,
-            page, i, len;
+            page, i, len, startIdx;
 
         // Account for being handed a block of records spanning several pages.
         // This can happen when loading from a MemoryProxy before a viewSize has been determined.
@@ -202,7 +201,7 @@ Ext.define('Ext.data.PageMap', {
 
     getByInternalId: function(internalId) {
         var index = this.indexMap[internalId];
-        if (index !== -1) {
+        if (index != null) {
             return this.getAt(index);
         }
     },

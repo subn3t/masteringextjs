@@ -464,7 +464,7 @@ Ext.define('Ext.data.schema.Schema', {
      * Checks if the passed entity has attached associations that need to be read when
      * using nested loading.
      * 
-     * @param {String/Ext.Class/Ext.data.Model} The name, instance or Model class.
+     * @param {String/Ext.Class/Ext.data.Model} name The name, instance, or Model class.
      * @return {Boolean} `true` if there are associations attached to the entity.
      */
     hasAssociations: function(name) {
@@ -501,8 +501,8 @@ Ext.define('Ext.data.schema.Schema', {
      * @param {String} [relation] A base name for the matrix. For information about the
      * meaning of this see {@link Ext.data.schema.ManyToMany}.
      * 
-     * @param {Object} left The descriptor for the "left" of the matrix.
-     * @param {String} left.type The type of the entity on the "left" of the matrix.
+     * @param {Object} [left] The descriptor for the "left" of the matrix.
+     * @param {String} [left.type] The type of the entity on the "left" of the matrix.
      * 
      * @param {String} [left.field] The name of the field in the matrix table for the "left"
      * side entity. If not provided, this defaults to the `left.type` name
@@ -514,8 +514,8 @@ Ext.define('Ext.data.schema.Schema', {
      * {@link Ext.util.Inflector#pluralize pluralized} and uncapitalized. For example,
      * "users" for a `left.type` of "User".
      * 
-     * @param {Object} right The descriptor for the "right" of the matrix.
-     * @param {String} right.type The type of the entity on the "right" of the matrix.
+     * @param {Object} [right] The descriptor for the "right" of the matrix.
+     * @param {String} [right.type] The type of the entity on the "right" of the matrix.
      * 
      * @param {String} [right.field] The name of the field in the matrix table for the
      * "right" side entity. If not provided, this defaults in the same way as `left.field`
@@ -608,7 +608,7 @@ Ext.define('Ext.data.schema.Schema', {
      * ({@link Ext.util.Inflector#singularize singularized} or
      * {@link Ext.util.Inflector#pluralize pluralized} based on `referenceField.unique`).
      * 
-     * @param {String} type The {@link Ext.data.Model#entityName entityName} of the target
+     * @param {String} [type] The {@link Ext.data.Model#entityName entityName} of the target
      * of the reference.
      * 
      * @param {Object} [descr] The `reference` descriptor from the `referenceField` if one
@@ -811,7 +811,7 @@ Ext.define('Ext.data.schema.Schema', {
          *
          * @param {Ext.Class} entityType A class derived from {@link Ext.data.Model Entity}.
          * @param {String} [matrixName] The name of the matrix association.
-         * @param {String/Object} matrixDef A {@link Ext.data.schema.ManyToMany matrix config}
+         * @param {String/Object} [matrixDef] A {@link Ext.data.schema.ManyToMany matrix config}
          * declared by an {@link Ext.data.Model entity}.
          * @private
          */

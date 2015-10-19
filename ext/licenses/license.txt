@@ -1,4 +1,4 @@
-Ext JS 5.1.1.451 - JavaScript Library
+Ext JS 5.1.2.748 - JavaScript Library
 Copyright (c) 2006-2015, Sencha Inc.
 All rights reserved.
 licensing@sencha.com

@@ -2454,7 +2454,7 @@ Ext.define('Ext.data.amf.XmlDecoder', {
 
     /**
      * Parses and returns an AMFX object.
-     * @param {HTMLElement/XMLElement} the `<object>` node to parse
+     * @param {HTMLElement/XMLElement} node the `<object>` node to parse
      * @return {Object} the deserialized object
      */
     readObject: function(node) {

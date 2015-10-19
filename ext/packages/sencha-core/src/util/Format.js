@@ -599,7 +599,7 @@ Ext.define('Ext.util.Format', function () {
                     // In a vast majority of cases, the separator will never change over the lifetime of the application.
                     // So we'll only regenerate this if we really need to
                     if (!me.I18NFormatCleanRe || me.lastDecimalSeparator !== decimalSeparator) {
-                        me.I18NFormatCleanRe = new RegExp('[^\\d\\' + decimalSeparator + ']','g');
+                        me.I18NFormatCleanRe = new RegExp('[^\\d\\' + decimalSeparator + '#]','g');
                         me.lastDecimalSeparator = decimalSeparator;
                     }
                     formatString = formatString.substr(0, formatString.length - 2);

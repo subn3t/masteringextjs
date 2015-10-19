@@ -469,6 +469,91 @@ Ext.define('Ext.aria.Img', {
 });
 
 /** */
+Ext.define('Ext.aria.button.Button', {
+    override: 'Ext.button.Button',
+    requires: [
+        'Ext.aria.Component'
+    ],
+    showEmptyMenu: true,
+    constructor: function(config) {
+        // Don't warn if we're under the slicer
+        if (config.menu && !Ext.theme) {
+            this.ariaCheckMenuConfig(config);
+        }
+        this.callParent(arguments);
+    },
+    ariaGetRenderAttributes: function() {
+        var me = this,
+            menu = me.menu,
+            attrs;
+        attrs = me.callParent(arguments);
+        if (menu) {
+            attrs['aria-haspopup'] = true;
+            attrs['aria-owns'] = menu.id;
+        }
+        if (me.enableToggle) {
+            attrs['aria-pressed'] = me.pressed;
+        }
+        return attrs;
+    },
+    toggle: function(state) {
+        var me = this;
+        me.callParent(arguments);
+        me.ariaUpdate({
+            "aria-pressed": me.pressed
+        });
+    },
+    ariaGetLabelEl: function() {
+        return this.btnInnerEl;
+    },
+    // ARIA requires that buttons with a menu react to
+    // Space and Enter keys by showing the menu. This
+    // behavior conflicts with the various handler
+    // functions we support in Ext JS; to avoid problems
+    // we check if we have the menu *and* handlers, or
+    // `click` event listeners, and raise an error if we do
+    ariaCheckMenuConfig: function(cfg) {
+        var text = cfg.text || cfg.html || 'Unknown';
+        if (cfg.enableToggle || cfg.toggleGroup) {
+            Ext.log.error("According to WAI-ARIA 1.0 Authoring guide " + "(http://www.w3.org/TR/wai-aria-practices/#menubutton), " + "menu button '" + text + "'s behavior will conflict with " + "toggling");
+        }
+        if (cfg.href) {
+            Ext.log.error("According to WAI-ARIA 1.0 Authoring guide " + "(http://www.w3.org/TR/wai-aria-practices/#menubutton), " + "menu button '" + text + "' cannot behave as a link");
+        }
+        if (cfg.handler || (cfg.listeners && cfg.listeners.click)) {
+            Ext.log.error("According to WAI-ARIA 1.0 Authoring guide " + "(http://www.w3.org/TR/wai-aria-practices/#menubutton), " + "menu button '" + text + "' should display the menu " + "on SPACE or ENTER keys, which will conflict with the " + "button handler");
+        }
+    }
+});
+
+/** */
+Ext.define('Ext.aria.button.Split', {
+    override: 'Ext.button.Split',
+    constructor: function(config) {
+        var ownerCt = config.ownerCt;
+        // Warn unless the button belongs to a date picker,
+        // the user can't do anything about that
+        // Also don't warn if we're under the slicer
+        if (!Ext.theme && (!ownerCt || !ownerCt.isDatePicker)) {
+            Ext.log.warn("Using Split buttons is not recommended in WAI-ARIA " + "compliant applications, because their behavior conflicts " + "with accessibility best practices. See WAI-ARIA 1.0 " + "Authoring guide: http://www.w3.org/TR/wai-aria-practices/#menubutton");
+        }
+        this.callParent(arguments);
+    }
+});
+
+/** */
+Ext.define('Ext.aria.button.Cycle', {
+    override: 'Ext.button.Cycle',
+    constructor: function(config) {
+        // Don't warn if we're under the slicer
+        if (!Ext.theme) {
+            Ext.log.warn("Using Cycle buttons is not recommended in WAI-ARIA " + "compliant applications, because their behavior conflicts " + "with accessibility best practices. See WAI-ARIA 1.0 " + "Authoring guide: http://www.w3.org/TR/wai-aria-practices/#menubutton");
+        }
+        this.callParent(arguments);
+    }
+});
+
+/** */
 Ext.define('Ext.aria.panel.Tool', {
     override: 'Ext.panel.Tool',
     requires: [
@@ -643,562 +728,35 @@ Ext.define('Ext.aria.panel.Panel', {
 });
 
 /** */
-Ext.define('Ext.aria.form.field.Base', {
-    override: 'Ext.form.field.Base',
-    requires: [
-        'Ext.util.Format',
-        'Ext.aria.Component'
-    ],
-    /**
-     * @cfg {String} formatText The text to use for the field format announcement
-     * placed in the `title` attribute of the input field. This format will not
-     * be used if the title attribute is configured explicitly.
-     */
-    ariaRenderAttributesToElement: false,
-    msgTarget: 'side',
-    // use this scheme because it is the only one working for now
-    getSubTplData: function() {
-        var me = this,
-            fmt = Ext.util.Format.attributes,
-            data, attrs;
-        data = me.callParent(arguments);
-        attrs = me.ariaGetRenderAttributes();
-        // Role is rendered separately
-        delete attrs.role;
-        data.inputAttrTpl = [
-            data.inputAttrTpl,
-            fmt(attrs)
-        ].join(' ');
-        return data;
-    },
-    ariaGetEl: function() {
-        return this.inputEl;
-    },
-    ariaGetRenderAttributes: function() {
-        var me = this,
-            readOnly = me.readOnly,
-            formatText = me.formatText,
-            attrs;
-        attrs = me.callParent();
-        if (readOnly != null) {
-            attrs['aria-readonly'] = !!readOnly;
-        }
-        if (formatText && !attrs.title) {
-            attrs.title = Ext.String.format(formatText, me.format);
-        }
-        return attrs;
-    },
-    ariaGetAfterRenderAttributes: function() {
-        var me = this,
-            labelEl = me.labelEl,
-            attrs;
-        attrs = me.callParent();
-        if (labelEl) {
-            attrs['aria-labelledby'] = labelEl.id;
-        }
-        return attrs;
-    },
-    setReadOnly: function(readOnly) {
-        var me = this;
-        me.callParent(arguments);
-        me.ariaUpdate({
-            'aria-readonly': readOnly
-        });
-    },
-    markInvalid: function(f, isValid) {
-        var me = this;
-        me.callParent(arguments);
-        me.ariaUpdate({
-            'aria-invalid': true
-        });
-    },
-    clearInvalid: function() {
-        var me = this;
-        me.callParent(arguments);
-        me.ariaUpdate({
-            'aria-invalid': false
-        });
-    }
-});
-
-/** */
-Ext.define('Ext.aria.form.field.Display', {
-    override: 'Ext.form.field.Display',
-    requires: [
-        'Ext.aria.form.field.Base'
-    ],
-    msgTarget: 'none',
-    ariaGetRenderAttributes: function() {
-        var me = this,
-            attrs;
-        attrs = me.callParent();
-        attrs['aria-readonly'] = true;
-        return attrs;
-    }
-});
-
-/** */
-Ext.define('Ext.aria.view.View', {
-    override: 'Ext.view.View',
+Ext.define('Ext.aria.container.Viewport', {
+    override: 'Ext.container.Viewport',
     initComponent: function() {
         var me = this,
-            selModel;
-        me.callParent();
-        selModel = me.getSelectionModel();
-        selModel.on({
-            scope: me,
-            select: me.ariaSelect,
-            deselect: me.ariaDeselect
-        });
-        me.on({
-            scope: me,
-            refresh: me.ariaInitViewItems,
-            itemadd: me.ariaItemAdd,
-            itemremove: me.ariaItemRemove
-        });
-    },
-    ariaGetRenderAttributes: function() {
-        var me = this,
-            attrs, mode;
-        attrs = me.callParent();
-        mode = me.getSelectionModel().getSelectionMode();
-        if (mode !== 'SINGLE') {
-            attrs['aria-multiselectable'] = true;
-        }
-        if (me.title) {
-            attrs['aria-label'] = me.title;
-        }
-        return attrs;
-    },
-    // For Views, we have to apply ARIA attributes to the list items
-    // post factum, because we have no control over the template
-    // that is used to create the items.
-    ariaInitViewItems: function() {
-        var me = this,
-            updateSize = me.pageSize || me.store.buffered,
-            pos = me.store.requestStart + 1,
-            nodes, node, size, i, len;
-        nodes = me.getNodes();
-        size = me.store.getTotalCount();
-        for (i = 0 , len = nodes.length; i < len; i++) {
-            node = nodes[i];
-            if (!node.id) {
-                node.setAttribute('id', Ext.id());
-            }
-            node.setAttribute('role', me.itemAriaRole);
-            node.setAttribute('aria-selected', false);
-            if (updateSize) {
-                node.setAttribute('aria-setsize', size);
-                node.setAttribute('aria-posinset', pos + i);
-            }
-        }
-    },
-    ariaSelect: function(selModel, record) {
-        var me = this,
-            node;
-        node = me.getNode(record);
-        if (node) {
-            node.setAttribute('aria-selected', true);
-            me.ariaUpdate({
-                'aria-activedescendant': node.id
-            });
-        }
-    },
-    ariaDeselect: function(selModel, record) {
-        var me = this,
-            node;
-        node = me.getNode(record);
-        if (node) {
-            node.removeAttribute('aria-selected');
-            me.ariaUpdate({
-                'aria-activedescendant': undefined
-            });
-        }
-    },
-    ariaItemRemove: function(records, index, nodes) {
-        if (!nodes) {
-            return;
-        }
-        var me = this,
-            ariaSelected, i, len;
-        ariaSelected = me.el.getAttribute('aria-activedescendant');
-        for (i = 0 , len = nodes.length; i < len; i++) {
-            if (ariaSelected === nodes[i].id) {
-                me.ariaUpdate({
-                    'aria-activedescendant': undefined
-                });
-                break;
-            }
-        }
-    },
-    ariaItemAdd: function(records, index, nodes) {
-        this.ariaInitViewItems(records, index, nodes);
-    },
-    setTitle: function(title) {
-        var me = this;
-        me.title = title;
-        me.ariaUpdate({
-            'aria-label': title
-        });
-    }
-});
-
-/** */
-Ext.define('Ext.aria.view.Table', {
-    override: 'Ext.view.Table',
-    requires: [
-        'Ext.aria.view.View'
-    ],
-    ariaGetRenderAttributes: function() {
-        var me = this,
-            plugins = me.plugins,
-            readOnly = true,
-            attrs, i, len;
-        attrs = me.callParent();
-        if (plugins) {
-            for (i = 0 , len = plugins.length; i < len; i++) {
-                // Both CellEditor and RowEditor have 'editing' property
-                if ('editing' in plugins[i]) {
-                    readOnly = false;
-                    break;
+            items = me.items,
+            layout = me.layout,
+            i, len, item, el;
+        if (items && layout === 'border' || (Ext.isObject(layout) && layout.type === 'border')) {
+            for (i = 0 , len = items.length; i < len; i++) {
+                item = items[i];
+                if (item.region) {
+                    Ext.applyIf(item, {
+                        ariaRole: 'region',
+                        headerRole: 'heading'
+                    });
                 }
             }
         }
-        attrs['aria-readonly'] = readOnly;
-        return attrs;
-    },
-    // Table Views are rendered from templates that are rarely overridden,
-    // so we can render ARIA attributes in the templates instead of applying
-    // them after the fact.
-    ariaItemAdd: Ext.emptyFn,
-    ariaItemRemove: Ext.emptyFn,
-    ariaInitViewItems: Ext.emptyFn,
-    ariaFindNode: function(selModel, record, row, column) {
-        var me = this,
-            node;
-        if (selModel.isCellModel) {
-            // When column is hidden, its index will be -1
-            if (column > -1) {
-                node = me.getCellByPosition({
-                    row: row,
-                    column: column
-                });
-            } else {
-                node = me.getCellByPosition({
-                    row: row,
-                    column: 0
-                });
-            }
-        } else {
-            node = Ext.fly(me.getNode(record));
-        }
-        return node;
-    },
-    ariaSelect: function(selModel, record, row, column) {
-        var me = this,
-            node;
-        node = me.ariaFindNode(selModel, record, row, column);
-        if (node) {
-            node.set({
-                'aria-selected': true
-            });
-            me.ariaUpdate({
-                'aria-activedescendant': node.id
-            });
-        }
-    },
-    ariaDeselect: function(selModel, record, row, column) {
-        var me = this,
-            node;
-        node = me.ariaFindNode(selModel, record, row, column);
-        if (node) {
-            node.set({
-                'aria-selected': undefined
-            });
-            me.ariaUpdate({
-                'aria-activedescendant': undefined
-            });
-        }
-    },
-    renderRow: function(record, rowIdx, out) {
-        var me = this,
-            rowValues = me.rowValues;
-        rowValues.ariaRowAttr = 'role="row"';
-        return me.callParent(arguments);
-    },
-    renderCell: function(column, record, recordIndex, rowIndex, columnIndex, out) {
-        var me = this,
-            cellValues = me.cellValues;
-        cellValues.ariaCellAttr = 'role="gridcell"';
-        cellValues.ariaCellInnerAttr = '';
-        return me.callParent(arguments);
-    },
-    collectData: function(records, startIndex) {
-        var me = this,
-            data;
-        data = me.callParent(arguments);
-        Ext.applyIf(data, {
-            ariaTableAttr: 'role="presentation"',
-            ariaTbodyAttr: 'role="rowgroup"'
-        });
-        return data;
-    }
-});
-
-/** */
-Ext.define('Ext.aria.form.field.Checkbox', {
-    override: 'Ext.form.field.Checkbox',
-    requires: [
-        'Ext.aria.form.field.Base'
-    ],
-    /**
-     * @cfg {Boolean} [required=false] Set to `true` to make screen readers announce this
-     * checkbox as required. Note that no field validation is performed, and this option
-     * only affects ARIA attributes set for this field.
-     */
-    isFieldLabelable: false,
-    hideLabel: true,
-    ariaGetEl: function() {
-        return this.inputEl;
-    },
-    ariaGetRenderAttributes: function() {
-        var me = this,
-            attrs;
-        attrs = me.callParent(arguments);
-        attrs['aria-checked'] = me.getValue();
-        if (me.required) {
-            attrs['aria-required'] = true;
-        }
-        return attrs;
+        me.callParent();
     },
     ariaGetAfterRenderAttributes: function() {
-        var me = this,
-            boxLabelEl = me.boxLabelEl,
-            attrs;
-        attrs = me.callParent();
-        if (me.boxLabel && !me.fieldLabel && boxLabelEl) {
-            attrs['aria-labelledby'] = boxLabelEl.id;
-        }
-        return attrs;
-    },
-    onChange: function() {
-        var me = this;
-        me.callParent(arguments);
-        me.ariaUpdate({
-            'aria-checked': me.getValue()
-        });
-    }
-});
-
-/** */
-Ext.define('Ext.aria.grid.header.Container', {
-    override: 'Ext.grid.header.Container',
-    ariaGetAfterRenderAttributes: function() {
-        var me = this,
-            attrs;
-        attrs = me.callParent();
+        var attrs = this.callParent();
+        // Viewport's role attribute is applied to the element that is never rendered,
+        // so we have to do it post factum
+        attrs.role = this.ariaRole;
+        // Viewport should not have a label, document title should be announced instead
         delete attrs['aria-label'];
+        delete attrs['aria-labelledby'];
         return attrs;
-    }
-});
-
-/** */
-Ext.define('Ext.aria.grid.column.Column', {
-    override: 'Ext.grid.column.Column',
-    ariaSortStates: {
-        ASC: 'ascending',
-        DESC: 'descending'
-    },
-    ariaGetAfterRenderAttributes: function() {
-        var me = this,
-            sortState = me.sortState,
-            states = me.ariaSortStates,
-            attr;
-        attr = me.callParent();
-        attr['aria-sort'] = states[sortState];
-        return attr;
-    },
-    setSortState: function(sorter) {
-        var me = this,
-            states = me.ariaSortStates,
-            oldSortState = me.sortState,
-            newSortState;
-        me.callParent(arguments);
-        newSortState = me.sortState;
-        if (oldSortState !== newSortState) {
-            me.ariaUpdate({
-                'aria-sort': states[newSortState]
-            });
-        }
-    }
-});
-
-/** */
-Ext.define('Ext.aria.grid.NavigationModel', {
-    override: 'Ext.grid.NavigationModel',
-    // WAI-ARIA recommends no wrapping around row ends in navigation mode
-    preventWrap: true
-});
-
-/** */
-Ext.define('Ext.aria.form.field.Text', {
-    override: 'Ext.form.field.Text',
-    requires: [
-        'Ext.aria.form.field.Base'
-    ],
-    ariaGetRenderAttributes: function() {
-        var me = this,
-            attrs;
-        attrs = me.callParent();
-        if (me.allowBlank !== undefined) {
-            attrs['aria-required'] = !me.allowBlank;
-        }
-        return attrs;
-    }
-});
-
-/** */
-Ext.define('Ext.aria.button.Button', {
-    override: 'Ext.button.Button',
-    requires: [
-        'Ext.aria.Component'
-    ],
-    showEmptyMenu: true,
-    constructor: function(config) {
-        // Don't warn if we're under the slicer
-        if (config.menu && !Ext.theme) {
-            this.ariaCheckMenuConfig(config);
-        }
-        this.callParent(arguments);
-    },
-    ariaGetRenderAttributes: function() {
-        var me = this,
-            menu = me.menu,
-            attrs;
-        attrs = me.callParent(arguments);
-        if (menu) {
-            attrs['aria-haspopup'] = true;
-            attrs['aria-owns'] = menu.id;
-        }
-        if (me.enableToggle) {
-            attrs['aria-pressed'] = me.pressed;
-        }
-        return attrs;
-    },
-    toggle: function(state) {
-        var me = this;
-        me.callParent(arguments);
-        me.ariaUpdate({
-            "aria-pressed": me.pressed
-        });
-    },
-    ariaGetLabelEl: function() {
-        return this.btnInnerEl;
-    },
-    // ARIA requires that buttons with a menu react to
-    // Space and Enter keys by showing the menu. This
-    // behavior conflicts with the various handler
-    // functions we support in Ext JS; to avoid problems
-    // we check if we have the menu *and* handlers, or
-    // `click` event listeners, and raise an error if we do
-    ariaCheckMenuConfig: function(cfg) {
-        var text = cfg.text || cfg.html || 'Unknown';
-        if (cfg.enableToggle || cfg.toggleGroup) {
-            Ext.log.error("According to WAI-ARIA 1.0 Authoring guide " + "(http://www.w3.org/TR/wai-aria-practices/#menubutton), " + "menu button '" + text + "'s behavior will conflict with " + "toggling");
-        }
-        if (cfg.href) {
-            Ext.log.error("According to WAI-ARIA 1.0 Authoring guide " + "(http://www.w3.org/TR/wai-aria-practices/#menubutton), " + "menu button '" + text + "' cannot behave as a link");
-        }
-        if (cfg.handler || (cfg.listeners && cfg.listeners.click)) {
-            Ext.log.error("According to WAI-ARIA 1.0 Authoring guide " + "(http://www.w3.org/TR/wai-aria-practices/#menubutton), " + "menu button '" + text + "' should display the menu " + "on SPACE or ENTER keys, which will conflict with the " + "button handler");
-        }
-    }
-});
-
-/** */
-Ext.define('Ext.aria.tab.Tab', {
-    override: 'Ext.tab.Tab',
-    //<locale>
-    closeText: 'closable',
-    //</locale>
-    ariaGetAfterRenderAttributes: function() {
-        var me = this,
-            attrs;
-        attrs = me.callParent(arguments);
-        attrs['aria-selected'] = !!me.active;
-        if (me.card && me.card.getEl()) {
-            attrs['aria-controls'] = me.card.getEl().id;
-        }
-        return attrs;
-    },
-    activate: function(suppressEvent) {
-        this.callParent([
-            suppressEvent
-        ]);
-        this.ariaUpdate({
-            'aria-selected': true
-        });
-    },
-    deactivate: function(suppressEvent) {
-        this.callParent([
-            suppressEvent
-        ]);
-        this.ariaUpdate({
-            'aria-selected': false
-        });
-    }
-});
-
-/** */
-Ext.define('Ext.aria.tab.Bar', {
-    override: 'Ext.tab.Bar',
-    requires: [
-        'Ext.aria.tab.Tab'
-    ],
-    findNextActivatable: function(toClose) {
-        var me = this,
-            next;
-        next = me.callParent(arguments);
-        // If the default algorithm can't find the next tab to activate,
-        // fall back to the currently active tab. We need to have a focused
-        // tab at all times.
-        if (!next) {
-            next = me.activeTab;
-        }
-        return next;
-    }
-});
-
-/** */
-Ext.define('Ext.aria.tab.Panel', {
-    override: 'Ext.tab.Panel',
-    requires: [
-        'Ext.layout.container.Card',
-        'Ext.aria.tab.Bar'
-    ],
-    isTabPanel: true,
-    onAdd: function(item, index) {
-        item.ariaRole = 'tabpanel';
-        this.callParent(arguments);
-    },
-    setActiveTab: function(card) {
-        var me = this,
-            items, item, isActive, i, len;
-        me.callParent(arguments);
-        items = me.getRefItems();
-        for (i = 0 , len = items.length; i < len; i++) {
-            item = items[i];
-            if (item.ariaRole === 'tabpanel') {
-                isActive = item === card;
-                item.ariaUpdate({
-                    'aria-expanded': isActive,
-                    'aria-hidden': !isActive
-                });
-            }
-        }
-    },
-    ariaIsOwnTab: function(cmp) {
-        return cmp.isTab && cmp.isGroupedBy.ownerCt === this;
     }
 });
 
@@ -1349,83 +907,97 @@ Ext.define('Ext.aria.window.Window', {
 });
 
 /** */
-Ext.define('Ext.aria.tip.QuickTip', {
-    override: 'Ext.tip.QuickTip',
-    showByTarget: function(targetEl) {
+Ext.define('Ext.aria.form.field.Base', {
+    override: 'Ext.form.field.Base',
+    requires: [
+        'Ext.util.Format',
+        'Ext.aria.Component'
+    ],
+    /**
+     * @cfg {String} formatText The text to use for the field format announcement
+     * placed in the `title` attribute of the input field. This format will not
+     * be used if the title attribute is configured explicitly.
+     */
+    ariaRenderAttributesToElement: false,
+    msgTarget: 'side',
+    // use this scheme because it is the only one working for now
+    getSubTplData: function() {
         var me = this,
-            target, size, xy, x, y;
-        target = me.targets[targetEl.id];
-        if (!target) {
-            return;
-        }
-        me.activeTarget = target;
-        me.activeTarget.el = Ext.get(targetEl).dom;
-        me.anchor = me.activeTarget.anchor;
-        size = targetEl.getSize();
-        xy = targetEl.getXY();
-        me.showAt([
-            xy[0],
-            xy[1] + size.height
-        ]);
-    }
-});
-
-/** */
-Ext.define('Ext.aria.button.Split', {
-    override: 'Ext.button.Split',
-    constructor: function(config) {
-        var ownerCt = config.ownerCt;
-        // Warn unless the button belongs to a date picker,
-        // the user can't do anything about that
-        // Also don't warn if we're under the slicer
-        if (!Ext.theme && (!ownerCt || !ownerCt.isDatePicker)) {
-            Ext.log.warn("Using Split buttons is not recommended in WAI-ARIA " + "compliant applications, because their behavior conflicts " + "with accessibility best practices. See WAI-ARIA 1.0 " + "Authoring guide: http://www.w3.org/TR/wai-aria-practices/#menubutton");
-        }
-        this.callParent(arguments);
-    }
-});
-
-/** */
-Ext.define('Ext.aria.button.Cycle', {
-    override: 'Ext.button.Cycle',
-    constructor: function(config) {
-        // Don't warn if we're under the slicer
-        if (!Ext.theme) {
-            Ext.log.warn("Using Cycle buttons is not recommended in WAI-ARIA " + "compliant applications, because their behavior conflicts " + "with accessibility best practices. See WAI-ARIA 1.0 " + "Authoring guide: http://www.w3.org/TR/wai-aria-practices/#menubutton");
-        }
-        this.callParent(arguments);
-    }
-});
-
-/** */
-Ext.define('Ext.aria.container.Viewport', {
-    override: 'Ext.container.Viewport',
-    initComponent: function() {
+            fmt = Ext.util.Format.attributes,
+            data, attrs;
+        data = me.callParent(arguments);
+        attrs = me.ariaGetRenderAttributes();
+        // Role is rendered separately
+        delete attrs.role;
+        data.inputAttrTpl = [
+            data.inputAttrTpl,
+            fmt(attrs)
+        ].join(' ');
+        return data;
+    },
+    ariaGetEl: function() {
+        return this.inputEl;
+    },
+    ariaGetRenderAttributes: function() {
         var me = this,
-            items = me.items,
-            layout = me.layout,
-            i, len, item, el;
-        if (items && layout === 'border' || (Ext.isObject(layout) && layout.type === 'border')) {
-            for (i = 0 , len = items.length; i < len; i++) {
-                item = items[i];
-                if (item.region) {
-                    Ext.applyIf(item, {
-                        ariaRole: 'region',
-                        headerRole: 'heading'
-                    });
-                }
-            }
+            readOnly = me.readOnly,
+            formatText = me.formatText,
+            attrs;
+        attrs = me.callParent();
+        if (readOnly != null) {
+            attrs['aria-readonly'] = !!readOnly;
         }
-        me.callParent();
+        if (formatText && !attrs.title) {
+            attrs.title = Ext.String.format(formatText, me.format);
+        }
+        return attrs;
     },
     ariaGetAfterRenderAttributes: function() {
-        var attrs = this.callParent();
-        // Viewport's role attribute is applied to the element that is never rendered,
-        // so we have to do it post factum
-        attrs.role = this.ariaRole;
-        // Viewport should not have a label, document title should be announced instead
-        delete attrs['aria-label'];
-        delete attrs['aria-labelledby'];
+        var me = this,
+            labelEl = me.labelEl,
+            attrs;
+        attrs = me.callParent();
+        if (labelEl) {
+            attrs['aria-labelledby'] = labelEl.id;
+        }
+        return attrs;
+    },
+    setReadOnly: function(readOnly) {
+        var me = this;
+        me.callParent(arguments);
+        me.ariaUpdate({
+            'aria-readonly': readOnly
+        });
+    },
+    markInvalid: function(f, isValid) {
+        var me = this;
+        me.callParent(arguments);
+        me.ariaUpdate({
+            'aria-invalid': true
+        });
+    },
+    clearInvalid: function() {
+        var me = this;
+        me.callParent(arguments);
+        me.ariaUpdate({
+            'aria-invalid': false
+        });
+    }
+});
+
+/** */
+Ext.define('Ext.aria.form.field.Text', {
+    override: 'Ext.form.field.Text',
+    requires: [
+        'Ext.aria.form.field.Base'
+    ],
+    ariaGetRenderAttributes: function() {
+        var me = this,
+            attrs;
+        attrs = me.callParent();
+        if (me.allowBlank !== undefined) {
+            attrs['aria-required'] = !me.allowBlank;
+        }
         return attrs;
     }
 });
@@ -1468,6 +1040,51 @@ Ext.define('Ext.aria.form.FieldContainer', {
             attrs['aria-labelledby'] = me.labelEl.id;
         }
         return attrs;
+    }
+});
+
+/** */
+Ext.define('Ext.aria.form.field.Checkbox', {
+    override: 'Ext.form.field.Checkbox',
+    requires: [
+        'Ext.aria.form.field.Base'
+    ],
+    /**
+     * @cfg {Boolean} [required=false] Set to `true` to make screen readers announce this
+     * checkbox as required. Note that no field validation is performed, and this option
+     * only affects ARIA attributes set for this field.
+     */
+    isFieldLabelable: false,
+    hideLabel: true,
+    ariaGetEl: function() {
+        return this.inputEl;
+    },
+    ariaGetRenderAttributes: function() {
+        var me = this,
+            attrs;
+        attrs = me.callParent(arguments);
+        attrs['aria-checked'] = me.getValue();
+        if (me.required) {
+            attrs['aria-required'] = true;
+        }
+        return attrs;
+    },
+    ariaGetAfterRenderAttributes: function() {
+        var me = this,
+            boxLabelEl = me.boxLabelEl,
+            attrs;
+        attrs = me.callParent();
+        if (me.boxLabel && !me.fieldLabel && boxLabelEl) {
+            attrs['aria-labelledby'] = boxLabelEl.id;
+        }
+        return attrs;
+    },
+    onChange: function() {
+        var me = this;
+        me.callParent(arguments);
+        me.ariaUpdate({
+            'aria-checked': me.getValue()
+        });
     }
 });
 
@@ -1632,6 +1249,112 @@ Ext.define('Ext.aria.form.field.Picker', {
             attrs['aria-owns'] = picker.id;
         }
         return attrs;
+    }
+});
+
+/** */
+Ext.define('Ext.aria.view.View', {
+    override: 'Ext.view.View',
+    initComponent: function() {
+        var me = this,
+            selModel;
+        me.callParent();
+        selModel = me.getSelectionModel();
+        selModel.on({
+            scope: me,
+            select: me.ariaSelect,
+            deselect: me.ariaDeselect
+        });
+        me.on({
+            scope: me,
+            refresh: me.ariaInitViewItems,
+            itemadd: me.ariaItemAdd,
+            itemremove: me.ariaItemRemove
+        });
+    },
+    ariaGetRenderAttributes: function() {
+        var me = this,
+            attrs, mode;
+        attrs = me.callParent();
+        mode = me.getSelectionModel().getSelectionMode();
+        if (mode !== 'SINGLE') {
+            attrs['aria-multiselectable'] = true;
+        }
+        if (me.title) {
+            attrs['aria-label'] = me.title;
+        }
+        return attrs;
+    },
+    // For Views, we have to apply ARIA attributes to the list items
+    // post factum, because we have no control over the template
+    // that is used to create the items.
+    ariaInitViewItems: function() {
+        var me = this,
+            updateSize = me.pageSize || me.store.buffered,
+            pos = me.store.requestStart + 1,
+            nodes, node, size, i, len;
+        nodes = me.getNodes();
+        size = me.store.getTotalCount();
+        for (i = 0 , len = nodes.length; i < len; i++) {
+            node = nodes[i];
+            if (!node.id) {
+                node.setAttribute('id', Ext.id());
+            }
+            node.setAttribute('role', me.itemAriaRole);
+            node.setAttribute('aria-selected', false);
+            if (updateSize) {
+                node.setAttribute('aria-setsize', size);
+                node.setAttribute('aria-posinset', pos + i);
+            }
+        }
+    },
+    ariaSelect: function(selModel, record) {
+        var me = this,
+            node;
+        node = me.getNode(record);
+        if (node) {
+            node.setAttribute('aria-selected', true);
+            me.ariaUpdate({
+                'aria-activedescendant': node.id
+            });
+        }
+    },
+    ariaDeselect: function(selModel, record) {
+        var me = this,
+            node;
+        node = me.getNode(record);
+        if (node) {
+            node.removeAttribute('aria-selected');
+            me.ariaUpdate({
+                'aria-activedescendant': undefined
+            });
+        }
+    },
+    ariaItemRemove: function(records, index, nodes) {
+        if (!nodes) {
+            return;
+        }
+        var me = this,
+            ariaSelected, i, len;
+        ariaSelected = me.el.getAttribute('aria-activedescendant');
+        for (i = 0 , len = nodes.length; i < len; i++) {
+            if (ariaSelected === nodes[i].id) {
+                me.ariaUpdate({
+                    'aria-activedescendant': undefined
+                });
+                break;
+            }
+        }
+    },
+    ariaItemAdd: function(records, index, nodes) {
+        this.ariaInitViewItems(records, index, nodes);
+    },
+    setTitle: function(title) {
+        var me = this;
+        me.title = title;
+        me.ariaUpdate({
+            'aria-label': title
+        });
     }
 });
 
@@ -1803,6 +1526,44 @@ Ext.define('Ext.aria.form.field.Date', {
 });
 
 /** */
+Ext.define('Ext.aria.form.field.Display', {
+    override: 'Ext.form.field.Display',
+    requires: [
+        'Ext.aria.form.field.Base'
+    ],
+    msgTarget: 'none',
+    ariaGetRenderAttributes: function() {
+        var me = this,
+            attrs;
+        attrs = me.callParent();
+        attrs['aria-readonly'] = true;
+        return attrs;
+    }
+});
+
+/** */
+Ext.define('Ext.aria.tip.QuickTip', {
+    override: 'Ext.tip.QuickTip',
+    showByTarget: function(targetEl) {
+        var me = this,
+            target, size, xy, x, y;
+        target = me.targets[targetEl.id];
+        if (!target) {
+            return;
+        }
+        me.activeTarget = target;
+        me.activeTarget.el = Ext.get(targetEl).dom;
+        me.anchor = me.activeTarget.anchor;
+        size = targetEl.getSize();
+        xy = targetEl.getXY();
+        me.showAt([
+            xy[0],
+            xy[1] + size.height
+        ]);
+    }
+});
+
+/** */
 Ext.define('Ext.aria.picker.Color', {
     override: 'Ext.picker.Color',
     requires: [
@@ -1840,6 +1601,158 @@ Ext.define('Ext.aria.form.field.Time', {
     // The default format for the time field is 'g:i A',
     // which is hardly informative
     formatText: 'Expected time format HH:MM AM or PM'
+});
+
+/** */
+Ext.define('Ext.aria.grid.NavigationModel', {
+    override: 'Ext.grid.NavigationModel',
+    // WAI-ARIA recommends no wrapping around row ends in navigation mode
+    preventWrap: true
+});
+
+/** */
+Ext.define('Ext.aria.view.Table', {
+    override: 'Ext.view.Table',
+    requires: [
+        'Ext.aria.view.View'
+    ],
+    ariaGetRenderAttributes: function() {
+        var me = this,
+            plugins = me.plugins,
+            readOnly = true,
+            attrs, i, len;
+        attrs = me.callParent();
+        if (plugins) {
+            for (i = 0 , len = plugins.length; i < len; i++) {
+                // Both CellEditor and RowEditor have 'editing' property
+                if ('editing' in plugins[i]) {
+                    readOnly = false;
+                    break;
+                }
+            }
+        }
+        attrs['aria-readonly'] = readOnly;
+        return attrs;
+    },
+    // Table Views are rendered from templates that are rarely overridden,
+    // so we can render ARIA attributes in the templates instead of applying
+    // them after the fact.
+    ariaItemAdd: Ext.emptyFn,
+    ariaItemRemove: Ext.emptyFn,
+    ariaInitViewItems: Ext.emptyFn,
+    ariaFindNode: function(selModel, record, row, column) {
+        var me = this,
+            node;
+        if (selModel.isCellModel) {
+            // When column is hidden, its index will be -1
+            if (column > -1) {
+                node = me.getCellByPosition({
+                    row: row,
+                    column: column
+                });
+            } else {
+                node = me.getCellByPosition({
+                    row: row,
+                    column: 0
+                });
+            }
+        } else {
+            node = Ext.fly(me.getNode(record));
+        }
+        return node;
+    },
+    ariaSelect: function(selModel, record, row, column) {
+        var me = this,
+            node;
+        node = me.ariaFindNode(selModel, record, row, column);
+        if (node) {
+            node.set({
+                'aria-selected': true
+            });
+            me.ariaUpdate({
+                'aria-activedescendant': node.id
+            });
+        }
+    },
+    ariaDeselect: function(selModel, record, row, column) {
+        var me = this,
+            node;
+        node = me.ariaFindNode(selModel, record, row, column);
+        if (node) {
+            node.set({
+                'aria-selected': undefined
+            });
+            me.ariaUpdate({
+                'aria-activedescendant': undefined
+            });
+        }
+    },
+    renderRow: function(record, rowIdx, out) {
+        var me = this,
+            rowValues = me.rowValues;
+        rowValues.ariaRowAttr = 'role="row"';
+        return me.callParent(arguments);
+    },
+    renderCell: function(column, record, recordIndex, rowIndex, columnIndex, out) {
+        var me = this,
+            cellValues = me.cellValues;
+        cellValues.ariaCellAttr = 'role="gridcell"';
+        cellValues.ariaCellInnerAttr = '';
+        return me.callParent(arguments);
+    },
+    collectData: function(records, startIndex) {
+        var me = this,
+            data;
+        data = me.callParent(arguments);
+        Ext.applyIf(data, {
+            ariaTableAttr: 'role="presentation"',
+            ariaTbodyAttr: 'role="rowgroup"'
+        });
+        return data;
+    }
+});
+
+/** */
+Ext.define('Ext.aria.grid.header.Container', {
+    override: 'Ext.grid.header.Container',
+    ariaGetAfterRenderAttributes: function() {
+        var me = this,
+            attrs;
+        attrs = me.callParent();
+        delete attrs['aria-label'];
+        return attrs;
+    }
+});
+
+/** */
+Ext.define('Ext.aria.grid.column.Column', {
+    override: 'Ext.grid.column.Column',
+    ariaSortStates: {
+        ASC: 'ascending',
+        DESC: 'descending'
+    },
+    ariaGetAfterRenderAttributes: function() {
+        var me = this,
+            sortState = me.sortState,
+            states = me.ariaSortStates,
+            attr;
+        attr = me.callParent();
+        attr['aria-sort'] = states[sortState];
+        return attr;
+    },
+    setSortState: function(sorter) {
+        var me = this,
+            states = me.ariaSortStates,
+            oldSortState = me.sortState,
+            newSortState;
+        me.callParent(arguments);
+        newSortState = me.sortState;
+        if (oldSortState !== newSortState) {
+            me.ariaUpdate({
+                'aria-sort': states[newSortState]
+            });
+        }
+    }
 });
 
 /** */
@@ -2038,6 +1951,93 @@ Ext.define('Ext.aria.slider.Multi', {
                 'aria-valuenow': value
             });
         }
+    }
+});
+
+/** */
+Ext.define('Ext.aria.tab.Tab', {
+    override: 'Ext.tab.Tab',
+    //<locale>
+    closeText: 'closable',
+    //</locale>
+    ariaGetAfterRenderAttributes: function() {
+        var me = this,
+            attrs;
+        attrs = me.callParent(arguments);
+        attrs['aria-selected'] = !!me.active;
+        if (me.card && me.card.getEl()) {
+            attrs['aria-controls'] = me.card.getEl().id;
+        }
+        return attrs;
+    },
+    activate: function(suppressEvent) {
+        this.callParent([
+            suppressEvent
+        ]);
+        this.ariaUpdate({
+            'aria-selected': true
+        });
+    },
+    deactivate: function(suppressEvent) {
+        this.callParent([
+            suppressEvent
+        ]);
+        this.ariaUpdate({
+            'aria-selected': false
+        });
+    }
+});
+
+/** */
+Ext.define('Ext.aria.tab.Bar', {
+    override: 'Ext.tab.Bar',
+    requires: [
+        'Ext.aria.tab.Tab'
+    ],
+    findNextActivatable: function(toClose) {
+        var me = this,
+            next;
+        next = me.callParent(arguments);
+        // If the default algorithm can't find the next tab to activate,
+        // fall back to the currently active tab. We need to have a focused
+        // tab at all times.
+        if (!next) {
+            next = me.activeTab;
+        }
+        return next;
+    }
+});
+
+/** */
+Ext.define('Ext.aria.tab.Panel', {
+    override: 'Ext.tab.Panel',
+    requires: [
+        'Ext.layout.container.Card',
+        'Ext.aria.tab.Bar'
+    ],
+    isTabPanel: true,
+    onAdd: function(item, index) {
+        item.ariaRole = 'tabpanel';
+        this.callParent(arguments);
+    },
+    setActiveTab: function(card) {
+        var me = this,
+            items, item, isActive, i, len;
+        me.callParent(arguments);
+        items = me.getRefItems();
+        for (i = 0 , len = items.length; i < len; i++) {
+            item = items[i];
+            if (item.ariaRole === 'tabpanel') {
+                isActive = item === card;
+                item.ariaUpdate({
+                    'aria-expanded': isActive,
+                    'aria-hidden': !isActive
+                });
+            }
+        }
+    },
+    ariaIsOwnTab: function(cmp) {
+        return cmp.isTab && cmp.isGroupedBy.ownerCt === this;
     }
 });
 
@@ -3826,6 +3826,7 @@ Ext.define('Ext.ux.Explorer', {
         /**
          * @cfg {Ext.data.TreeModel} selection
          * The selected node
+         * @accessor
          */
         selection: null
     },
@@ -6553,6 +6554,12 @@ Ext.define('Ext.ux.ajax.Simlet', function() {
         doRedirect: function(ctx) {
             return false;
         },
+        doDelete: function(ctx) {
+            var me = this,
+                xhr = ctx.xhr,
+                records = xhr.options.records;
+            me.removeFromData(ctx, records);
+        },
         /**
          * Performs the action requested by the given XHR and returns an object to be applied
          * on to the XHR (containing `status`, `responseText`, etc.). For the most part,
@@ -6589,6 +6596,9 @@ Ext.define('Ext.ux.ajax.Simlet', function() {
             var ctx = this.getCtx(method, url),
                 redirect = this.doRedirect(ctx),
                 xhr;
+            if (options.action === 'destroy') {
+                method = 'delete';
+            }
             if (redirect) {
                 xhr = redirect;
             } else {
@@ -6644,6 +6654,21 @@ Ext.define('Ext.ux.ajax.Simlet', function() {
                 url = Ext.urlAppend(url, Ext.Object.toQueryString(params));
             }
             return this.manager.openRequest(method, url);
+        },
+        removeFromData: function(ctx, records) {
+            var me = this,
+                data = me.getData(ctx),
+                model = (ctx.xhr.options.proxy && ctx.xhr.options.proxy.getModel()) || {},
+                idProperty = model.idProperty || 'id';
+            Ext.each(records, function(record) {
+                var id = record.get(idProperty);
+                for (var i = data.length; i-- > 0; ) {
+                    if (data[i][idProperty] === id) {
+                        me.deleteRecord(i);
+                        break;
+                    }
+                }
+            });
         }
     };
 }());
@@ -6692,6 +6717,11 @@ Ext.define('Ext.ux.ajax.DataSimlet', function() {
                     delete child.children;
                     me.buildNodes(children, child.id);
                 }
+            }
+        },
+        deleteRecord: function(pos) {
+            if (this.data && typeof this.data !== 'function') {
+                Ext.Array.removeAt(this.data, pos);
             }
         },
         fixTree: function(ctx, tree) {
@@ -6857,6 +6887,9 @@ Ext.define('Ext.ux.ajax.JsonSimlet', {
         }
         ret.responseText = Ext.encode(response);
         return ret;
+    },
+    doPost: function(ctx) {
+        return this.doGet(ctx);
     }
 });
 
@@ -11550,11 +11583,11 @@ Ext.define('Ext.ux.grid.SubTable', {
     extend: 'Ext.grid.plugin.RowExpander',
     alias: 'plugin.subtable',
     rowBodyTpl: [
-        '<table class="' + Ext.baseCSSPrefix + 'grid-subtable"><tbody>',
+        '<table class="' + Ext.baseCSSPrefix + 'grid-subtable">',
         '{%',
         'this.owner.renderTable(out, values);',
         '%}',
-        '</tbody></table>'
+        '</table>'
     ],
     init: function(grid) {
         var me = this,
@@ -11600,7 +11633,7 @@ Ext.define('Ext.ux.grid.SubTable', {
         for (j = 0; j < numColumns; j++) {
             out.push('<th class="' + Ext.baseCSSPrefix + 'grid-subtable-header">', columns[j].text, '</th>');
         }
-        out.push('</thead>');
+        out.push('</thead><tbody>');
         for (i = 0; i < recCount; i++) {
             rec = associatedRecords[i];
             out.push('<tr>');
@@ -11618,6 +11651,7 @@ Ext.define('Ext.ux.grid.SubTable', {
             }
             out.push('</tr>');
         }
+        out.push('</tbody>');
     },
     getRowBodyContentsFn: function(rowBodyTpl) {
         var me = this;

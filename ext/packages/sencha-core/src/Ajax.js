@@ -98,7 +98,13 @@ Ext.define('Ext.Ajax', {
      */
     /**
      * @property {Number} timeout
-     * The timeout in milliseconds to be used for requests. Defaults to 30000.
+     * The timeout in milliseconds to be used for requests. Defaults to 30000 (30 
+     * seconds).
+     * 
+     * When a request fails due to timeout the XMLHttpRequest response object will 
+     * contain:
+     * 
+     *     timedout: true
      */
 
     /**

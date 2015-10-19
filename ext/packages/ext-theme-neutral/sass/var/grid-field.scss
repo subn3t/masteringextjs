@@ -357,31 +357,31 @@ $include-checkbox-grid-ui: $include-grid-cell-field-ui !default;
  * @var {color}
  * The text color of display fields rendered in the context of a grid cell
  */
-$grid-cell-display-field-color: $form-display-field-color !default;
+$grid-cell-display-field-color: $grid-cell-field-color !default;
 
 /**
  * @var {number}
  * The font-size of display fields rendered in the context of a grid cell
  */
-$grid-cell-display-field-font-size: $form-display-field-font-size !default;
+$grid-cell-display-field-font-size: $grid-cell-field-font-size !default;
 
 /**
  * @var {string}
  * The font-family of display fields rendered in the context of a grid cell
  */
-$grid-cell-display-field-font-family: $form-display-field-font-family !default;
+$grid-cell-display-field-font-family: $grid-cell-field-font-family !default;
 
 /**
  * @var {string}
  * The font-weight of display fields rendered in the context of a grid cell
  */
-$grid-cell-display-field-font-weight: $form-display-field-font-weight !default;
+$grid-cell-display-field-font-weight: $grid-cell-field-font-weight !default;
 
 /**
  * @var {number}
  * The line-height of display fields rendered in the context of a grid cell
  */
-$grid-cell-display-field-line-height: $form-display-field-line-height !default;
+$grid-cell-display-field-line-height: $grid-row-cell-line-height !default;
 
 /**
  * @var {boolean}

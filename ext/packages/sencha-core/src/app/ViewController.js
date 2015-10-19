@@ -1,6 +1,6 @@
 /**
  * A view controller is a controller that can be attached to a specific view
- * instance so it can manage the view and it's child components. Each instance of the view
+ * instance so it can manage the view and its child components. Each instance of the view
  * will have a new view controller, so the instances are isolated.
  * 
  * When a controller is specified on a view, the view automatically becomes a {@link Ext.container.Container#referenceHolder},
@@ -16,7 +16,7 @@
  *         extend : 'Ext.app.ViewController',
  *         alias: 'controller.userlist',
  *       
- *         init: function() {
+ *         init: function(view) {
  *             this.userCount = 0;
  *             var users = [],
  *                 i;
@@ -24,7 +24,7 @@
  *             for (i = 0; i < 5; ++i) {
  *                 users.push(this.getUser());
  *             }  
- *             this.getView().getStore().add(users);
+ *             view.getStore().add(users);
  *         },
  *       
  *         onAddClick: function() {
@@ -138,6 +138,33 @@ Ext.define('Ext.app.ViewController', {
         this.compDomain = new Ext.app.domain.View(this);
         this.callParent(arguments);
     },
+    
+    /**
+     * @method beforeRender
+     * @template
+     * Template method called by the owning component's 
+     * {@link Ext.Component#method-beforeRender beforeRender} method.
+     * @param {Ext.Component} component The owner component attached to the 
+     * ViewController
+     */
+    
+    /**
+     * @method afterRender
+     * @template
+     * Template method called by the owning component's 
+     * {@link Ext.Component#method-afterRender afterRender} method.
+     * @param {Ext.Component} component The owner component attached to the 
+     * ViewController
+     */
+    
+    /**
+     * @method boxReady
+     * @template
+     * Template method called by the owning component's 
+     * {@link Ext.Component#method-onBoxReady onBoxReady} method.
+     * @param {Ext.Component} component The owner component attached to the 
+     * ViewController
+     */
 
     /**
      * Called before the view initializes. This is called before the view's

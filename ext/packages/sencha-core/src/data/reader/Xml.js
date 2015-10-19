@@ -210,7 +210,6 @@ Ext.define('Ext.data.reader.Xml', {
         return undefined;
     },
 
-    //inherit docs
     getResponseData: function(response) {
         var xml = response.responseXML,
             error = 'XML data not found in the response'; 

@@ -177,7 +177,13 @@ Ext.define('Ext.scroll.TouchScroller', {
         translatable: {
             translationMethod: 'auto',
             useWrapper: false
-        }
+        },
+
+        /**
+         * @cfg refreshOnIdle
+         * @private
+         */
+        refreshOnIdle: true
     },
 
     cls: Ext.baseCSSPrefix + 'scroll-container',
@@ -238,11 +244,20 @@ Ext.define('Ext.scroll.TouchScroller', {
 
         me.dragDirection = { x: 0, y: 0};
 
-        Ext.GlobalEvents.on('idle', me.onIdle, me);
-
         me.callParent([config]);
 
         me.refreshAxes();
+    },
+
+    applyRefreshOnIdle: function(refreshOnIdle, oldRefreshOnIdle) {
+        var me = this;
+
+        if (refreshOnIdle) {
+            Ext.GlobalEvents.on('idle', me.onIdle, me);
+        } else if (oldRefreshOnIdle) {
+            Ext.GlobalEvents.un('idle', me.onIdle, me);
+        }
+        return refreshOnIdle;
     },
 
     applyBounceEasing: function(easing) {
@@ -321,24 +336,27 @@ Ext.define('Ext.scroll.TouchScroller', {
                 indicators = oldIndicators;
             } else {
                 indicators = { x: null, y: null };
+
+                // Indicators begin fade out 100ms after we request a hide.
+                // This is so that if the user stabs and swipes repeatedly
+                // the indicators remain until they quit.
                 if (xIndicator) {
                     indicators.x = new Ext.scroll.Indicator(Ext.applyIf({
                         axis: 'x',
-                        scroller: me
+                        scroller: me,
+                        hideDelay: 100
                     }, xIndicator));
                 }
                 if (yIndicator) {
                     indicators.y = new Ext.scroll.Indicator(Ext.applyIf({
                         axis: 'y',
-                        scroller: me
+                        scroller: me,
+                        hideDelay: 100
                     }, yIndicator));
                 }
             }
         } else if (oldIndicators) {
-            oldIndicators.x.destroy();
-            oldIndicators.y.destroy();
-            oldIndicators.x = null;
-            oldIndicators.y = null;
+            oldIndicators.x = oldIndicators.y = Ext.destroy(oldIndicators.x, oldIndicators.y);
         }
 
         return indicators;
@@ -367,7 +385,7 @@ Ext.define('Ext.scroll.TouchScroller', {
         return innerElement;
     },
 
-    applySize: function(size) {
+    applySize: function(size, oldSize) {
         var el, dom, scrollerDom, x, y;
 
         if (size == null) { // null or undefined
@@ -392,10 +410,16 @@ Ext.define('Ext.scroll.TouchScroller', {
             y = size.y;
         }
 
-        return {
-            x: x,
-            y: y
-        };
+        if (oldSize && oldSize.x === x && oldSize.y === y) {
+            size = undefined;
+        } else {
+            size = {
+                x: x,
+                y: y
+            };
+        }
+
+        return size;
     },
 
     applySlotSnapOffset: function(snapOffset) {
@@ -543,6 +567,9 @@ Ext.define('Ext.scroll.TouchScroller', {
 
         if (me.isConfiguring) {
             if (!me.getTranslatable().isScrollParent) {
+                // Not using DOM scrolling, clear overflow styles.
+                element.dom.style.overflowX = element.dom.style.overflowY = '';
+
                 // If using full virtual scrolling attach a mousewheel listener for moving
                 // the scroll position.  Otherwise we use native scrolling when interacting
                 // using the mouse and so do not want to override the native behavior
@@ -570,8 +597,6 @@ Ext.define('Ext.scroll.TouchScroller', {
             me.setSize(null);
             me.setElementSize(null);
         }
-
-        me.callParent([element, oldElement]);
     },
 
     updateFps: function(fps) {
@@ -1196,11 +1221,11 @@ Ext.define('Ext.scroll.TouchScroller', {
             var me = this,
                 position = me.position;
 
+            me.hideIndicators();
             if (!me.isTouching && !me.snapToSlot()) {
-                me.hideIndicators();
-                Ext.isScrolling = false;
                 me.fireScrollEnd(position.x, position.y);
             }
+            me.isScrolling = Ext.isScrolling = false;
         },
 
         onScrollStart: function() {
@@ -1209,7 +1234,7 @@ Ext.define('Ext.scroll.TouchScroller', {
 
             me.showIndicators();
 
-            Ext.isScrolling = true;
+            me.isScrolling = Ext.isScrolling = true;
             me.fireScrollStart(position.x, position.y);
         },
 
@@ -1233,8 +1258,6 @@ Ext.define('Ext.scroll.TouchScroller', {
         onTouchStart: function() {
             var me = this;
 
-            me.isTouching = me.self.isTouching = true;
-
             Ext.getDoc().on({
                 touchend: 'onTouchEnd',
                 scope: me,
@@ -1242,6 +1265,8 @@ Ext.define('Ext.scroll.TouchScroller', {
             });
 
             me.stopAnimation();
+
+            me.isTouching = me.self.isTouching = true;
         },
 
         refreshAxes: function() {

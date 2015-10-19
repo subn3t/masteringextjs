@@ -63,6 +63,22 @@
  *  - {@link #dataIndex}: The dataIndex is the field in the underlying {@link Ext.data.Store} to use as the value for the column.
  *  - {@link Ext.grid.column.Column#renderer renderer}: Allows the underlying store
  * value to be transformed before being displayed in the grid
+ * 
+ * ## State saving
+ *
+ * When the owning {@link Ext.grid.Panel Grid} is configured 
+ * {@link Ext.grid.Panel#cfg-stateful}, it will save its column state (order and width)
+ * encapsulated within the default Panel state of changed width and height and
+ * collapsed/expanded state.
+ *
+ * On a `stateful` grid, not only should the Grid have a 
+ * {@link Ext.grid.Panel#cfg-stateId}, each column of the grid should also be configured 
+ * with a {@link #stateId} which identifies that column locally within the grid.
+ * 
+ * Omitting the `stateId` config from the columns results in columns with generated 
+ * internal ID's.  The generated ID's are subject to change on each page load 
+ * making it impossible for the state manager to restore the previous state of the 
+ * columns.
  */
 Ext.define('Ext.grid.column.Column', {
     extend: 'Ext.grid.header.Container',
@@ -122,14 +138,14 @@ Ext.define('Ext.grid.column.Column', {
             // TODO:
             // When IE8 retires, revisit https://jsbin.com/honawo/quiet for better way to center header text
             //
-            '<span id="{id}-textContainerEl" data-ref="textContainerEl" class="', Ext.baseCSSPrefix, 'column-header-text-container">',
-                '<span class="', Ext.baseCSSPrefix, 'column-header-text-wrapper">',
-                    '<span id="{id}-textEl" data-ref="textEl" class="', Ext.baseCSSPrefix, 'column-header-text',
+            '<div id="{id}-textContainerEl" data-ref="textContainerEl" class="', Ext.baseCSSPrefix, 'column-header-text-container">',
+                '<div class="', Ext.baseCSSPrefix, 'column-header-text-wrapper">',
+                    '<div id="{id}-textEl" data-ref="textEl" class="', Ext.baseCSSPrefix, 'column-header-text',
                         '{childElCls}">',
-                        '{text}',
-                    '</span>',
-                '</span>',
-            '</span>',
+                        '<span role="presentation" class="', Ext.baseCSSPrefix, 'column-header-text-inner">{text}</span>',
+                    '</div>',
+                '</div>',
+            '</div>',
             '<tpl if="!menuDisabled">',
                 '<div id="{id}-triggerEl" data-ref="triggerEl" role="presentation" class="', Ext.baseCSSPrefix, 'column-header-trigger',
                 '{childElCls}" style="{triggerStyle}"></div>',
@@ -657,7 +673,9 @@ Ext.define('Ext.grid.column.Column', {
      * HeaderContainer base class, but are in fact simple column headers.
      */
     isColumn: true,
-    
+
+    scrollable: false, // Override scrollable config from HeaderContainr class
+
     tabIndex: -1,
 
     ascSortCls: Ext.baseCSSPrefix + 'column-header-sort-ASC',
@@ -695,7 +713,9 @@ Ext.define('Ext.grid.column.Column', {
 
         // Preserve the scope to resolve a custom renderer.
         // Subclasses (TreeColumn) may insist on scope being this.
-        me.rendererScope = me.initialConfig.scope;
+        if (!me.rendererScope) {
+            me.rendererScope = me.scope;
+        }
 
         if (me.header != null) {
             me.text = me.header;
@@ -779,18 +799,21 @@ Ext.define('Ext.grid.column.Column', {
             format   = me[me.formatterNames[type]],
             renderer = me[me.rendererNames[type]],
             isColumnRenderer = type === 'column',
-            scoped;
+            scoped, dynamic;
 
         if (!format) {
             if (renderer) {
                 // Resolve a string renderer into the correct property: 'renderer', 'editRenderer', or 'summaryRenderer'
                 if (typeof renderer === 'string') {
                     renderer = me[me.rendererNames[type]] = me.bindRenderer(renderer);
+                    dynamic = true;
                 }
 
-                // If we are setting up a normal column renderer, detect if it's a custom one (reads more than one parameter)
                 if (isColumnRenderer) {
-                    me.hasCustomRenderer = renderer.length > 1;
+                    // If we are setting up a normal column renderer, detect if it's a custom one (reads more than one parameter)
+                    // We can't read the arg list until we resolve the scope, so we must assume
+                    // it's a renderer that needs a full update if it's dynamic
+                    me.hasCustomRenderer = dynamic || renderer.length > 1;
                 }
             }
             // Column renderer could not be resolved: use the default one.
@@ -844,26 +867,6 @@ Ext.define('Ext.grid.column.Column', {
 
         if (rootHeaderCt) {
             return rootHeaderCt.view;
-        }
-    },
-
-    onResize: function(width, height, oldWidth, oldHeight) {
-        var me = this,
-            view,
-            bufferedRenderer;
-
-        me.callParent(arguments);
-        if (oldWidth && me.cellWrap) {
-            view = me.getView();
-            if (view) {
-                bufferedRenderer = view.bufferedRenderer;
-
-                // Changing the width of a wrapping column may affect the data height which might mean that
-                // The current position of the rendered block might be wrong. The BufferedRenderer must fix that.
-                if (bufferedRenderer) {
-                    bufferedRenderer.onWrappedColumnWidthChange(oldWidth, width);
-                }
-            }
         }
     },
 
@@ -1359,7 +1362,7 @@ Ext.define('Ext.grid.column.Column', {
         // *which is not the hideCandidate*, then the hideCandidate is hideable.
         // Note that we are not using CQ #id matchers - ':not(#' + result.hideCandidate.id + ')' - to exclude
         // the hideCandidate because CQ queries are cached for the document's lifetime.
-        visibleChildren = this.query('>:not([hidden]):not([menuDisabled])');
+        visibleChildren = this.query('>gridcolumn:not([hidden]):not([menuDisabled])');
         count = visibleChildren.length;
         if (Ext.Array.contains(visibleChildren, result.hideCandidate)) {
             count--;
@@ -1392,7 +1395,7 @@ Ext.define('Ext.grid.column.Column', {
         return result.result;
     },
 
-    /*
+    /**
      * Determines whether this column is in the locked side of a grid. It may be a descendant node of a locked column
      * and as such will *not* have the {@link #locked} flag set.
      */
@@ -1409,7 +1412,7 @@ Ext.define('Ext.grid.column.Column', {
             return false;
         }
         // If we find an ancestor level with more than one visible child, it's fine to hide
-        if (this.query('>:not([hidden])').length > 1) {
+        if (this.query('>gridcolumn:not([hidden])').length > 1) {
             return false;
         }
     },
@@ -1451,10 +1454,8 @@ Ext.define('Ext.grid.column.Column', {
                 owner.hide();
             }
 
-            if (me.isSubHeader && !me.isGroupHeader && owner.query('>:not([hidden])').length === 1) {
-                // We need to remember the last headerId to be unchecked in able to to restore its checked
-                // status in HeaderContainer#onHeaderCheckChange.
-                owner.lastCheckedHeaderId = me.id;
+            if (me.isSubHeader && !me.isGroupHeader && owner.query('>gridcolumn:not([hidden])').length === 1) {
+                owner.lastHiddenHeader = me;
             }
         }
 
@@ -1471,10 +1472,14 @@ Ext.define('Ext.grid.column.Column', {
     show: function () {
         var me = this,
             rootHeaderCt = me.getRootHeaderCt(),
-            ownerCt = me.ownerCt;
+            ownerCt = me.getRefOwner();
 
         if (me.isVisible()) {
             return me;
+        }
+
+        if (ownerCt.isGroupHeader) {
+            ownerCt.lastHiddenHeader = null;
         }
 
         if (me.rendered) {
@@ -1507,6 +1512,42 @@ Ext.define('Ext.grid.column.Column', {
         Ext.resumeLayouts(true);
         return me;
 
+    },
+
+    /**
+     * @private
+     * Decides whether the column needs updating
+     * @return {Number} 0 = Doesn't need update.
+     * 1 = Column needs update, and renderer has > 1 argument; We need to render a whole new HTML item.
+     * 2 = Column needs update, but renderer has 1 argument or column uses an updater.
+     */
+    shouldUpdateCell: function(record, changedFieldNames) {
+        // If the column has a renderer which peeks and pokes at other data,
+        // return 1 which means that a whole new TableView item must be rendered.
+        //
+        // Note that widget columns shouldn't ever be updated.
+        if (!this.preventUpdate) {
+            if (this.hasCustomRenderer) {
+                return 1;
+            }
+
+            // If there is a changed field list, and it's NOT a custom column renderer
+            // (meaning it doesn't peek at other data, but just uses the raw field value),
+            // we only have to update it if the column's field is among those changes.
+            if (changedFieldNames) {
+                var len = changedFieldNames.length,
+                    i, field;
+
+                for (i = 0; i < len; ++i) {
+                    field = changedFieldNames[i];
+                    if (field === this.dataIndex || field === record.idProperty) {
+                        return 2;
+                    }
+                }
+            } else {
+                return 2;
+            }
+        }
     },
 
     getCellWidth: function() {
@@ -1603,3 +1644,4 @@ Ext.define('Ext.grid.column.Column', {
      * assumed.
      */
 });
+

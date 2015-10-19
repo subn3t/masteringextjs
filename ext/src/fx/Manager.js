@@ -269,8 +269,21 @@ Ext.define('Ext.fx.Manager', {
     },
     
     jumpToEnd: function(anim) {
-        var target = this.runAnim(anim, true);
-        this.applyAnimAttrs(target, target.anims[anim.id]);
+        var me = this,
+            target, clear;
+
+        // We may not be in the middle of a tick, where targetAttr is cleared,
+        // so if we don't have it, poke it in here while we jump to the end state
+        if (!me.targetArr) {
+            me.targetArr = {};
+            clear = true;
+        }
+
+        target = me.runAnim(anim, true);
+        me.applyAnimAttrs(target, target.anims[anim.id]);
+        if (clear) {
+            me.targetArr = null;
+        }
     },
 
     /**

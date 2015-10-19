@@ -433,7 +433,7 @@ Ext.define('Ext.dd.DragDropManager', {
      * returns "object", oDD.constructor.toString() always returns
      * "DragDrop" and not the name of the subclass.  So for now it just
      * evaluates a well-known variable in DragDrop.
-     * @param {Object} the object to evaluate
+     * @param {Object} oDD the object to evaluate
      * @return {Boolean} true if typeof oDD = DragDrop
      */
     isTypeOfDD: function (oDD) {
@@ -695,7 +695,6 @@ Ext.define('Ext.dd.DragDropManager', {
             overEvts  = [],
             dropEvts  = [],
             enterEvts = [],
-            zoom = isTouch ? document.documentElement.clientWidth / window.innerWidth : 1,
             dragEl, overTarget, overTargetEl, needsSort, i, len, sGroup, overDragEl;
 
         // If the user did the mouse up outside of the window, we could
@@ -721,7 +720,7 @@ Ext.define('Ext.dd.DragDropManager', {
             if (overDragEl) {
                 dragEl.style.visibility = 'hidden';
             }
-            e.target = document.elementFromPoint(currentX / zoom, currentY/ zoom);
+            e.target = me.elementFromPoint(currentX, currentY);
             if (overDragEl) {
                 dragEl.style.visibility = 'visible';
             }
@@ -887,6 +886,21 @@ Ext.define('Ext.dd.DragDropManager', {
             dragCurrent.onInvalidDrop(e);
         }
 
+    },
+
+    /**
+     * @private
+     * Wrap document.elementFromPoint.
+     *
+     * This is because in RTL mode we need to reverse any RTLification of the X coordinate
+     * because document.elementFromPoint uses LTR.
+     */
+    elementFromPoint: function(x, y) {
+        if (Ext.rootInheritedState.rtl) {
+            x = Ext.Element.getViewportWidth() - x;
+        }
+
+        return document.elementFromPoint(x, y);
     },
 
     /**

@@ -360,7 +360,8 @@ Ext.define('Ext.draw.engine.Svg', {
         }
     },
 
-    /* @private - Wrap SVG text inside a tspan to allow for line wrapping.  In addition this normallizes
+    /** 
+     * @private - Wrap SVG text inside a tspan to allow for line wrapping.  In addition this normallizes
      * the baseline for text the vertical middle of the text to be the same as VML.
      */
     tuneText: function (sprite, attrs) {

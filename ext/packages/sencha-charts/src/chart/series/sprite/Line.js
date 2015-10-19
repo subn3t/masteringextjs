@@ -189,6 +189,7 @@ Ext.define('Ext.chart.series.sprite.Line', {
             attr = me.attr,
             step = attr.step,
             matrix = attr.matrix,
+            renderer = attr.renderer,
             xx = matrix.getXX(),
             yy = matrix.getYY(),
             dx = matrix.getDX(),
@@ -197,7 +198,7 @@ Ext.define('Ext.chart.series.sprite.Line', {
             smoothY = me.smoothY,
             scale = me.calculateScale(attr.dataX.length, end),
             cx1, cy1, cx2, cy2, x, y, x0, y0,
-            i, j, changes,
+            i, j, changes, params,
             lineConfig = {
                 type: 'line',
                 smooth: true,
@@ -211,11 +212,12 @@ Ext.define('Ext.chart.series.sprite.Line', {
             cy1 = smoothY[j] * yy + dy;
             cx2 = smoothX[j + 1] * xx + dx;
             cy2 = smoothY[j + 1] * yy + dy;
-            x = list[i + 3];
+            x = surface.roundPixel(list[i + 3]);
             y = list[i + 4];
-            x0 = list[i];
+            x0 = surface.roundPixel(list[i]);
             y0 = list[i + 1];
-            if (attr.renderer) {
+
+            if (renderer) {
                 lineConfig.x0 = x0;
                 lineConfig.y0 = y0;
                 lineConfig.cx1 = cx1;
@@ -224,32 +226,38 @@ Ext.define('Ext.chart.series.sprite.Line', {
                 lineConfig.cy2 = cy2;
                 lineConfig.x = x;
                 lineConfig.y = y;
-                changes = attr.renderer.call(me, me, lineConfig, me.rendererData, start + i/3 + 1);
+                changes = renderer.call(me, me, lineConfig, me.rendererData, start + i/3 + 1);
                 ctx.save();
                 Ext.apply(ctx, changes);
-                if (attr.fillArea) {
-                    ctx.moveTo(x0, y0);
-                    ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x, y);
-                    ctx.lineTo(x, xAxis);
-                    ctx.lineTo(x0, xAxis);
-                    ctx.lineTo(x0, y0);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.beginPath();
-                }
-                // Draw the line on top of the filled area.
-                ctx.moveTo(x0, y0);
-                ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x, y);
-                ctx.stroke();
-                ctx.moveTo(x0, y0);
-                ctx.closePath();
-                ctx.restore();
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-            } else {
-                ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x, y);
             }
+
+            if (attr.fillArea) {
+                ctx.moveTo(x0, y0);
+                ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x, y);
+                ctx.lineTo(x, xAxis);
+                ctx.lineTo(x0, xAxis);
+                ctx.lineTo(x0, y0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.beginPath();
+            }
+            // Draw the line on top of the filled area.
+            ctx.moveTo(x0, y0);
+            ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x, y);
+            ctx.stroke();
+            ctx.moveTo(x0, y0);
+            ctx.closePath();
+
+            if (renderer) {
+                ctx.restore();
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(x, y);
         }
+        // Prevent the last visible segment from being stroked twice
+        // (second time by the ctx.fillStroke inside Path sprite 'render' method)
+        ctx.beginPath();
     },
 
     drawLabel: function (text, dataX, dataY, labelId, rect) {

@@ -455,10 +455,14 @@ Ext.define('Ext.data.AbstractStore', {
     },
 
     /**
-     * Gets the filters for this store.
-     * @return {Ext.util.FilterCollection} The filters
+     * @method getFilters
+     * The current {@link Ext.util.Filter filters} applied to the store.
+     * @return {Ext.util.Collection} The collection of filters applied to the 
+     * store
      */
-    getFilters: function(/* private */ autoCreate) {
+    /** @ignore */
+    getFilters: function(autoCreate) {
+        //  private param - autoCreate
         var result = this.callParent();
         if (!result && autoCreate !== false) {
             this.setFilters([]);
@@ -485,8 +489,10 @@ Ext.define('Ext.data.AbstractStore', {
     },
 
     /**
-     * Gets the sorters for this store.
-     * @return {Ext.util.SorterCollection} The sorters
+     * @method getSorters
+     * The current {@link Ext.util.Sorter sorters} applied to the store.
+     * @return {Ext.util.Collection} The collection of sorters applied to the 
+     * store
      */
     getSorters: function(/* private */ autoCreate) {
         var result = this.callParent();
@@ -538,8 +544,7 @@ Ext.define('Ext.data.AbstractStore', {
      *
      * @param {String/Ext.util.Filter[]} [filters] Either a string name of one of the fields in this Store's configured
      * {@link Ext.data.Model Model}, or an array of filter configurations.
-     * @param {String} value The property value by which to filter.
-     * @return {Ext.util.Filter[]}
+     * @param {String} [value] The property value by which to filter. Only applicable if `filters` is a string.
      */
     filter: function(filters, value, supressEvent) {
         if (Ext.isString(filters)) {
@@ -798,7 +803,7 @@ Ext.define('Ext.data.AbstractStore', {
         }
 
         if (stateGrouper) {
-            this.setGrouper(stateGrouper);
+            me.setGrouper(stateGrouper);
         }
     },
 
@@ -976,27 +981,13 @@ Ext.define('Ext.data.AbstractStore', {
     },
 
     /**
-     * @method getFilters
-     * The current {@link Ext.util.Filter filters} applied to the store.
-     * @return {Ext.util.Collection} The collection of filters applied to the 
-     * store
-     */
-
-    /**
      * @method setFilters
-     * @hide
-     */
-
-    /**
-     * @method getSorters
-     * The current {@link Ext.util.Sorter sorters} applied to the store.
-     * @return {Ext.util.Collection} The collection of sorters applied to the 
-     * store
+     * @ignore
      */
     
     /**
      * @method setSorters
-     * @hide
+     * @ignore
      */
     
     getGrouper: function() {
@@ -1024,9 +1015,6 @@ Ext.define('Ext.data.AbstractStore', {
         me.settingGroups = true;
         me.getData().setGrouper(grouper);
         delete me.settingGroups;
-        if (me.isLoadBlocked()) {
-            return;
-        }
 
         if (change) {
             if (me.getRemoteSort()) {
@@ -1046,7 +1034,7 @@ Ext.define('Ext.data.AbstractStore', {
             me.fireGroupChange();
         }
     },
-    
+
     fireGroupChange: function() {
         this.fireEvent('groupchange', this, this.getGrouper());
     },
@@ -1113,7 +1101,7 @@ Ext.define('Ext.data.AbstractStore', {
      *         }
      *     ]
      *
-     * Group contents are effected by filtering.
+     * Group contents are affected by filtering.
      *
      * @return {Ext.util.Collection} The grouped data
      */

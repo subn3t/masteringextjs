@@ -24,7 +24,7 @@ Ext.define('Ext.view.Table', {
         'Ext.util.MixedCollection'
     ],
 
-    /*
+    /**
      * @property {Boolean}
      * `true` in this class to identify an object as an instantiated Ext.view.TableView, or subclass thereof.
      */
@@ -35,10 +35,31 @@ Ext.define('Ext.view.Table', {
             type: 'rowmodel'
         }
     },
-    
+
     inheritableStatics: {
-        // Events a TableView may fire.
-        // Used by Ext.grid.locking.View to relay view events to user code
+        // Events a TableView may fire. Used by Ext.grid.locking.View to relay events to its ownerGrid
+        // in order to quack like a genuine Ext.table.View.
+        // 
+        // The events below are to be relayed only from the normal side view because the events
+        // are relayed from the selection model, so both sides will fire them.
+        /**
+         * @private
+         * @static
+         * @inheritable
+         */
+        normalSideEvents: [
+            "deselect",
+            "select",
+            "beforedeselect",
+            "beforeselect",
+            "selectionchange"
+        ],
+        // These events are relayed from both views because they are fired independently.
+        /**
+         * @private
+         * @static
+         * @inheritable
+         */
         events: [
             "blur",
             "focus",
@@ -77,17 +98,13 @@ Ext.define('Ext.view.Table', {
             "refresh",
             "itemremove",
             "itemadd",
+            "beforeitemupdate",
             "itemupdate",
             "viewready",
             "beforerefresh",
             "unhighlightitem",
             "highlightitem",
             "focuschange",
-            "deselect",
-            "select",
-            "beforedeselect",
-            "beforeselect",
-            "selectionchange",
             "containerkeydown",
             "containercontextmenu",
             "containerdblclick",
@@ -628,7 +645,8 @@ Ext.define('Ext.view.Table', {
     applySelectionModel: function(selModel, oldSelModel) {
         var me = this,
             grid = me.ownerGrid,
-            defaultType = selModel.type;
+            defaultType = selModel.type,
+            disableSelection = me.disableSelection || grid.disableSelection;
 
         // If this is the initial configuration, pull overriding configs in from the owning TablePanel.
         if (!oldSelModel) {
@@ -641,7 +659,7 @@ Ext.define('Ext.view.Table', {
         if (selModel) {
             if (selModel.isSelectionModel) {
                 selModel.allowDeselect = grid.allowDeselect || selModel.selectionMode !== 'SINGLE';
-                selModel.locked = grid.disableSelection;
+                selModel.locked = disableSelection;
             } else {
                 if (typeof selModel === 'string') {
                     selModel = {
@@ -662,10 +680,11 @@ Ext.define('Ext.view.Table', {
                 }
                 selModel = Ext.Factory.selection(Ext.apply({
                     allowDeselect: grid.allowDeselect,
-                    locked: grid.disableSelection
+                    locked: disableSelection
                 }, selModel));
             }
         }
+
         return selModel;
     },
 
@@ -1070,8 +1089,43 @@ Ext.define('Ext.view.Table', {
         me.callParent(arguments);
     },
 
+    onOwnerGridHide: function() {
+        var scroller = this.getScrollable(),
+            bufferedRenderer = this.bufferedRederer;
+
+        // Hide using display sets scroll to zero.
+        // We should not tell any partners about this.
+        if (scroller) {
+            scroller.suspendPartnerSync();
+        }
+        // A buffered renderer should also not respond to that scroll.
+        if (bufferedRenderer) {
+            bufferedRenderer.disable();
+        }
+    },
+
+    onOwnerGridShow: function() {
+        var scroller = this.getScrollable(),
+            bufferedRenderer = this.bufferedRederer;
+
+        // Hide using display sets scroll to zero.
+        // We should not tell any partners about this.
+        if (scroller) {
+            scroller.resumePartnerSync();
+        }
+        // A buffered rendere should also not respond to that scroll.
+        if (bufferedRenderer) {
+            bufferedRenderer.enable();
+        }
+    },
+
     getStoreListeners: function() {
         var result = this.callParent();
+
+        // The BufferedRenderer handles clearing down the view on the Store's beforeclear method
+        if (this.grid.bufferedRenderer) {
+            delete result.clear;
+        }
         result.beforepageremove = this.beforePageRemove;
         return result;
     },
@@ -1165,7 +1219,8 @@ Ext.define('Ext.view.Table', {
     // Only do it when vertical scrolling is enabled.
     refreshSize: function(forceLayout) {
         var me = this,
-            bodySelector = me.getBodySelector();
+            bodySelector = me.getBodySelector(),
+            lockingPartner = me.lockingPartner;
 
         // On every update of the layout system due to data update, capture the view's main element in our private flyweight.
         // IF there *is* a main element. Some TplFactories emit naked rows.
@@ -1189,8 +1244,24 @@ Ext.define('Ext.view.Table', {
                 me.grid.updateLayout();
             }
 
-            Ext.resumeLayouts(true);
+            // Only flush layouts if there's no *visible* locking partner, or
+            // the two partners have both refreshed to the same rendered block size.
+            // If we are the first of a locking view pair, refreshing in response to a change of
+            // view height, our rendered block size will be out of sync with our partner's
+            // so row height equalization (called as part of a layout) will walk off the end.
+            // This must be deferred until both views have refreshed to the same size.
+            Ext.resumeLayouts(!lockingPartner || !lockingPartner.ownerGrid.isVisible() || (lockingPartner.all.getCount() === me.all.getCount()));
         }
+    },
+
+    /**
+     * @private
+     * TableView is unable to lay out in isolation. It acquires information from
+     * the HeaderContainer, so a request to layout a TableView MUST propagate upwards
+     * into the grid.
+     */
+    isLayoutRoot: function() {
+        return false;
     },
 
     clearViewEl: function(leaveNodeContainer) {
@@ -1280,6 +1351,18 @@ Ext.define('Ext.view.Table', {
         // We cannot use the stamped in data-recordindex because that is the index in the original configured store
         // NOT the index in the dataSource that is being used - that may be a GroupStore.
         return node ? this.dataSource.indexOf(this.getRecord(node)) : -1;
+    },
+
+    indexOfRow: function(record) {
+        var dataSource = this.dataSource,
+            idx;
+
+        if (record.isCollapsedPlaceholder) {
+            idx = dataSource.indexOfPlaceholder(record);
+        } else {
+            idx = dataSource.indexOf(record);
+        }
+        return idx;
     },
 
     renderRows: function(rows, columns, viewStartIndex, out) {
@@ -1500,7 +1583,7 @@ Ext.define('Ext.view.Table', {
         cellTpl.applyOut(cellValues, out);
 
         // Dereference objects since cellValues is a persistent var in the XTemplate's scope chain
-        cellValues.column = null;
+        cellValues.column = cellValues.record = null;
     },
 
     /**
@@ -1786,7 +1869,7 @@ Ext.define('Ext.view.Table', {
 
                 // Default to the first cell if the NavigationModel has never focused anything
                 if (!focusPosition) {
-                    targetView = me.isNormalView ? (me.lockingPartner.isVisible() ? me.lockingPartner : me.normalView) : me;
+                    targetView = me.isNormalView ? (me.lockingPartner.ownerCt.isVisible() ? me.lockingPartner : me.normalView) : me;
                     firstRecord = me.dataSource.getAt(br ? br.getFirstVisibleRowIndex() : 0);
 
                     // A non-row producing record like a collapsed placeholder.
@@ -2046,6 +2129,14 @@ Ext.define('Ext.view.Table', {
 
             // Row might not be rendered due to buffered rendering or being part of a collapsed group...
             if (oldItemDom) {
+
+                // refreshNode can be called on a collapsed placeholder record.
+                // Update it from a new rendering.
+                if (record.isCollapsedPlaceholder) {
+                    Ext.fly(oldItemDom).syncContent(me.createRowElement(record, me.indexOfRow(record)));
+                    return;
+                }
+
                 overItemCls = me.overItemCls;
                 columns = me.ownerCt.getVisibleColumnManager().getColumns();
 
@@ -2060,7 +2151,7 @@ Ext.define('Ext.view.Table', {
                         cell = Ext.fly(oldItemDom).down(column.getCellSelector(), true);
 
                         // Mark the field's dirty status if we are configured to do so (defaults to true)
-                        if (!clearDirty && markDirty) {
+                        if (cell && !clearDirty && markDirty) {
                             cellFly.attach(cell);
                             if (record.isModified(column.dataIndex)) {
                                 cellFly.addCls(dirtyCls);
@@ -2095,7 +2186,7 @@ Ext.define('Ext.view.Table', {
                         (oldItemDom.tBodies[0].childNodes.length > 1)) {
                     oldItem = Ext.fly(oldItemDom, '_internal');
                     elData = oldItemDom._extData;
-                    newItemDom = me.createRowElement(record, me.dataSource.indexOf(record), columnsToUpdate);
+                    newItemDom = me.createRowElement(record, me.indexOfRow(record), columnsToUpdate);
                     if (oldItem.hasCls(overItemCls)) {
                         Ext.fly(newItemDom).addCls(overItemCls);
                     }
@@ -2116,7 +2207,7 @@ Ext.define('Ext.view.Table', {
                             }
                         }
                     }
-                    
+
                     // The element's data is no longer synchronized. We just overwrite it in the DOM
                     if (elData) {
                         elData.isSynchronized = false;
@@ -2152,10 +2243,10 @@ Ext.define('Ext.view.Table', {
 
                         value = record.get(fieldName);
                         cell = Ext.fly(oldItemDom).down(column.getCellSelector(), true);
+                        cellFly.attach(cell);
 
                         // Mark the field's dirty status if we are configured to do so (defaults to true)
                         if (!clearDirty && markDirty) {
-                            cellFly.attach(cell);
                             if (record.isModified(column.dataIndex)) {
                                 cellFly.addCls(dirtyCls);
                             } else {
@@ -2184,9 +2275,9 @@ Ext.define('Ext.view.Table', {
                             // Otherwise we change the value of the single text node within the inner DIV
                             // The emptyValue may be HTML, typically defaults to &#160;
                             if (column.producesHTML || emptyValue) {
-                                cell.childNodes[0].innerHTML = value;
+                                cellFly.down(me.innerSelector, true).innerHTML = value;
                             } else {
-                                cell.childNodes[0].childNodes[0].data = value;
+                                cellFly.down(me.innerSelector, true).childNodes[0].data = value;
                             }
                         }
 
@@ -2229,15 +2320,9 @@ Ext.define('Ext.view.Table', {
 
                 // We only need to update the layout if any of the columns can change the row height.
                 if (hasVariableRowHeight) {
-                    if (me.bufferedRenderer) {
-                        me.bufferedRenderer.refreshSize();
-
-                        // Must climb to ownerGrid in case we've only updated one field in one side of a lockable assembly.
-                        // ownerGrid is always the topmost GridPanel.
-                        me.ownerGrid.updateLayout();
-                    } else {
-                        me.refreshSize();
-                    }
+                    // Must climb to ownerGrid in case we've only updated one field in one side of a lockable assembly.
+                    // ownerGrid is always the topmost GridPanel.
+                    me.ownerGrid.updateLayout();
 
                     // Ensure any layouts queued by itemupdate handlers and/or the refreshSize call are executed.
                     Ext.resumeLayouts(true);
@@ -2315,33 +2400,7 @@ Ext.define('Ext.view.Table', {
      * 2 = Column needs update, but renderer has 1 argument or column uses an updater.
      */
     shouldUpdateCell: function(record, column, changedFieldNames) {
-        // We should not update certain columns (widget column)
-        if (!column.preventUpdate) {
-
-            // The passed column has a renderer which peeks and pokes at other data.
-            // Return 1 which means that a whole new TableView item must be rendered.
-            if (column.hasCustomRenderer) {
-                return 1;
-            }
-
-            // If there is a changed field list, and it's NOT a custom column renderer
-            // (meaning it doesn't peek at other data, but just uses the raw field value)
-            // We only have to update it if the column's field is amobg those changes.
-            if (changedFieldNames) {
-                var len = changedFieldNames.length,
-                    i, field;
-
-                for (i = 0; i < len; ++i) {
-                    field = changedFieldNames[i];
-                    if (field === column.dataIndex || field === record.idProperty) {
-                        return 2;
-                    }
-                }
-            } else {
-                return 2;
-            }
-        }
-        return 0;
+        return column.shouldUpdateCell(record, changedFieldNames);
     },
 
     /**
@@ -2351,19 +2410,32 @@ Ext.define('Ext.view.Table', {
         var me = this,
             scroller;
 
-        me.callParent(arguments);
+        if (me.destroying) {
+            return;
+        }
 
-        me.headerCt.setSortState();
+        // If there are visible columns, then refresh
+        if (me.getVisibleColumnManager().getColumns().length) {
+            me.callParent(arguments);
 
-        // Create horizontal stretcher element if no records in view and there is overflow of the header container.
-        // Element will be transient and destroyed by the next refresh.
-        if (me.touchScroll && me.el && !me.all.getCount() && me.headerCt && me.headerCt.tooNarrow) {
-            scroller = me.getScrollable();
-            if (scroller) {
-                scroller.setSize({
-                    x: me.headerCt.getTableWidth(),
-                    y: scroller.getSize().y
-                });
+            me.headerCt.setSortState();
+
+            // Create horizontal stretcher element if no records in view and there is overflow of the header container.
+            // Element will be transient and destroyed by the next refresh.
+            if (me.touchScroll && me.el && !me.all.getCount() && me.headerCt && me.headerCt.tooNarrow) {
+                scroller = me.getScrollable();
+                if (scroller) {
+                    scroller.setSize({
+                        x: me.headerCt.getTableWidth(),
+                        y: scroller.getSize().y
+                    });
+                }
+            }
+        }
+        // If no visible columns, clear the view
+        else {
+            if (me.refreshCounter) {
+                me.clearViewEl(true);
             }
         }
     },
@@ -2457,9 +2529,6 @@ Ext.define('Ext.view.Table', {
                         // If the feature is vetoing the event, there's a good chance that
                         // it's for some feature action in the wrapped row.
                         me.processSpecialEvent(e);
-                        // Prevent focus/selection here until proper focus handling is added for non-data rows
-                        // This should probably be removed once this is implemented.
-                        e.preventDefault();
                         return false;
                     }
                 }
@@ -2485,10 +2554,7 @@ Ext.define('Ext.view.Table', {
 
         } else {
             // If it's not in the store, it could be a feature event, so check here
-            this.processSpecialEvent(e);
-            // Prevent focus/selection here until proper focus handling is added for non-data rows
-            // This should probably be removed once this is implemented.
-            e.preventDefault();
+            me.processSpecialEvent(e);
             return false;
         }
     },
@@ -2660,7 +2726,7 @@ Ext.define('Ext.view.Table', {
 
     getHeaderByCell: function(cell) {
         if (cell) {
-            return this.ownerCt.getVisibleColumnManager().getHeaderById(cell.getAttribute('data-columnId'));
+            return this.ownerCt.getVisibleColumnManager().getHeaderById(Ext.getDom(cell).getAttribute('data-columnId'));
         }
         return false;
     },
@@ -2900,7 +2966,6 @@ Ext.define('Ext.view.Table', {
         return result;
     },
 
-    
     /**
      * Returns the index of the last row in your table view deemed to be visible.
      * @return {Number}
@@ -2958,12 +3023,27 @@ Ext.define('Ext.view.Table', {
         me.setPendingStripe(startIndex);
     },
 
+    onResize: function(width, height, oldWidth, oldHeight) {
+        var me = this,
+            bufferedRenderer = me.bufferedRenderer;
+
+        // Ensure the buffered renderer makes its adjustments before user resize listeners
+        if (bufferedRenderer) {
+            bufferedRenderer.onViewResize(me, width, height, oldWidth, oldHeight)
+        }
+
+        me.callParent([width, height]);
+    },
+
     // after adding a row stripe rows from then on
     onAdd: function(store, records, index) {
         var me = this,
             bufferedRenderer = me.bufferedRenderer;
 
-        if (me.rendered && bufferedRenderer) {
+        // Only call the buffered renderer's handler if there's a need to.
+        // That is if the rendered block has been moved down the dataset, or
+        // the addition will tip the rendered block size over the buffered renderer's calculated viewSize.
+        if (me.rendered && bufferedRenderer && (bufferedRenderer.bodyTop || me.dataSource.getCount() + records.length >= bufferedRenderer.viewSize)) {
              bufferedRenderer.onReplace(store, index, [], records);
         } else {
             me.callParent(arguments);
@@ -2976,8 +3056,8 @@ Ext.define('Ext.view.Table', {
         var me = this,
             bufferedRenderer = me.bufferedRenderer;
 
-        // If there's a BufferedRenderer...
-        if (me.rendered && bufferedRenderer) {
+        // If there's a BufferedRenderer, and it's being used (dataset size before removal was >= rendered block size)...
+        if (me.rendered && bufferedRenderer && me.dataSource.getCount() + records.length >= bufferedRenderer.viewSize) {
             bufferedRenderer.onReplace(store, index, records, []);
         } else {
             me.callParent(arguments);
@@ -2985,8 +3065,9 @@ Ext.define('Ext.view.Table', {
         me.setPendingStripe(index);
     },
     
-    // When there's a buffered renderer present, store refresh events cause TableViews to go to scrollTop:0
-    onDataRefresh: function() {
+    onDataRefresh: function(store) {
+        // When there's a buffered renderer present, store refresh events cause TableViews to
+        // go to scrollTop:0
         var me = this,
             owner = me.ownerCt;
 
@@ -2996,7 +3077,7 @@ Ext.define('Ext.view.Table', {
             return;
         }
 
-        me.callParent();
+        me.callParent([store]);
     },
 
     getViewRange: function() {
@@ -3077,8 +3158,9 @@ Ext.define('Ext.view.Table', {
             var me = this,
                 bufferedRenderer = me.bufferedRenderer;
 
-            // If there is a BufferedRenderer, we must refresh the scroller using BufferedRenderer methods
-            // which take account of the full virtual scroll range.
+            // If there is a BufferedRenderer, it must take care of the virtual
+            // scroll range by either adding a stretcher or telling the TouchScroller
+            // about the virtual content height and width.
             if (bufferedRenderer) {
                 bufferedRenderer.refreshSize();
             } else {

@@ -110,7 +110,7 @@ Ext.define('Ext.overrides.Widget', {
         }
 
         if (me.reference) {
-            me.fixReference();
+            Ext.ComponentManager.markReferencesDirty();
         }
     },
 

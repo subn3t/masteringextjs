@@ -100,9 +100,9 @@ Ext.define('Ext.app.bind.Stub', {
                     field = value.getField(name);
                 }
                 if (lateBound) {
-                    scope[callback](field, null, this);
+                    scope[callback](field, value, this);
                 } else {
-                    callback.call(scope, field, null, this);
+                    callback.call(scope, field, value, this);
                 }
             });
         }

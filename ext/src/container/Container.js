@@ -431,7 +431,7 @@ Ext.define('Ext.container.Container', {
 
     renderTpl: '{%this.renderContainer(out,values)%}',
 
-    /*
+    /**
      * @property {Boolean} isContainer
      * `true` in this class to identify an object as an instantiated Container, or subclass thereof.
      */
@@ -893,7 +893,7 @@ Ext.define('Ext.container.Container', {
     },
     
     onAdded: function(container, pos, instanced) { 
-        this.callParent(arguments); 
+        this.callParent([container, pos, instanced]); 
         // We have been added to a container, we may have child references
         // or be a reference ourself. At this point we have no way of knowing if 
         // our references are correct, so trigger a fix.
@@ -922,7 +922,7 @@ Ext.define('Ext.container.Container', {
                 refHolder.clearReferences();
             }
         }
-        this.callParent(arguments);
+        this.callParent([destroying]);
     },
 
     afterComponentLayout: function() {
@@ -1332,12 +1332,7 @@ Ext.define('Ext.container.Container', {
      * @since 5.0.0
      */
     getReferences: function () {
-        var ComponentManager = Ext.ComponentManager;
-
-        if (ComponentManager.referencesDirty) {
-            ComponentManager.fixReferences();
-        }
-
+        Ext.ComponentManager.fixReferences();
         return this.refs || null;
     },
 
@@ -1530,13 +1525,28 @@ Ext.define('Ext.container.Container', {
     },
 
     /**
-     * Moves the given `item` into this container in front of `before`. This method will
-     * account for layout-generated components like splitters and should be used instead
-     * of index based `{@link #method-move}`. If `before` is `null` then the `item` will be the
-     * last item in this container.
-     * @param {Object/Ext.Component} item The item to move. May be a component configuration object.
+     * Moves the given `item(s)` into this container in front of `before`. This method 
+     * will account for layout-generated components like splitters and should be used 
+     * instead of index based `{@link #method-move}`. If `before` is `null` then the 
+     * `item` will be the last item in this container.
+     * 
+     *     var tb = Ext.create({
+     *         xtype: 'toolbar',
+     *         renderTo: Ext.getBody(),
+     *         items: [{
+     *             text: 'one'
+     *         }, {
+     *             text: 'two'
+     *         }]
+     *     });
+     *
+     *     // moves the 'two' button before the 'one' button
+     *     tb.moveBefore(tb.getComponent(1), tb.getComponent(0));
+     * 
+     * @param {Ext.Component/Ext.Component[]} item The item to move. May be a component, 
+     * component configuration object, or an array of either.
      * @param {Ext.Component} before The reference component. May be `null`.
-     * @return {Ext.Component} The moved item.
+     * @return {Ext.Component/Ext.Component[]} The moved item(s).
      * @since 5.0.0
      */
     moveBefore: function (item, before) {
@@ -1547,13 +1557,28 @@ Ext.define('Ext.container.Container', {
     },
 
     /**
-     * Moves the given `item` into this container following `after`. This method will
+     * Moves the given `item(s)` into this container following `after`. This method will
      * account for layout-generated components like splitters and should be used instead
      * of index based `{@link #method-move}`. If `after` is `null` then the `item` will be the
      * first item in this container.
-     * @param {Ext.Component} item The item to move. May be a component configuration object.
+     * 
+     *     var tb = Ext.create({
+     *         xtype: 'toolbar',
+     *         renderTo: Ext.getBody(),
+     *         items: [{
+     *             text: 'one'
+     *         }, {
+     *             text: 'two'
+     *         }]
+     *     });
+     *
+     *     // moves the 'one' button after the 'two' button
+     *     tb.moveAfter(tb.getComponent(0), tb.getComponent(1));
+     * 
+     * @param {Ext.Component/Ext.Component[]} item The item to move. May be a component, 
+     * component configuration object, or an array of either.
      * @param {Ext.Component} after The reference component. May be `null`.
-     * @return {Ext.Component} The moved item.
+     * @return {Ext.Component/Ext.Component[]} The moved item(s).
      * @since 5.0.0
      */
     moveAfter: function (item, after) {
@@ -1595,12 +1620,8 @@ Ext.define('Ext.container.Container', {
             } else {
                 result = items.getAt(childIndex + 1);
             }
-
-            if (!result && me.ownerCt) {
-                result = me.ownerCt.nextChild(me, selector);
-            }
         }
-        return result;
+        return result || null;
     },
 
     /**
@@ -1690,12 +1711,8 @@ Ext.define('Ext.container.Container', {
             } else {
                 result = items.getAt(childIndex - 1);
             }
-
-            if (!result && me.ownerCt) {
-                result = me.ownerCt.nextChild(me, selector);
-            }
         }
-        return result;
+        return result || null;
     },
 
     /**

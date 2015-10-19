@@ -153,7 +153,9 @@ Ext.define('Ext.chart.interactions.CrossZoom', {
         axes: true,
 
         /**
-         * @inheritdoc
+         * @cfg {Object} gestures
+         * Defines the gestures that should trigger the cross zoom interaction to be
+         * displayed.
          */
         gestures: {
             dragstart: 'onGestureStart',

@@ -39,12 +39,12 @@ Ext.define('Ext.dom.CompositeElementLite', {
 
     /**
      * @cfg bubbleEvents
-     * @hide
+     * @ignore
      */
 
     /**
      * @cfg listeners
-     * @hide
+     * @ignore
      */
 
     /**

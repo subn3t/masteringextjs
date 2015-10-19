@@ -561,6 +561,8 @@ Ext.define('Ext.app.ViewModel', {
 
     constructor: function (config) {
         this.hadValue = {};
+        // Used to track non-stub bindings
+        this.bindings = {};
         /*
          *  me.data = {
          *      foo: {
@@ -594,6 +596,7 @@ Ext.define('Ext.app.ViewModel', {
             parent = me.getParent(),
             task = me.collectTask,
             children = me.children,
+            bindings = me.bindings,
             key, store, autoDestroy;
 
         me.destroying = true;
@@ -626,9 +629,12 @@ Ext.define('Ext.app.ViewModel', {
         if (parent) {
             parent.unregisterChild(me);
         }
-
         
         me.getRoot().destroy();
+
+        for (key in bindings) {
+            bindings[key].destroy();
+        }
 
         if (scheduler && scheduler.$owner === me) {
             scheduler.$owner = null;
@@ -636,7 +642,7 @@ Ext.define('Ext.app.ViewModel', {
         }
 
         me.hadValue = me.children = me.storeInfo = me._session = me._view = me._scheduler =
-                      me._root = me._parent = me.formulaFn = me.$formulaData = null;
+                      me.bindings = me._root = me._parent = me.formulaFn = me.$formulaData = null;
 
         me.callParent();
     },
@@ -646,16 +652,40 @@ Ext.define('Ext.app.ViewModel', {
      * `callback`. The data desired is given in a "bind descriptor" which is the first
      * argument.
      *
+     * A simple call might look like this:
+     *
+     *     var binding = vm.bind('{foo}', this.onFoo, this);
+     * 
+     *     binding.destroy();  // when done with the binding
+     *
+     * Options for the binding can be provided in the last argument:
+     *
+     *     var binding = vm.bind('{foo}', this.onFoo, this, {
+     *         deep: true
+     *     });
+     * 
+     * Alternatively, bind options can be combined with the bind descriptor using only
+     * the first argument:
+     *
+     *     var binding = vm.bind({
+     *         bindTo: '{foo}',  // the presence of bindTo identifies this form
+     *         deep: true
+     *     }, this.onFoo, this);
+     * 
+     * See the class documentation for more details on Bind Descriptors and options.
+     *
      * @param {String/Object/Array} descriptor The bind descriptor. See class description
      * for details.
      * @param {Function} callback The function to call with the value of the bound property.
-     * @param {Object} [scope] The scope (`this` pointer) for the callback.
-     * @param {Object} [options]
+     * @param {Object} [scope] The scope (`this` pointer) for the `callback`.
+     * @param {Object} [options] Additional options to configure the {@link Ext.app.bind.Binding binding}.
+     * If this parameter is provided, the `bindTo` form of combining options and bind descriptor is not
+     * recognized.
      * @return {Ext.app.bind.BaseBinding/Ext.app.bind.Binding} The binding.
      */
     bind: function (descriptor, callback, scope, options) {
         var me = this,
-            binding;
+            binding, track;
 
         scope = scope || me;
 
@@ -666,14 +696,18 @@ Ext.define('Ext.app.ViewModel', {
 
         if (!Ext.isString(descriptor)) {
             binding = new Ext.app.bind.Multi(descriptor, me, callback, scope, options);
-        }
-        else if (me.expressionRe.test(descriptor)) {
+            track = true;
+        } else if (me.expressionRe.test(descriptor)) {
             // If we have '{foo}' alone it is a literal
             descriptor = descriptor.substring(1, descriptor.length - 1);
             binding = me.bindExpression(descriptor, callback, scope, options);
-        }
-        else {
+        } else {
             binding = new Ext.app.bind.TemplateBinding(descriptor, me, callback, scope, options);
+            track = true;
+        }
+
+        if (track) {
+            me.bindings[binding.id] = binding;
         }
 
         return binding;
@@ -712,7 +746,7 @@ Ext.define('Ext.app.ViewModel', {
     
     /**
      * @method getStores
-     * @hide
+     * @ignore
      */
 
     /**
@@ -722,12 +756,11 @@ Ext.define('Ext.app.ViewModel', {
      */
     linkTo: function (key, reference) {
         var me = this,
-            stub = me.getStub(key),
-            create, id, modelType, linkStub, rec;
+            stub, create, id, modelType, linkStub, rec;
 
         //<debug>
-        if (stub.depth - me.getRoot().depth > 1) {
-            Ext.Error.raise('Links can only be at the top-level: "' + key + '"');
+        if (key.indexOf('.') > -1) {
+            Ext.raise('Links can only be at the top-level: "' + key + '"');
         }
         //</debug>
 
@@ -745,7 +778,7 @@ Ext.define('Ext.app.ViewModel', {
             id = reference.id;
             //<debug>
             if (!reference.create && Ext.isEmpty(id)) {
-                Ext.Error.raise('No id specified. To create a phantom model, specify "create: true" as part of the reference.');
+                Ext.raise('No id specified. To create a phantom model, specify "create: true" as part of the reference.');
             }
             //</debug>
             if (create) {
@@ -757,8 +790,12 @@ Ext.define('Ext.app.ViewModel', {
                 rec.commit();
                 rec.phantom = true;
             }
+            // Force creation at the root level. If an existing stub is there
+            // it will be grafted in place here.
+            stub = me.getRoot().createStubChild(key);
             stub.set(rec);
         } else {
+            stub = me.getStub(key);
             if (!stub.isLinkStub) {
                 // Pass parent=null since we will graft in this new stub to replace us:
                 linkStub = new Ext.app.bind.LinkStub(me, stub.name);
@@ -986,7 +1023,7 @@ Ext.define('Ext.app.ViewModel', {
             this.getRoot().collect();
         },
 
-        onBindDestroy: function() {
+        onBindDestroy: function(binding, fromChild) {
             var me = this,
                 parent;
 
@@ -994,9 +1031,13 @@ Ext.define('Ext.app.ViewModel', {
                 return;
             }
 
+            if (!fromChild) {
+                delete me.bindings[binding.id];
+            }
+
             parent = me.getParent();
             if (parent) {
-                parent.onBindDestroy();
+                parent.onBindDestroy(me, true);
             } else {
                 me.collect();
             }

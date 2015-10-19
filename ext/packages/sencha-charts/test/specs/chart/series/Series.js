@@ -1,5 +1,7 @@
 describe('Ext.chart.series.Series', function() {
 
+    var proto = Ext.chart.series.Series.prototype;
+
     describe('resolveListenerScope', function () {
 
         var testScope;
@@ -903,4 +905,49 @@ describe('Ext.chart.series.Series', function() {
         })
 
     });
+
+    describe('coordinateData', function () {
+        it("should handle empty strings as valid discrete axis values", function () {
+            var originalMethod = proto.coordinateData,
+                data;
+
+            proto.coordinateData = function (items, field, axis) {
+                var result = originalMethod.apply(this, arguments);
+                if (field === 'xfield') {
+                    data = result;
+                }
+                return result;
+            };
+
+            Ext.create('Ext.chart.CartesianChart', {
+                store: {
+                    fields: ['xfield', 'a', 'b', 'c'],
+                    data: [{
+                        xfield: '',
+                        a: 10,
+                        b: 20,
+                        c: 30
+                    }]
+                },
+                axes: [{
+                    type: 'numeric',
+                    position: 'left',
+                    fields: ['a', 'b', 'c']
+                }, {
+                    type: 'category',
+                    position: 'bottom'
+                }],
+                series: {
+                    type: 'bar',
+                    stacked: true,
+                    xField: 'xfield',
+                    yField: ['a', 'b', 'c']
+                }
+            }).destroy();
+            proto.coordinateData = originalMethod;
+
+            expect(data).toEqual([0]);
+        });
+    });
+
 });

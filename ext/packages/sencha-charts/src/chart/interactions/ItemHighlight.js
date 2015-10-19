@@ -13,7 +13,8 @@ Ext.define('Ext.chart.interactions.ItemHighlight', {
 
     config: {
         /**
-         * @inheritdoc
+         * @cfg {Object} gestures
+         * Defines the gestures that should trigger the item highlight interaction.
          */
         gestures: {
             tap: 'onHighlightGesture',
