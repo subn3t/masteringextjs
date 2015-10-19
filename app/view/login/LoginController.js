@@ -6,6 +6,16 @@ Ext.define('Packt.view.login.LoginController', {
 		'Packt.util.Util',
 		'Packt.util.SessionMonitor'
 	],
+
+	init: function() {
+		var form = this.lookupReference('form'),
+			user = form.query('[name=user]')[0],
+			password = form.query('[name=password]')[0];
+		user.setValue('loiane');
+		password.setValue('Packt123@');
+		this.doLogin();
+	},
+
 	onTextFieldSpecialKey: function(field, e, options) {
 		if (e.getKey() === e.ENTER) {
 			this.doLogin();

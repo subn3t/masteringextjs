@@ -17,6 +17,10 @@ function loadLocale() {
 
 loadLocale();
 
+Ext.require('Packt.view.login.Login');
+Ext.require('Packt.view.main.Main');
+Ext.require('Packt.view.menu.Tree');
+
 /**
  * The main application class. An instance of this class is created by app.js when it calls
  * Ext.application(). This is the ideal place to handle application launch and initialization
@@ -32,12 +36,20 @@ Ext.define('Packt.Application', {
   ],
 
   views: [
-    'login.Login'
+    'login.Login',
+    'security.User' // WHY??
   ],
 
   controllers: [
     'Menu'
   ],
+
+  requires: [
+    'Packt.overrides.tree.ColumnOverride',
+    'Packt.util.Glyphs' // WHY??
+  ],
+
+  glyphFontFamily: 'FontAwesome',
 
   enableQuickTips: true,
 

@@ -912,7 +912,11 @@ $include-packt-application: true;
 $include-packt-controller-menu: true;
 $include-packt-model-menu-accordion: true;
 $include-packt-model-menu-treenode: true;
+$include-packt-model-security-base: true;
+$include-packt-model-security-user: true;
+$include-packt-overrides-tree-columnoverride: true;
 $include-packt-store-menu: true;
+$include-packt-util-glyphs: true;
 $include-packt-util-sessionmonitor: true;
 $include-packt-util-util: true;
 $include-packt-view-locale-translation: true;
@@ -928,6 +932,10 @@ $include-packt-view-main-mainmodel: true;
 $include-packt-view-main-panel: true;
 $include-packt-view-menu-accordion: true;
 $include-packt-view-menu-tree: true;
+$include-packt-view-security-user: true;
+$include-packt-view-security-usercontroller: true;
+$include-packt-view-security-usermodel: true;
+$include-packt-view-security-usersgrid: true;
 /* including package ext-theme-base */
 @import '../../../../../ext/packages/ext-theme-base/sass/etc/all';
 /* including package ext-theme-neutral */
@@ -1186,5 +1194,5 @@ $relative-image-path-for-uis: $ext-theme-neptune-resource-path;
 /* including package Packt */
 $Packt-resource-path: 'images' !default;
 $relative-image-path-for-uis: $Packt-resource-path;
-@import '../../../../../sass/src/view/main/Footer';
 @import '../../../../../sass/src/view/main/Header';
+@import '../../../../../sass/src/view/main/Footer';

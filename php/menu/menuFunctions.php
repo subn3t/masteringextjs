@@ -5,7 +5,7 @@ function retrievePermissions($userName) {
 
 	$sqlQuery = "SELECT p.menu_id menuId 
 		FROM user u, permissions p, menu m 
-		WHERE u.group_id = p.groups_id 
+		WHERE u.groups_id = p.groups_id 
 		AND p.menu_id = m.id 
 		AND u.username = '$userName'";
 
@@ -70,5 +70,5 @@ function retrieveMenuOptions($modules, $permissions) {
 	$resultDb->free();
 	$mysqli->close();
 
-	return $modules;
+	return $result;
 }

@@ -6,6 +6,11 @@ Ext.define('Packt.controller.Menu', {
     'Menu'
   ],
 
+  refs: [{
+    ref: 'mainPanel',
+    selector: 'mainpanel'
+  }],
+
   init: function (application) {
     this.control({
       'menutree': {
@@ -35,6 +40,9 @@ Ext.define('Packt.controller.Menu', {
             nodes = [],
             item;
 
+        // console.log(root);
+        // console.log(treeNodeStore);
+
         for (var i = 0; i < treeNodeStore.getCount(); i++) {
           item = treeNodeStore.getAt(i);
 
@@ -53,12 +61,24 @@ Ext.define('Packt.controller.Menu', {
 
       view.add(dynamicMenus);
       view.body.unmask();
-
     });
   },
 
   onTreePanelItemClick: function (view, record, item, index, event, options) {
-    console.log('onTreePanelItemClick');
+    var mainPanel = this.getMainPanel();
+
+    var newTab = mainPanel.items.findBy(function (tab) {
+      return tab.title === record.get('text');
+    });
+
+    if (!newTab) {
+      newTab = mainPanel.add({
+        xtype: record.get('className'),
+        closable: true,
+        glyph: record.get('glyph'),
+        title: record.get('text')
+      });
+    }
   }
 
 });

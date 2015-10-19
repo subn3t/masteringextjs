@@ -6286,16 +6286,6 @@ tr.x-grid-subtable-row {
   background-position: 2px -2px; }
 
 /* including package Packt */
-/* line 3, ../../../../sass/src/view/main/Footer.scss */
-.app-footer-title {
-  color: #0b67c4;
-  font-size: 12px;
-  font-weight: bold; }
-
-/* line 9, ../../../../sass/src/view/main/Footer.scss */
-.app-footer {
-  border-top: 1px solid #07417c; }
-
 /* line 3, ../../../../sass/src/view/main/Header.scss */
 .app-header-logo {
   color: #2a3f5d; }
@@ -6306,3 +6296,13 @@ tr.x-grid-subtable-row {
   color: #2a3f5d;
   font-size: 18px;
   font-weight: bold; }
+
+/* line 3, ../../../../sass/src/view/main/Footer.scss */
+.app-footer-title {
+  color: #0b67c4;
+  font-size: 12px;
+  font-weight: bold; }
+
+/* line 9, ../../../../sass/src/view/main/Footer.scss */
+.app-footer {
+  border-top: 1px solid #07417c; }
