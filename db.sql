@@ -468,7 +468,7 @@ CREATE TABLE `menu` (
 
 LOCK TABLES `menu` WRITE;
 /*!40000 ALTER TABLE `menu` DISABLE KEYS */;
-INSERT INTO `menu` VALUES (1,'menu1','fa fa-group fa-lg',NULL,NULL),(2,'menu11','xf0c0','panel',1),(3,'menu12','xf007','panel',1),(4,'staticData','fa fa-database fa-lg',NULL,NULL),(5,'actors','xf005','panel',4),(6,'categories','xf013','panel',4),(7,'languages','xf1ab','panel',4),(8,'cities','xf018','panel',4),(9,'countries','xf0ac','panel',4),(10,'cms','fa fa-film fa-lg',NULL,NULL),(11,'films','xf1c8','panel',10),(12,'reports','fa fa-line-chart fa-lg',NULL,NULL),(13,'salesfilmcategory','xf200','panel',12);
+INSERT INTO `menu` VALUES (1,'menu1','fa fa-group fa-lg',NULL,NULL),(2,'menu11','xf0c0','panel',1),(3,'menu12','xf007','user',1),(4,'staticData','fa fa-database fa-lg',NULL,NULL),(5,'actors','xf005','panel',4),(6,'categories','xf013','panel',4),(7,'languages','xf1ab','panel',4),(8,'cities','xf018','panel',4),(9,'countries','xf0ac','panel',4),(10,'cms','fa fa-film fa-lg',NULL,NULL),(11,'films','xf1c8','panel',10),(12,'reports','fa fa-line-chart fa-lg',NULL,NULL),(13,'salesfilmcategory','xf200','panel',12);
 /*!40000 ALTER TABLE `menu` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -718,11 +718,11 @@ CREATE TABLE `user` (
   `password` varchar(100) NOT NULL,
   `email` varchar(100) NOT NULL,
   `picture` varchar(100) DEFAULT NULL,
-  `Group_id` int(11) NOT NULL,
-  PRIMARY KEY (`id`,`Group_id`),
+  `groups_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`,`groups_id`),
   UNIQUE KEY `userName_UNIQUE` (`userName`),
-  KEY `fk_User_Group1_idx` (`Group_id`),
-  CONSTRAINT `fk_UserGroup1` FOREIGN KEY (`Group_id`) REFERENCES `groups` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
+  KEY `fk_User_Group1_idx` (`groups_id`),
+  CONSTRAINT `fk_UserGroup1` FOREIGN KEY (`groups_id`) REFERENCES `groups` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -871,4 +871,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2015-09-18 21:38:58
+-- Dump completed on 2015-10-19  8:53:27
