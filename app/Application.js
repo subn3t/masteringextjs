@@ -1,18 +1,9 @@
-function loadLocale() {
-  var lang = localStorage ? (localStorage.getItem('user-lang') || 'en') : 'en',
-      file = Ext.util.Format.format('resources/locale/{0}.js', lang),
-      extJsFile = Ext.util.Format.format('ext/packages/ext-locale/build/ext-locale-{0}.js', lang);
+function loadLocale(){
 
-  Ext.Loader.loadScript({
-    url: file,
-    onError: function () {
-      alert('Error loading locale file. Please contact system administrator.');
-    }
-  });
+    var lang = localStorage ? (localStorage.getItem('user-lang') || 'en') : 'en',
+        extJsFile = Ext.util.Format.format("ext/packages/ext-locale/build/ext-locale-{0}.js", lang);
 
-  Ext.Loader.loadScript({
-    url: extJsFile
-  });
+    Ext.Loader.loadScript({url: extJsFile});
 }
 
 loadLocale();
@@ -36,8 +27,8 @@ Ext.define('Packt.Application', {
   ],
 
   views: [
-    'login.Login',
-    'security.User' // WHY??
+    'login.Login'
+    // 'security.User' // WHY??
   ],
 
   controllers: [
@@ -45,8 +36,8 @@ Ext.define('Packt.Application', {
   ],
 
   requires: [
-    'Packt.overrides.tree.ColumnOverride',
-    'Packt.util.Glyphs' // WHY??
+    'Packt.overrides.tree.ColumnOverride'
+    // 'Packt.util.Glyphs' // WHY??
   ],
 
   glyphFontFamily: 'FontAwesome',
