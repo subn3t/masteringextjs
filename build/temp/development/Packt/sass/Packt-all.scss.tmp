@@ -908,6 +908,7 @@ $include-packt-controller-menu: true;
 $include-packt-model-menu-accordion: true;
 $include-packt-model-menu-treenode: true;
 $include-packt-model-security-base: true;
+$include-packt-model-security-group: true;
 $include-packt-model-security-user: true;
 $include-packt-overrides-tree-columnoverride: true;
 $include-packt-store-menu: true;
@@ -929,6 +930,7 @@ $include-packt-view-menu-accordion: true;
 $include-packt-view-menu-tree: true;
 $include-packt-view-security-user: true;
 $include-packt-view-security-usercontroller: true;
+$include-packt-view-security-userform: true;
 $include-packt-view-security-usermodel: true;
 $include-packt-view-security-usersgrid: true;
 

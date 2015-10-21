@@ -1,74 +1,83 @@
 <?php
 
-function retrievePermissions($userName) {
-	require('../db/db.php');
+function retrievePermissions($userName){
 
-	$sqlQuery = "SELECT p.menu_id menuId 
-		FROM user u, permissions p, menu m 
-		WHERE u.groups_id = p.groups_id 
-		AND p.menu_id = m.id 
-		AND u.username = '$userName'";
+    require('../db/db.php');
 
-	$permissions = [];
+    $sqlQuery = "SELECT p.menu_id menuId FROM user u ";
+    $sqlQuery .= "INNER JOIN permissions p ON u.groups_id = p.groups_id ";
+    $sqlQuery .= "INNER JOIN menu m ON p.menu_id = m.id ";
+    $sqlQuery .= "WHERE u.username = '$userName' ";
 
-	if ($resultDb = $mysqli->query($sqlQuery)) {
-		while ($user = $resultDb->fetch_assoc()) {
-			$permissions[] = $user['menuId'];
-		}
-	}
+    $permissions = [];
 
-	$resultDb->free();
-	$mysqli->close();
+    if ($resultDb = $mysqli->query($sqlQuery)) {
+        while($user = $resultDb->fetch_assoc()) {
+            $permissions[] =  $user['menuId'];
+        }
+    }
 
-	return $permissions;
+    $mysqli->close();
+
+    return $permissions;
 }
 
-function retrieveModules($permissions) {
-	require('../db/db.php');
+function retrieveModules($permissions){
 
-	$inClause = '(' . join(',', $permissions) . ')';
+    require('../db/db.php');
 
-	$sqlQuery = "SELECT id, text, iconCls FROM menu WHERE menu_id IS NULL AND id in $inClause";
+    $inClause = '(' . join(',',$permissions) . ')';
 
-	$modules = [];
+    $sqlQuery = "SELECT id, text, iconCls FROM menu WHERE menu_id IS NULL AND id in $inClause";
 
-	if ($resultDb = $mysqli->query($sqlQuery)) {
-		while ($module = $resultDb->fetch_assoc()) {
-			$modules[] = $module;
-		}
-	}
+    $modules = [];
 
-	$resultDb->free();
-	$mysqli->close();
+    if ($resultDb = $mysqli->query($sqlQuery)) {
+        while($module = $resultDb->fetch_assoc()) {
+            $modules[] = $module;
 
-	return $modules;
+        }
+    }
+
+
+    $mysqli->close();
+
+    return $modules;
 }
 
-function retrieveMenuOptions($modules, $permissions) {
-	require('../db/db.php');
+function retrieveMenuOptions($modules, $permissions){
 
-	$inClause = '(' . join(',', $permissions) . ')';
+    require('../db/db.php');
 
-	$result = [];
+    $inClause = '(' . join(',',$permissions) . ')';
 
-	foreach ($modules as $module) {
-		$sqlQuery = "SELECT * FROM menu WHERE menu_id = '";
-		$sqlQuery .= $module['id'] . "' AND id in $inClause";
+    $result = [];
 
-		if ($resultDb = $mysqli->query($sqlQuery)) {
-			$count = $resultDb->num_rows;
-			if ($count > 0) {
-				$module['items'] = array();
-				while ($item = $resultDb->fetch_assoc()) {
-					$module['items'][] = $item;
-				}
-			}
-			$result[] = $module;
-		}
-	}
+    foreach ($modules as $module) {
 
-	$resultDb->free();
-	$mysqli->close();
+        $sqlQuery = "SELECT * FROM menu WHERE menu_id = '";
+        $sqlQuery .= $module['id'] ."' AND id in $inClause";
 
-	return $result;
+        // check if have a child node
+        if ($resultDb = $mysqli->query($sqlQuery)) {
+
+            // determine number of rows result set
+            $count = $resultDb->num_rows;
+
+            if ($count > 0){
+
+                $module['items'] = array();
+
+                while ($item = $resultDb->fetch_assoc()) {
+                    $module['items'][] = $item;
+                }
+
+            }
+            $result[] = $module;
+        }
+    }
+
+    $mysqli->close();
+
+    return $result;
 }

@@ -22,6 +22,8 @@ Ext.define('Packt.Application', {
   
   name: 'Packt',
 
+  glyphFontFamily: 'FontAwesome',
+
   stores: [
     // TODO: add global / shared stores here
   ],

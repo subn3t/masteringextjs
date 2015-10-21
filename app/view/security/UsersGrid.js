@@ -25,7 +25,7 @@ Ext.define('Packt.view.security.UsersGrid', {
     },
     {
       width: 150,
-      dataIndex: 'groups_id',
+      dataIndex: 'groupName',
       text: 'Group'
     }
   ]
